@@ -10,10 +10,26 @@ import type { EmbeddingProvider } from "./embeddings.js";
 export class MemoryService {
   private db: SupabaseClient;
   private embeddings: EmbeddingProvider;
+  private healthy = true;
 
   constructor(supabaseUrl: string, supabaseKey: string, embeddings: EmbeddingProvider) {
     this.db = createClient(supabaseUrl, supabaseKey);
     this.embeddings = embeddings;
+  }
+
+  /** Check if Supabase is reachable */
+  async healthCheck(): Promise<boolean> {
+    try {
+      const { error } = await this.db.from("memories").select("id").limit(1);
+      this.healthy = !error;
+    } catch {
+      this.healthy = false;
+    }
+    return this.healthy;
+  }
+
+  get isHealthy(): boolean {
+    return this.healthy;
   }
 
   async create(input: CreateMemoryInput): Promise<Memory> {
