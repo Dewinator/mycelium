@@ -1,0 +1,186 @@
+import { test } from "node:test";
+import assert from "node:assert/strict";
+import { remember } from "../tools/remember.js";
+import { recall } from "../tools/recall.js";
+import { forget } from "../tools/forget.js";
+import { update } from "../tools/update.js";
+import { list } from "../tools/list.js";
+import type { MemoryService } from "../services/supabase.js";
+import type {
+  Memory,
+  MemorySearchResult,
+  CreateMemoryInput,
+  UpdateMemoryInput,
+} from "../types/memory.js";
+
+const UUID = "11111111-2222-3333-4444-555555555555";
+
+function makeMemory(over: Partial<Memory> = {}): Memory {
+  return {
+    id: UUID,
+    content: "default content",
+    category: "general",
+    tags: [],
+    metadata: {},
+    created_at: "2026-01-01T00:00:00Z",
+    updated_at: "2026-01-01T00:00:00Z",
+    ...over,
+  };
+}
+
+class FakeService implements Partial<MemoryService> {
+  created: CreateMemoryInput[] = [];
+  updated: UpdateMemoryInput[] = [];
+  deleted: string[] = [];
+  searched: string[] = [];
+
+  constructor(
+    private opts: {
+      searchResults?: MemorySearchResult[];
+      getResult?: Memory | null;
+      listResults?: Memory[];
+    } = {}
+  ) {}
+
+  async create(input: CreateMemoryInput): Promise<Memory> {
+    this.created.push(input);
+    return makeMemory({ ...input, content: input.content });
+  }
+
+  async search(query: string): Promise<MemorySearchResult[]> {
+    this.searched.push(query);
+    return this.opts.searchResults ?? [];
+  }
+
+  async get(id: string): Promise<Memory | null> {
+    return this.opts.getResult === undefined ? makeMemory({ id }) : this.opts.getResult;
+  }
+
+  async update(input: UpdateMemoryInput): Promise<Memory> {
+    this.updated.push(input);
+    return makeMemory({ id: input.id, content: input.content ?? "x" });
+  }
+
+  async delete(id: string): Promise<boolean> {
+    this.deleted.push(id);
+    return true;
+  }
+
+  async list(category?: string): Promise<Memory[]> {
+    return this.opts.listResults ?? [];
+  }
+}
+
+test("remember returns id and category in text", async () => {
+  const svc = new FakeService();
+  const res = await remember(svc as unknown as MemoryService, {
+    content: "the sky is blue",
+    category: "topics",
+    tags: [],
+  });
+  assert.match(res.content[0].text, /Remembered \(topics\)/);
+  assert.match(res.content[0].text, /the sky is blue/);
+  assert.equal(svc.created.length, 1);
+  assert.equal(svc.created[0].category, "topics");
+});
+
+test("remember truncates long content in output", async () => {
+  const svc = new FakeService();
+  const long = "x".repeat(200);
+  const res = await remember(svc as unknown as MemoryService, {
+    content: long,
+    category: "general",
+    tags: [],
+  });
+  assert.match(res.content[0].text, /\.\.\./);
+});
+
+test("recall returns 'no matching' when empty", async () => {
+  const svc = new FakeService({ searchResults: [] });
+  const res = await recall(svc as unknown as MemoryService, {
+    query: "anything",
+    limit: 10,
+    vector_weight: 0.7,
+  });
+  assert.match(res.content[0].text, /No matching memories/);
+});
+
+test("recall formats results with rank, score and id", async () => {
+  const svc = new FakeService({
+    searchResults: [
+      {
+        id: UUID,
+        content: "matching content",
+        category: "people",
+        tags: ["alice"],
+        metadata: {},
+        similarity: 0.873,
+        created_at: "2026-01-01T00:00:00Z",
+      },
+    ],
+  });
+  const res = await recall(svc as unknown as MemoryService, {
+    query: "alice",
+    limit: 10,
+    vector_weight: 0.7,
+  });
+  assert.match(res.content[0].text, /Found 1 memories/);
+  assert.match(res.content[0].text, /1\. \[people\]/);
+  assert.match(res.content[0].text, /0\.873/);
+  assert.match(res.content[0].text, /alice/);
+});
+
+test("forget reports not-found when missing", async () => {
+  const svc = new FakeService({ getResult: null });
+  const res = await forget(svc as unknown as MemoryService, { id: UUID });
+  assert.match(res.content[0].text, /not found/);
+  assert.equal(svc.deleted.length, 0);
+});
+
+test("forget deletes existing memory", async () => {
+  const svc = new FakeService({
+    getResult: makeMemory({ content: "to delete" }),
+  });
+  const res = await forget(svc as unknown as MemoryService, { id: UUID });
+  assert.match(res.content[0].text, /Deleted memory/);
+  assert.deepEqual(svc.deleted, [UUID]);
+});
+
+test("update passes input through to service", async () => {
+  const svc = new FakeService();
+  const res = await update(svc as unknown as MemoryService, {
+    id: UUID,
+    content: "patched",
+    tags: ["new"],
+  });
+  assert.match(res.content[0].text, /Updated memory/);
+  assert.equal(svc.updated[0].content, "patched");
+  assert.deepEqual(svc.updated[0].tags, ["new"]);
+});
+
+test("list reports empty state", async () => {
+  const svc = new FakeService({ listResults: [] });
+  const res = await list(svc as unknown as MemoryService, { limit: 20 });
+  assert.match(res.content[0].text, /No memories/);
+});
+
+test("list reports empty state for filtered category", async () => {
+  const svc = new FakeService({ listResults: [] });
+  const res = await list(svc as unknown as MemoryService, {
+    category: "people",
+    limit: 20,
+  });
+  assert.match(res.content[0].text, /people/);
+});
+
+test("list renders memories", async () => {
+  const svc = new FakeService({
+    listResults: [
+      makeMemory({ content: "first", category: "topics", tags: ["a", "b"] }),
+      makeMemory({ id: "22222222-2222-3333-4444-555555555555", content: "second", category: "general" }),
+    ],
+  });
+  const res = await list(svc as unknown as MemoryService, { limit: 20 });
+  assert.match(res.content[0].text, /first/);
+  assert.match(res.content[0].text, /second/);
+});
