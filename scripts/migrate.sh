@@ -29,8 +29,12 @@ for migration in "$MIGRATIONS_DIR"/*.sql; do
     -p "$POSTGRES_PORT" \
     -U "$POSTGRES_USER" \
     -d "$POSTGRES_DB" \
+    -v ON_ERROR_STOP=1 \
     -f "$migration" \
-    --quiet
+    --quiet || {
+      echo "ERROR: $filename failed — aborting." >&2
+      exit 1
+    }
 done
 
 echo "All migrations applied successfully."

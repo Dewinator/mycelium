@@ -4,6 +4,7 @@
 <meta charset="utf-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1" />
 <title>vectormemory — dashboard</title>
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
 <style>
   :root {
     --bg:            #0b0d10;
@@ -14,6 +15,8 @@
     --text-dim:      #8a94a6;
     --text-faint:    #5a6473;
     --accent:        #7aa2f7;
+    --accent-2:      #bb9af7;
+    --accent-3:      #7dcfff;
     --accent-soft:   #2a3a5a;
     --good:          #9ece6a;
     --warn:          #e0af68;
@@ -33,6 +36,8 @@
     --text-dim:      #5b6573;
     --text-faint:    #98a1ad;
     --accent:        #3b6cd9;
+    --accent-2:      #8a4dd9;
+    --accent-3:      #2c8fb8;
     --accent-soft:   #dde6fa;
     --good:          #3b8a3b;
     --warn:          #b07b1a;
@@ -41,12 +46,12 @@
   }
   *,*::before,*::after { box-sizing: border-box; }
   html, body { margin: 0; padding: 0; background: var(--bg); color: var(--text); font-family: var(--sans); -webkit-font-smoothing: antialiased; }
-  body { min-height: 100vh; padding: 32px 40px 64px; }
+  body { min-height: 100vh; padding: 28px 36px 56px; }
   a { color: var(--accent); text-decoration: none; }
 
   header.top {
     display: flex; align-items: center; justify-content: space-between;
-    margin-bottom: 28px; gap: 16px;
+    margin-bottom: 24px; gap: 16px;
   }
   .brand { display: flex; flex-direction: column; gap: 4px; }
   .brand h1 { margin: 0; font-size: 20px; font-weight: 600; letter-spacing: -0.01em; }
@@ -63,22 +68,28 @@
   .status-dot.bad { background: var(--bad); }
 
   .grid { display: grid; gap: 16px; }
-  .grid-kpi { grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); }
-  .grid-main { grid-template-columns: 2fr 1fr; margin-top: 16px; }
+  .grid-kpi { grid-template-columns: repeat(auto-fit, minmax(170px, 1fr)); }
+  .grid-charts { grid-template-columns: 2fr 1fr; margin-top: 16px; }
+  .grid-charts-2 { grid-template-columns: 1fr 1fr; margin-top: 16px; }
   .grid-tables { grid-template-columns: 1fr 1fr; margin-top: 16px; }
-  @media (max-width: 1000px) { .grid-main, .grid-tables { grid-template-columns: 1fr; } }
+  @media (max-width: 1100px) { .grid-charts, .grid-charts-2, .grid-tables { grid-template-columns: 1fr; } }
 
   .card {
     background: var(--bg-elev); border: 1px solid var(--border);
     border-radius: var(--radius); padding: 18px 20px; box-shadow: var(--shadow);
+    min-width: 0;
   }
   .card h2 {
     margin: 0 0 14px; font-size: 12px; font-weight: 600;
     text-transform: uppercase; letter-spacing: 0.08em; color: var(--text-dim);
   }
   .kpi .label { font-size: 11px; text-transform: uppercase; letter-spacing: 0.08em; color: var(--text-dim); margin-bottom: 8px; }
-  .kpi .value { font-size: 32px; font-weight: 600; letter-spacing: -0.02em; line-height: 1; }
+  .kpi .value { font-size: 30px; font-weight: 600; letter-spacing: -0.02em; line-height: 1; }
   .kpi .hint { margin-top: 8px; font-size: 12px; color: var(--text-faint); }
+
+  .chart-wrap { position: relative; height: 220px; }
+  .chart-wrap.tall { height: 260px; }
+  .chart-wrap.short { height: 180px; }
 
   .bars { display: flex; flex-direction: column; gap: 10px; }
   .bar-row { display: grid; grid-template-columns: 140px 1fr 56px; align-items: center; gap: 12px; font-size: 13px; }
@@ -86,19 +97,6 @@
   .bar-row .count { color: var(--text-dim); text-align: right; font-variant-numeric: tabular-nums; font-family: var(--mono); font-size: 12px; }
   .bar-track { height: 8px; background: var(--bg-elev-2); border-radius: 4px; overflow: hidden; }
   .bar-fill { height: 100%; background: var(--accent); border-radius: 4px; }
-
-  .histo { display: flex; align-items: flex-end; gap: 4px; height: 140px; padding: 4px 0; }
-  .histo-bar { flex: 1; background: var(--accent); border-radius: 3px 3px 0 0; min-height: 2px; opacity: 0.85; transition: opacity .15s; }
-  .histo-bar:hover { opacity: 1; }
-  .histo-axis { display: flex; justify-content: space-between; font-size: 10px; color: var(--text-faint); margin-top: 6px; font-family: var(--mono); }
-
-  .stages { display: flex; gap: 8px; margin-top: 4px; }
-  .stage-pill {
-    flex: 1; padding: 12px 14px; border-radius: var(--radius-sm);
-    background: var(--bg-elev-2); border: 1px solid var(--border);
-  }
-  .stage-pill .stage-name { font-size: 11px; text-transform: uppercase; letter-spacing: 0.08em; color: var(--text-dim); }
-  .stage-pill .stage-count { font-size: 22px; font-weight: 600; margin-top: 4px; line-height: 1; }
 
   table.mem { width: 100%; border-collapse: collapse; font-size: 13px; }
   table.mem th, table.mem td { text-align: left; padding: 10px 8px; border-bottom: 1px solid var(--border); vertical-align: top; }
@@ -115,6 +113,10 @@
 
   .empty { color: var(--text-faint); font-size: 13px; padding: 24px 0; text-align: center; }
   .err { color: var(--bad); font-size: 13px; padding: 12px 14px; border: 1px solid var(--bad); border-radius: var(--radius-sm); background: rgba(247,118,142,0.06); margin-bottom: 16px; }
+
+  .health-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 10px 16px; font-size: 12px; }
+  .health-grid .k { color: var(--text-dim); }
+  .health-grid .v { color: var(--text); font-family: var(--mono); text-align: right; }
 
   footer { margin-top: 32px; color: var(--text-faint); font-size: 12px; text-align: center; }
   footer code { font-family: var(--mono); }
@@ -136,17 +138,39 @@
 
   <section class="grid grid-kpi" id="kpis"></section>
 
-  <section class="grid grid-main">
+  <!-- top row: timeline (wide) + stage donut -->
+  <section class="grid grid-charts">
     <div class="card">
-      <h2>kategorien</h2>
-      <div class="bars" id="categories"></div>
+      <h2>wachstum (letzte 30 tage)</h2>
+      <div class="chart-wrap"><canvas id="chart-timeline"></canvas></div>
     </div>
     <div class="card">
       <h2>stadien</h2>
-      <div class="stages" id="stages"></div>
-      <h2 style="margin-top: 22px;">stärke-verteilung</h2>
-      <div class="histo" id="histo"></div>
-      <div class="histo-axis"><span>0.0</span><span>0.5</span><span>1.0</span></div>
+      <div class="chart-wrap"><canvas id="chart-stages"></canvas></div>
+    </div>
+  </section>
+
+  <!-- second row: categories donut + retention curve -->
+  <section class="grid grid-charts-2">
+    <div class="card">
+      <h2>kategorien</h2>
+      <div class="chart-wrap"><canvas id="chart-categories"></canvas></div>
+    </div>
+    <div class="card">
+      <h2>retention (ø stärke nach alter)</h2>
+      <div class="chart-wrap"><canvas id="chart-retention"></canvas></div>
+    </div>
+  </section>
+
+  <!-- third row: strength histogram + health -->
+  <section class="grid grid-charts-2">
+    <div class="card">
+      <h2>stärke-verteilung</h2>
+      <div class="chart-wrap short"><canvas id="chart-strength"></canvas></div>
+    </div>
+    <div class="card">
+      <h2>health</h2>
+      <div class="health-grid" id="health"></div>
     </div>
   </section>
 
@@ -167,28 +191,57 @@
   </section>
 
   <footer>
-    quelle: <code>POST /api/rpc/dashboard_stats</code> &middot; proxy: <code id="endpoint">scripts/dashboard-server.mjs</code>
+    quelle: <code>POST /api/rpc/dashboard_stats</code> &middot; proxy: <code>scripts/dashboard-server.mjs</code>
   </footer>
 
 <script>
-// Goes through scripts/dashboard-server.mjs which proxies to PostgREST
-// and injects the service_role JWT server-side. No secret in the browser.
 const ENDPOINT = "/api";
+const REFRESH_MS = 30000;
+const TOP_TAGS = 15;
 
 const $ = (id) => document.getElementById(id);
-const fmt = new Intl.NumberFormat("de-DE");
+const fmt  = new Intl.NumberFormat("de-DE");
 const fmt2 = new Intl.NumberFormat("de-DE", { minimumFractionDigits: 2, maximumFractionDigits: 2 });
 
-function setStatus(ok, text) {
-  const dot = $("status");
-  dot.className = "status-dot " + (ok ? "ok" : "bad");
-  $("status-text").textContent = text;
+// One palette derived from CSS vars so light/dark themes both look right.
+function palette() {
+  const cs = getComputedStyle(document.documentElement);
+  return {
+    accent:  cs.getPropertyValue("--accent").trim(),
+    accent2: cs.getPropertyValue("--accent-2").trim(),
+    accent3: cs.getPropertyValue("--accent-3").trim(),
+    good:    cs.getPropertyValue("--good").trim(),
+    warn:    cs.getPropertyValue("--warn").trim(),
+    bad:     cs.getPropertyValue("--bad").trim(),
+    text:    cs.getPropertyValue("--text").trim(),
+    dim:     cs.getPropertyValue("--text-dim").trim(),
+    faint:   cs.getPropertyValue("--text-faint").trim(),
+    border:  cs.getPropertyValue("--border").trim(),
+  };
 }
 
+const charts = {};
+function destroyCharts() {
+  for (const k of Object.keys(charts)) { charts[k]?.destroy?.(); delete charts[k]; }
+}
+
+function setStatus(ok, text) {
+  $("status").className = "status-dot " + (ok ? "ok" : "bad");
+  $("status-text").textContent = text;
+}
 function showError(msg) {
-  const box = $("error-box");
-  if (!msg) { box.innerHTML = ""; return; }
-  box.innerHTML = `<div class="err">${msg}</div>`;
+  $("error-box").innerHTML = msg ? `<div class="err">${msg}</div>` : "";
+}
+function escapeHtml(s) {
+  if (s == null) return "";
+  return String(s).replace(/[&<>"']/g, c => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));
+}
+function formatDate(iso) {
+  if (!iso) return "—";
+  return new Date(iso).toLocaleString("de-DE", { year: "numeric", month: "2-digit", day: "2-digit", hour: "2-digit", minute: "2-digit" });
+}
+function formatDay(iso) {
+  return new Date(iso).toLocaleDateString("de-DE", { month: "2-digit", day: "2-digit" });
 }
 
 async function fetchStats() {
@@ -215,50 +268,186 @@ function kpiCard(label, value, hint) {
 
 function renderKpis(d) {
   const t = d.totals, l = d.links;
-  const html = [
-    kpiCard("neuronen (memories)", fmt.format(t.memories), `${fmt.format(t.with_embedding)} mit vektor`),
-    kpiCard("vektoren", fmt.format(t.with_embedding), `${t.memories ? Math.round(100 * t.with_embedding / t.memories) : 0}% abdeckung`),
-    kpiCard("beziehungen", fmt.format(l.count), `ø gewicht ${fmt2.format(l.avg_weight || 0)}`),
+  $("kpis").innerHTML = [
+    kpiCard("neuronen", fmt.format(t.memories), `${fmt.format(t.with_embedding)} mit vektor`),
+    kpiCard("episodisch / semantisch", `${fmt.format(t.episodic)} / ${fmt.format(t.semantic)}`, `${fmt.format(t.archived)} archiviert`),
+    kpiCard("beziehungen", fmt.format(l.count), `dichte ${fmt2.format(l.density || 0)} pro neuron`),
     kpiCard("vergessen", fmt.format(d.forgotten), "soft-archiviert"),
     kpiCard("ø stärke", fmt2.format(t.avg_strength || 0), `ø wichtigkeit ${fmt2.format(t.avg_importance || 0)}`),
     kpiCard("zugriffe", fmt.format(t.total_access), `${fmt.format(t.total_useful)} davon nützlich`),
   ].join("");
-  $("kpis").innerHTML = html;
 }
 
-function renderBars(elId, items, max) {
-  if (!items || items.length === 0) { $(elId).innerHTML = `<div class="empty">noch keine daten</div>`; return; }
-  const top = max || Math.max(...items.map(i => i.count));
-  $(elId).innerHTML = items.map(i => `
-    <div class="bar-row">
-      <div class="name" title="${escapeHtml(i.name)}">${escapeHtml(i.name)}</div>
-      <div class="bar-track"><div class="bar-fill" style="width: ${top ? (100 * i.count / top) : 0}%"></div></div>
-      <div class="count">${fmt.format(i.count)}</div>
-    </div>
-  `).join("");
+function chartGridColor() { return palette().border; }
+function chartTickColor() { return palette().dim; }
+
+function commonScales() {
+  const grid = chartGridColor(), tick = chartTickColor();
+  return {
+    x: { grid: { color: grid, drawBorder: false }, ticks: { color: tick, font: { size: 10 } } },
+    y: { grid: { color: grid, drawBorder: false }, ticks: { color: tick, font: { size: 10 }, precision: 0 }, beginAtZero: true },
+  };
 }
 
-function renderStages(d) {
-  const t = d.totals;
-  const stages = [
-    { name: "episodisch", count: t.episodic },
-    { name: "semantisch", count: t.semantic },
-    { name: "archiviert", count: t.archived },
-  ];
-  $("stages").innerHTML = stages.map(s => `
-    <div class="stage-pill">
-      <div class="stage-name">${s.name}</div>
-      <div class="stage-count">${fmt.format(s.count)}</div>
-    </div>
-  `).join("");
+function renderTimeline(timeline) {
+  const p = palette();
+  const labels = timeline.map(t => formatDay(t.day));
+  const data   = timeline.map(t => t.count);
+  // cumulative
+  let acc = 0;
+  const cum = data.map(v => (acc += v));
+
+  charts.timeline = new Chart($("chart-timeline"), {
+    type: "bar",
+    data: {
+      labels,
+      datasets: [
+        { type: "bar", label: "neu / tag", data, backgroundColor: p.accent + "cc", borderRadius: 3, yAxisID: "y" },
+        { type: "line", label: "kumulativ", data: cum, borderColor: p.accent2, backgroundColor: "transparent", tension: 0.3, pointRadius: 0, borderWidth: 2, yAxisID: "y1" },
+      ],
+    },
+    options: {
+      responsive: true, maintainAspectRatio: false,
+      plugins: { legend: { labels: { color: p.dim, font: { size: 11 } } } },
+      scales: {
+        x: { grid: { color: p.border, drawBorder: false }, ticks: { color: p.dim, font: { size: 10 }, maxRotation: 0, autoSkipPadding: 12 } },
+        y:  { position: "left",  grid: { color: p.border, drawBorder: false }, ticks: { color: p.dim, font: { size: 10 }, precision: 0 }, beginAtZero: true },
+        y1: { position: "right", grid: { display: false },                     ticks: { color: p.dim, font: { size: 10 }, precision: 0 }, beginAtZero: true },
+      },
+    },
+  });
 }
 
-function renderHistogram(buckets) {
+function renderStages(t) {
+  const p = palette();
+  charts.stages = new Chart($("chart-stages"), {
+    type: "doughnut",
+    data: {
+      labels: ["episodisch", "semantisch", "archiviert"],
+      datasets: [{
+        data: [t.episodic, t.semantic, t.archived],
+        backgroundColor: [p.accent, p.accent2, p.faint],
+        borderColor: palette().border,
+        borderWidth: 2,
+      }],
+    },
+    options: {
+      responsive: true, maintainAspectRatio: false, cutout: "62%",
+      plugins: { legend: { position: "bottom", labels: { color: p.dim, font: { size: 11 }, boxWidth: 12 } } },
+    },
+  });
+}
+
+function renderCategories(cats) {
+  const p = palette();
+  if (!cats || cats.length === 0) {
+    $("chart-categories").parentElement.innerHTML = `<div class="empty">noch keine kategorien</div>`;
+    return;
+  }
+  const colors = [p.accent, p.accent2, p.accent3, p.good, p.warn, p.bad, "#a78bfa", "#5eead4"];
+  charts.categories = new Chart($("chart-categories"), {
+    type: "doughnut",
+    data: {
+      labels: cats.map(c => c.name),
+      datasets: [{
+        data: cats.map(c => c.count),
+        backgroundColor: cats.map((_, i) => colors[i % colors.length]),
+        borderColor: p.border,
+        borderWidth: 2,
+      }],
+    },
+    options: {
+      responsive: true, maintainAspectRatio: false, cutout: "55%",
+      plugins: { legend: { position: "right", labels: { color: p.dim, font: { size: 11 }, boxWidth: 12 } } },
+    },
+  });
+}
+
+function renderRetention(curve) {
+  const p = palette();
+  // Build a 0..29 dense series (gaps -> null so the line skips them).
+  const map = new Map((curve || []).map(r => [r.age_days, r]));
+  const labels = [], data = [], counts = [];
+  for (let i = 0; i < 30; i++) {
+    const r = map.get(i);
+    labels.push(i + "d");
+    data.push(r ? r.avg_strength : null);
+    counts.push(r ? r.n : 0);
+  }
+  charts.retention = new Chart($("chart-retention"), {
+    type: "line",
+    data: {
+      labels,
+      datasets: [{
+        label: "ø stärke",
+        data,
+        borderColor: p.accent3,
+        backgroundColor: p.accent3 + "22",
+        tension: 0.3,
+        pointRadius: 2,
+        pointHoverRadius: 4,
+        fill: true,
+        spanGaps: true,
+      }],
+    },
+    options: {
+      responsive: true, maintainAspectRatio: false,
+      plugins: {
+        legend: { display: false },
+        tooltip: {
+          callbacks: {
+            label: (ctx) => `ø ${fmt2.format(ctx.parsed.y || 0)}  (n=${counts[ctx.dataIndex]})`,
+          },
+        },
+      },
+      scales: {
+        x: { grid: { color: p.border, drawBorder: false }, ticks: { color: p.dim, font: { size: 10 }, autoSkipPadding: 12 } },
+        y: { grid: { color: p.border, drawBorder: false }, ticks: { color: p.dim, font: { size: 10 } }, beginAtZero: true, suggestedMax: 1 },
+      },
+    },
+  });
+}
+
+function renderStrengthHistogram(buckets) {
+  const p = palette();
   const arr = new Array(10).fill(0);
   (buckets || []).forEach(b => { arr[b.bucket] = b.count; });
-  const max = Math.max(1, ...arr);
-  $("histo").innerHTML = arr.map(c => `
-    <div class="histo-bar" title="${fmt.format(c)} memories" style="height: ${100 * c / max}%"></div>
+  const labels = arr.map((_, i) => `${(i / 10).toFixed(1)}–${((i + 1) / 10).toFixed(1)}`);
+  charts.strength = new Chart($("chart-strength"), {
+    type: "bar",
+    data: { labels, datasets: [{ data: arr, backgroundColor: p.accent + "cc", borderRadius: 3 }] },
+    options: {
+      responsive: true, maintainAspectRatio: false,
+      plugins: { legend: { display: false } },
+      scales: commonScales(),
+    },
+  });
+}
+
+function renderHealth(h, links) {
+  const rows = [
+    ["älteste",            formatDate(h.oldest_at)],
+    ["jüngste",            formatDate(h.newest_at)],
+    ["letzter zugriff",    formatDate(h.last_access_at)],
+    ["alter (tage)",       fmt.format(h.days_since_oldest || 0)],
+    ["nie zugegriffen",    fmt.format(h.never_accessed || 0)],
+    ["ohne vektor",        fmt.format(h.without_embedding || 0)],
+    ["link-dichte",        fmt2.format(links.density || 0)],
+    ["max. linkgewicht",   fmt2.format(links.max_weight || 0)],
+  ];
+  $("health").innerHTML = rows.map(([k, v]) => `<div class="k">${k}</div><div class="v">${v}</div>`).join("");
+}
+
+function renderTagBars(items) {
+  if (!items || items.length === 0) { $("tags").innerHTML = `<div class="empty">noch keine daten</div>`; return; }
+  const top = items.slice(0, TOP_TAGS);
+  const max = Math.max(...top.map(i => i.count));
+  $("tags").innerHTML = top.map(i => `
+    <div class="bar-row">
+      <div class="name" title="${escapeHtml(i.name)}">${escapeHtml(i.name)}</div>
+      <div class="bar-track"><div class="bar-fill" style="width: ${max ? (100 * i.count / max) : 0}%"></div></div>
+      <div class="count">${fmt.format(i.count)}</div>
+    </div>
   `).join("");
 }
 
@@ -291,27 +480,24 @@ function renderStrongest(rows) {
       </tr>`).join("")}</tbody>`;
 }
 
-function escapeHtml(s) {
-  if (s == null) return "";
-  return String(s).replace(/[&<>"']/g, c => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));
-}
-function formatDate(iso) {
-  const d = new Date(iso);
-  return d.toLocaleString("de-DE", { year: "numeric", month: "2-digit", day: "2-digit", hour: "2-digit", minute: "2-digit" });
-}
-
+let lastData = null;
 async function load() {
   showError("");
   setStatus(false, "lade…");
   try {
     const d = await fetchStats();
+    lastData = d;
+    destroyCharts();
     renderKpis(d);
-    renderBars("categories", d.categories);
-    renderBars("tags", d.tags);
-    renderStages(d);
-    renderHistogram(d.strength_histogram);
-    renderRecent(d.recent);
-    renderStrongest(d.strongest);
+    renderTimeline(d.timeline || []);
+    renderStages(d.totals);
+    renderCategories(d.categories || []);
+    renderRetention(d.retention || []);
+    renderStrengthHistogram(d.strength_histogram || []);
+    renderHealth(d.health || {}, d.links || {});
+    renderTagBars(d.tags || []);
+    renderRecent(d.recent || []);
+    renderStrongest(d.strongest || []);
     $("generated").textContent = "stand " + formatDate(d.generated_at);
     setStatus(true, "verbunden");
   } catch (e) {
@@ -323,10 +509,11 @@ async function load() {
 function applyTheme(t) {
   document.documentElement.dataset.theme = t;
   localStorage.setItem("vm-theme", t);
+  if (lastData) load();  // re-render so chart colors follow the theme
 }
 function initTheme() {
   const saved = localStorage.getItem("vm-theme");
-  applyTheme(saved || (matchMedia("(prefers-color-scheme: light)").matches ? "light" : "dark"));
+  document.documentElement.dataset.theme = saved || (matchMedia("(prefers-color-scheme: light)").matches ? "light" : "dark");
 }
 
 $("refresh").addEventListener("click", load);
@@ -336,7 +523,7 @@ $("theme").addEventListener("click", () => {
 
 initTheme();
 load();
-setInterval(load, 30000);
+setInterval(load, REFRESH_MS);
 </script>
 </body>
 </html>

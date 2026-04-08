@@ -1,0 +1,53 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!--
+  vectormemory cognitive maintenance — täglich 03:00.
+  Ruft scripts/maintenance.sh auf (consolidate + dedup + forget_weak).
+
+  Installation:
+    1. Pfad anpassen: ersetze REED durch deinen Username (oder den absoluten Pfad).
+    2. cp scripts/com.vectormemory.maintenance.plist ~/Library/LaunchAgents/
+    3. launchctl load   ~/Library/LaunchAgents/com.vectormemory.maintenance.plist
+    4. Test: launchctl start com.vectormemory.maintenance
+       Logs:  ~/Library/Logs/vectormemory-maintenance.log
+
+  Deinstallation:
+    launchctl unload ~/Library/LaunchAgents/com.vectormemory.maintenance.plist
+    rm              ~/Library/LaunchAgents/com.vectormemory.maintenance.plist
+-->
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTD/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+  <key>Label</key>
+  <string>com.vectormemory.maintenance</string>
+
+  <key>ProgramArguments</key>
+  <array>
+    <string>/bin/bash</string>
+    <string>/Users/REED/vectormemory-openclaw/scripts/maintenance.sh</string>
+    <string>all</string>
+  </array>
+
+  <key>StartCalendarInterval</key>
+  <dict>
+    <key>Hour</key>
+    <integer>3</integer>
+    <key>Minute</key>
+    <integer>0</integer>
+  </dict>
+
+  <!-- Falls der Mac um 03:00 schläft: Job nachholen sobald er aufwacht. -->
+  <key>RunAtLoad</key>
+  <false/>
+
+  <key>StandardOutPath</key>
+  <string>/Users/REED/Library/Logs/vectormemory-maintenance.out.log</string>
+  <key>StandardErrorPath</key>
+  <string>/Users/REED/Library/Logs/vectormemory-maintenance.err.log</string>
+
+  <key>EnvironmentVariables</key>
+  <dict>
+    <key>PATH</key>
+    <string>/opt/homebrew/bin:/opt/homebrew/sbin:/usr/local/bin:/usr/bin:/bin</string>
+  </dict>
+</dict>
+</plist>

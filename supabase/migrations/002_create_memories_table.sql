@@ -32,6 +32,7 @@ BEGIN
 END;
 $$ LANGUAGE plpgsql;
 
+DROP TRIGGER IF EXISTS memories_updated_at ON memories;
 CREATE TRIGGER memories_updated_at
   BEFORE UPDATE ON memories
   FOR EACH ROW

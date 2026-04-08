@@ -46,7 +46,7 @@ Das Skript erledigt automatisch:
 1. Prüft alle Abhängigkeiten
 2. Erzeugt `docker/.env` mit zufälligen Secrets
 3. Startet Supabase (PostgreSQL + pgvector + PostgREST) via Docker Compose
-4. Führt alle 10 SQL-Migrationen aus (inkl. kognitives Gedächtnismodell v2 + nächtliche Cron-Jobs)
+4. Führt alle SQL-Migrationen aus (inkl. kognitives Gedächtnismodell v2 + nächtliche Maintenance + Dashboard-Stats)
 5. Baut den MCP-Server (`npm install && npm run build`)
 6. Führt einen Health-Check aus
 7. **Gibt am Ende einen JSON-Block für deine openClaw-`settings.json` aus** — diesen kopieren!
@@ -191,23 +191,45 @@ Manueller Health-Check ohne openClaw:
 
 Erwartete Ausgabe: 5× ✓ (PostgreSQL, pgvector, memories-Tabelle, match_memories-Funktion, Ollama).
 
-### Kognitive Maintenance-Jobs (pg_cron)
+### Kognitive Maintenance-Jobs
 
-Migration 009 richtet zwei Hintergrund-Jobs ein, die das System „im Schlaf" verarbeiten:
+Drei Hintergrund-Tasks lassen das System „im Schlaf" konsolidieren:
 
-| Job | Schedule | Was er tut |
+| Task | Empfohlener Schedule | Was er tut |
 |---|---|---|
-| `vectormemory_consolidate` | täglich 03:00 | promotet episodic→semantic für alles ≥3× rehearst und ≥1 Tag alt |
-| `vectormemory_dedup`        | sonntags 03:15 | merged near-duplicates (Cosine ≥ 0.93) in den stärksten Repräsentanten |
-| `vectormemory_forget_weak`  | sonntags 03:30 | archiviert ungepinnte Spuren mit effektiver Stärke < 0.05 und Alter ≥7 Tage |
+| `consolidate_memories(3, 1)` | täglich 03:00 | promotet episodic→semantic für alles ≥3× rehearst und ≥1 Tag alt |
+| `dedup_similar_memories(0.93)` | sonntags 03:15 | merged near-duplicates (Cosine ≥ 0.93) in den stärksten Repräsentanten |
+| `forget_weak_memories(0.05, 7)` | sonntags 03:30 | archiviert ungepinnte Spuren mit effektiver Stärke < 0.05 und Alter ≥7 Tage |
 
-Status prüfen:
+Das pgvector-Docker-Image bringt **kein `pg_cron`** mit, deshalb laufen die Jobs vom Host aus über `scripts/maintenance.sh`. Migration 009 ist defensiv: aktiviert pg_cron automatisch, falls du auf ein Image wechselst, das es bündelt — sonst No-op.
+
+**Manuell ausführen** (jederzeit gefahrlos, idempotent):
 
 ```bash
-docker compose exec db psql -U postgres -c "SELECT jobname, schedule, active FROM cron.job;"
+bash scripts/maintenance.sh            # alle drei Tasks
+bash scripts/maintenance.sh consolidate
+bash scripts/maintenance.sh dedup
+bash scripts/maintenance.sh forget
 ```
 
-Falls dein Supabase-Image `pg_cron` nicht mitbringt, schlägt nur Migration 009 fehl — der Rest des Systems läuft normal weiter. Du kannst dann die gleichen Funktionen jederzeit manuell über die MCP-Tools `consolidate_memories` und `forget_weak_memories` aufrufen.
+Logs landen in `~/Library/Logs/vectormemory-maintenance.log`.
+
+**Täglich automatisch via launchd** (empfohlen):
+
+```bash
+# 1. Pfad in der Plist anpassen: REED durch deinen macOS-Username ersetzen
+sed -i '' "s|/Users/REED|$HOME|g" scripts/com.vectormemory.maintenance.plist
+
+# 2. Installieren und laden
+cp scripts/com.vectormemory.maintenance.plist ~/Library/LaunchAgents/
+launchctl load ~/Library/LaunchAgents/com.vectormemory.maintenance.plist
+
+# 3. Sofort einmal testen
+launchctl start com.vectormemory.maintenance
+tail ~/Library/Logs/vectormemory-maintenance.log
+```
+
+Damit läuft die Konsolidierung jede Nacht um 03:00.
 
 ---
 
@@ -225,6 +247,10 @@ cd docker && docker compose logs -f
 
 # Tests ausführen (ohne dass Stack laufen muss)
 cd mcp-server && npm test
+
+# Dashboard öffnen (Charts, KPIs, Health, Top-Memories)
+node scripts/dashboard-server.mjs
+# → http://localhost:8787  (oder vom Handy via Tailscale: http://<mac-name>.<tailnet>.ts.net:8787)
 ```
 
 Daten liegen persistent im Docker-Volume — `docker compose down` löscht **nichts**.
@@ -247,6 +273,6 @@ Daten liegen persistent im Docker-Volume — `docker compose down` löscht **nic
 
 ## Architektur in einem Satz
 
-openClaw → MCP (stdio) → TypeScript-Server → Supabase JS → PostgREST → PostgreSQL + pgvector, mit Ollama für Embeddings — alles lokal, keine API-Kosten. Recall nutzt ein biologisch inspiriertes Score-Modell (Relevanz × Stärke × Salienz) mit Ebbinghaus-Decay, Rehearsal-Effekt, Hebbian-Assoziationen und Soft-Forgetting via nächtlicher pg_cron-Jobs.
+openClaw → MCP (stdio) → TypeScript-Server → Supabase JS → PostgREST → PostgreSQL + pgvector, mit Ollama für Embeddings — alles lokal, keine API-Kosten. Recall nutzt ein biologisch inspiriertes Score-Modell (Relevanz × Stärke × Salienz) mit Ebbinghaus-Decay, Rehearsal-Effekt, Hebbian-Assoziationen und Soft-Forgetting via nächtlicher Maintenance-Tasks (host-side launchd oder pg_cron).
 
 Mehr Details: [README.md](./README.md), [CLAUDE.md](./CLAUDE.md), [COMMANDS.md](./COMMANDS.md).

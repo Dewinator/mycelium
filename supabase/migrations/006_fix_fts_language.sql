@@ -7,7 +7,10 @@ DROP INDEX IF EXISTS memories_content_fts_idx;
 CREATE INDEX memories_content_fts_idx
   ON memories USING gin (to_tsvector('simple', content));
 
--- Rebuild match_memories with 'simple' config and add updated_at to results
+-- Rebuild match_memories with 'simple' config and add updated_at to results.
+-- DROP first because the return type changed vs. 003 — CREATE OR REPLACE
+-- cannot alter signatures.
+DROP FUNCTION IF EXISTS match_memories(VECTOR(768), TEXT, INT, TEXT, FLOAT);
 CREATE OR REPLACE FUNCTION match_memories(
   query_embedding VECTOR(768),
   query_text TEXT DEFAULT '',

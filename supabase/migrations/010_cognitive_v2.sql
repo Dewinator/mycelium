@@ -7,6 +7,12 @@
 ALTER TABLE memories
   ADD COLUMN IF NOT EXISTS useful_count INT NOT NULL DEFAULT 0;
 
+-- forgotten_memories is a LIKE-clone of memories from 007, so any new column on
+-- memories must be mirrored here — otherwise INSERT INTO forgotten_memories
+-- SELECT m.* fails with "more expressions than target columns".
+ALTER TABLE forgotten_memories
+  ADD COLUMN IF NOT EXISTS useful_count INT NOT NULL DEFAULT 0;
+
 CREATE INDEX IF NOT EXISTS memories_useful_count_idx ON memories (useful_count);
 
 -- Grant access on cognitive tables added in 007 to the anon role.
@@ -218,13 +224,23 @@ BEGIN
       SELECT m.*, NOW(), 'merged into ' || rep.id::TEXT
       FROM memories m WHERE m.id = dup_id;
 
-      -- transfer co-activation links from duplicate to representative
-      UPDATE memory_links SET a = LEAST(rep.id, b), b = GREATEST(rep.id, b)
-        WHERE a = dup_id AND b <> rep.id
-        ON CONFLICT (a, b) DO NOTHING;
-      UPDATE memory_links SET a = LEAST(a, rep.id), b = GREATEST(a, rep.id)
-        WHERE b = dup_id AND a <> rep.id
-        ON CONFLICT (a, b) DO NOTHING;
+      -- Transfer co-activation links from duplicate to representative.
+      -- ON CONFLICT is INSERT-only in postgres, so we re-INSERT the redirected
+      -- rows and merge weights on collision (Hebbian: keep the strongest link),
+      -- then delete the originals.
+      INSERT INTO memory_links (a, b, weight, last_coactivated_at)
+      SELECT
+        LEAST(rep.id,    CASE WHEN ml.a = dup_id THEN ml.b ELSE ml.a END),
+        GREATEST(rep.id, CASE WHEN ml.a = dup_id THEN ml.b ELSE ml.a END),
+        ml.weight,
+        ml.last_coactivated_at
+      FROM memory_links ml
+      WHERE (ml.a = dup_id OR ml.b = dup_id)
+        AND (CASE WHEN ml.a = dup_id THEN ml.b ELSE ml.a END) <> rep.id
+      ON CONFLICT (a, b) DO UPDATE
+        SET weight              = GREATEST(memory_links.weight, EXCLUDED.weight),
+            last_coactivated_at = GREATEST(memory_links.last_coactivated_at, EXCLUDED.last_coactivated_at);
+
       DELETE FROM memory_links WHERE a = dup_id OR b = dup_id;
 
       UPDATE memories SET stage = 'archived' WHERE id = dup_id;
