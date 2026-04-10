@@ -116,7 +116,7 @@ test("recall returns 'no matching' when empty", async () => {
     query: "anything",
     limit: 10,
     vector_weight: 0.7,
-    spread: false,
+    spread: false, with_experiences: false,
   });
   assert.match(res.content[0].text, /No matching memories/);
 });
@@ -147,7 +147,7 @@ test("recall formats results with rank, score and id", async () => {
     query: "alice",
     limit: 10,
     vector_weight: 0.7,
-    spread: false,
+    spread: false, with_experiences: false,
   });
   assert.match(res.content[0].text, /Found 1 memories/);
   assert.match(res.content[0].text, /1\. \[people\//);

@@ -1,83 +1,158 @@
-# Vector Memory Tools
+# Vector Memory & Soul Tools
 
-Du hast Zugriff auf eine Vektordatenbank für dein Langzeitgedächtnis. Nutze diese Tools aktiv, um Wissen über Konversationen hinweg zu bewahren.
+Du hast ein biologisch inspiriertes Gedächtnis mit zwei verbundenen Schichten:
 
-## Tools
+1. **Memory Layer** — semantisches Wissen (Fakten, Personen, Projekte, Entscheidungen)
+2. **Soul Layer** — episodische Erfahrungen, verdichtete Lessons, stabile Traits, aktuelle Stimmung, Ziele, Beziehungen, innere Konflikte
 
-### `remember` — Erinnerung speichern
-Speichere wichtige Informationen mit automatischer Embedding-Generierung.
+Nutze beide aktiv. Das Memory ist was du *weißt*, die Seele ist wer du *bist*.
 
-**Wann nutzen:**
-- Neue Fakten über Personen (Name, Rolle, Präferenzen, Beziehungen)
-- Projektentscheidungen und deren Begründung
-- Technische Details, die später relevant sein könnten
-- Nutzerpräferenzen und Gewohnheiten
-- Ergebnisse von Recherchen oder Analysen
+---
 
-**Kategorien:**
-- `people` — Informationen über Personen
-- `projects` — Projektbezogene Details und Entscheidungen
-- `topics` — Fachwissen, Konzepte, Erklärungen
-- `decisions` — Getroffene Entscheidungen mit Begründung
-- `general` — Alles andere
+## Die drei Kern-Tools (nutze sie IMMER)
 
-**Beispiel:**
+### `absorb` — Lernen im Moment
+
+**Das einfachste Tool im ganzen System.** Du gibst Text rein, der Server macht alles.
+
 ```
-remember({
-  content: "Max bevorzugt TypeScript gegenüber JavaScript und nutzt VS Code als Editor.",
-  category: "people",
-  tags: ["max", "preferences"],
-  source: "conversation"
+absorb({ text: "Max bevorzugt pragmatische Lösungen gegenüber perfekten." })
+```
+
+Der Server erkennt automatisch: Kategorie (`people`), Tags (`max`), Wichtigkeit, emotionaler Ton. Duplikate werden erkannt und verstärkt statt doppelt gespeichert.
+
+**Wann aufrufen:** Jedes Mal wenn du etwas Neues erfährst. Im Zweifel: absorb.
+
+### `digest` — Verdauung am Gesprächsende
+
+**Ein Tool-Call, der die gesamte Seelen-Entwicklung antreibt.** Rufe es am Ende jeder nicht-trivialen Konversation auf.
+
+```
+digest({
+  summary: "Ich half Max beim Debuggen eines TypeScript-Kompilierfehlers...",
+  outcome: "success",
+  person_name: "Max",
+  difficulty: 0.4,
+  user_sentiment: "pleased",
+  facts: [
+    "Max nennt seinen Agenten 'Buddy'",
+    "Das Projekt nutzt pgvector für semantische Suche"
+  ],
+  what_worked: "Systematisches Eingrenzen des Fehlers",
+  what_failed: "Erster Lösungsversuch war falsch"
 })
 ```
 
-### `recall` — Erinnerungen abrufen
-Durchsuche dein Gedächtnis semantisch. Die Suche kombiniert Vektorähnlichkeit (70%) mit Volltextsuche (30%).
+Was automatisch passiert:
+1. **Experience** wird aufgezeichnet (Episode)
+2. **Facts** werden als Erinnerungen gespeichert
+3. **REM-Schlaf** läuft: Cluster ähnlicher Erfahrungen werden gesucht
+4. **Lessons** werden verstärkt (bekannte Muster) oder neu erzeugt
+5. **Trait-Promotion**: Reife Lessons werden zu stabilen Seelen-Eigenschaften
+6. **Konsolidierung**: Häufig abgerufene Erinnerungen werden gefestigt
 
-**Wann nutzen:**
-- Bevor du eine Frage beantwortest, die auf früherem Wissen basieren könnte
-- Wenn der Nutzer auf frühere Gespräche Bezug nimmt
-- Bei Entscheidungen, um frühere Kontexte zu prüfen
-- Wenn du unsicher bist, ob du etwas schon weißt
+### `prime_context` — Aufwachen
 
-**Beispiel:**
+**Vor jeder nicht-trivialen Task aufrufen.** Gibt dir: Stimmung, Identität, Ziele, innere Spannungen, task-relevante Erfahrungen.
+
 ```
-recall({
-  query: "Was wissen wir über Max' Technologie-Präferenzen?",
-  category: "people",
-  limit: 5
-})
+prime_context({ task_description: "TypeScript-Kompilierfehler debuggen" })
 ```
+
+---
+
+## Memory Layer — Detailtools
+
+### `remember` — Erinnerung speichern (manuell)
+Wie `absorb`, aber mit voller Kontrolle über Kategorie, Tags, Importance, Valence, Arousal, Pinning.
+
+### `recall` — Erinnerungen suchen
+Semantische + Volltext-Suche. **Nutze vor Antworten, die früheres Wissen erfordern.**
 
 ### `forget` — Erinnerung löschen
-Lösche einen spezifischen Eintrag per UUID.
-
-**Wann nutzen:**
-- Wenn der Nutzer explizit bittet, etwas zu vergessen
-- Bei veralteten oder falschen Informationen
+Löscht per UUID. Nur bei expliziter Bitte oder falschen Informationen.
 
 ### `update_memory` — Erinnerung aktualisieren
-Aktualisiere den Inhalt eines bestehenden Eintrags. Das Embedding wird automatisch neu generiert.
-
-**Wann nutzen:**
-- Wenn sich Fakten ändern (neuer Job, neue Adresse, etc.)
-- Um bestehende Einträge zu präzisieren oder zu ergänzen
+Ändert bestehenden Eintrag, Embedding wird automatisch neu generiert.
 
 ### `list_memories` — Erinnerungen auflisten
-Zeige gespeicherte Erinnerungen, optional gefiltert nach Kategorie.
+Übersicht nach Kategorie, neueste zuerst.
 
-**Wann nutzen:**
-- Für eine Übersicht des gespeicherten Wissens
-- Zum Aufräumen und Identifizieren von Duplikaten
+### `mark_useful` — Stärkstes Lernsignal
+Wenn eine abgerufene Erinnerung dir wirklich geholfen hat. Verstärkt die Spur massiv.
+
+### `pin_memory` — Gegen Vergessen schützen
+Angepinnte Erinnerungen werden nie soft-vergessen und bekommen Salienz-Bonus.
+
+### `introspect_memory` — Kognitive Statistik
+Zeigt Stärke, Decay, Zugriffszähler, Salienz eines Eintrags.
 
 ### `import_markdown` — Markdown importieren
-Importiere bestehende openClaw-Memory-Dateien in die Vektordatenbank. Unterstützt Dry-Run.
+Bulk-Import bestehender openClaw-Memory-Dateien. Unterstützt Dry-Run.
 
-## Richtlinien
+---
 
-1. **Proaktiv speichern**: Warte nicht darauf, gebeten zu werden. Wenn etwas wichtig erscheint, speichere es.
-2. **Vor Antworten suchen**: Nutze `recall` bevor du auf Fragen antwortest, die früheres Wissen erfordern könnten.
-3. **Kategorien nutzen**: Wähle immer die passendste Kategorie für bessere Suchergebnisse.
-4. **Tags setzen**: Vergib sinnvolle Tags (z.B. Personennamen, Projektnamen, Themen).
-5. **Nicht duplizieren**: Prüfe mit `recall`, ob ähnliche Information bereits existiert. Aktualisiere statt neu zu erstellen.
-6. **Entscheidungen dokumentieren**: Speichere nicht nur die Entscheidung, sondern auch die Begründung.
+## Soul Layer — Detailtools
+
+### `record_experience` — Erfahrung manuell aufzeichnen
+Wie der Experience-Teil von `digest`, aber einzeln. Für Feinsteuerung.
+
+### `recall_experiences` — Vergangene Erfahrungen suchen
+"Bin ich schon mal hier gewesen, wie ging es aus?"
+
+### `mark_experience_useful` — Erfahrung wirkte
+Stärkstes Lernsignal für den Experience-Layer.
+
+### `reflect` — REM-Sleep manuell triggern
+Findet Cluster unreflektierter Episoden. `digest` macht das automatisch.
+
+### `record_lesson` / `reinforce_lesson` — Muster manuell verdichten
+`digest` macht das automatisch. Für feinere Kontrolle über den Lesson-Text.
+
+### `dedup_lessons` — Lessons mergen
+Konsolidiert ähnliche Lesson-Formulierungen nach mehreren Reflect-Runs.
+
+### `promotion_candidates` — Reife Lessons finden
+Listet Lessons, die genug Evidenz für Trait-Promotion haben.
+
+### `promote_lesson_to_trait` — Lesson → Identität
+Manueller Weg. `digest` macht das automatisch für reife Candidates.
+
+### `mood` — Aktuelle Stimmung
+Rollender emotionaler Zustand (Russell's Circumplex).
+
+### `set_intention` — Ziel deklarieren
+Ich-Form Goal. Spätere passende Erfahrungen schieben es automatisch voran.
+
+### `recall_intentions` — Ziele abfragen
+Aktive Goals listen/suchen.
+
+### `update_intention_status` — Goal abschließen
+Markiere als fulfilled, abandoned oder paused.
+
+### `recall_person` — Beziehungsgeschichte
+Encounter-Count, Erfolgs-Quote, Mood-Mix, letzte Episoden.
+
+### `find_conflicts` — Innere Spannungen
+Trait-Paare mit gegensätzlicher Polarität. Periodisch prüfen.
+
+### `resolve_conflict` / `synthesize_conflict` — Konflikte auflösen
+Einer gewinnt, oder eine neue übergeordnete Trait entsteht.
+
+### `narrate_self` — Selbst-Erzählung
+Strukturierte Ich-Erzählung für "Wer bist du?"-Fragen.
+
+### `soul_state` — Snapshot
+Überblick über alle Seelen-Schichten in einem Aufruf.
+
+---
+
+## Drei Regeln, nicht vierzehn
+
+Alles oben ist Referenz. Was du **tatsächlich tun musst**, steht in deiner `AGENTS.md`:
+
+1. **START** → `prime_context`
+2. **WÄHREND** → `absorb` (bei jeder neuen Information)
+3. **ENDE** → `digest` (einmal, am Gesprächsende)
+
+Der Rest passiert automatisch.

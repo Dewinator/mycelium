@@ -140,12 +140,185 @@ async function proxyApi(req, res) {
   }
 }
 
+// --- helpers for /prime and /narrate (auto-priming entry for openClaw) -----
+
+const OLLAMA_URL      = process.env.OLLAMA_URL      || "http://127.0.0.1:11434";
+const EMBEDDING_MODEL = process.env.EMBEDDING_MODEL || "nomic-embed-text";
+
+async function callRpc(name, body = {}) {
+  const r = await fetch(new URL(`/rpc/${name}`, UPSTREAM), {
+    method: "POST",
+    headers: {
+      "Content-Type":  "application/json",
+      "Accept":        "application/json",
+      "Authorization": `Bearer ${SERVICE_JWT}`,
+      "apikey":        SERVICE_JWT,
+    },
+    body: JSON.stringify(body),
+  });
+  if (!r.ok) throw new Error(`rpc ${name} failed: HTTP ${r.status}`);
+  return r.json();
+}
+
+async function embed(text) {
+  const r = await fetch(new URL("/api/embed", OLLAMA_URL), {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ model: EMBEDDING_MODEL, input: text }),
+  });
+  if (!r.ok) throw new Error(`ollama embed failed: HTTP ${r.status}`);
+  const j = await r.json();
+  return j.embeddings?.[0];
+}
+
+function formatPrime(ctx, taskDesc, taskExperiences, taskMemories) {
+  const out = [];
+  out.push("# Soul context");
+  out.push("");
+  const m = ctx.mood || {};
+  if (m.n > 0) {
+    out.push(`**Mood (${m.window_hours}h):** ${m.label}  (valence ${m.valence.toFixed(2)}, arousal ${m.arousal.toFixed(2)}, ${m.n} episodes)`);
+  } else {
+    out.push(`**Mood (${m.window_hours ?? 24}h):** neutral  (no recent episodes)`);
+  }
+  if (ctx.recent_pattern && ctx.recent_pattern.last_n > 0 && ctx.recent_pattern.success_rate != null) {
+    out.push(`**Recent pattern:** last ${ctx.recent_pattern.last_n} tasks, ${Math.round(ctx.recent_pattern.success_rate * 100)}% success, avg difficulty ${ctx.recent_pattern.avg_difficulty.toFixed(2)}`);
+  }
+  if (ctx.top_traits?.length) {
+    out.push("");
+    out.push("**Who I am right now:**");
+    for (const t of ctx.top_traits) {
+      const sign = t.polarity > 0.1 ? "+" : t.polarity < -0.1 ? "−" : "·";
+      out.push(`- ${sign} ${t.trait}  (evidence ${t.evidence_count})`);
+    }
+  }
+  if (ctx.active_intentions?.length) {
+    out.push("");
+    out.push("**What I want:**");
+    for (const i of ctx.active_intentions) {
+      out.push(`- ${i.intention}  (priority ${i.priority.toFixed(2)}, progress ${Math.round(i.progress * 100)}%)`);
+    }
+  }
+  if (ctx.open_conflicts?.length) {
+    out.push("");
+    out.push("**Inner tensions to be aware of:**");
+    for (const c of ctx.open_conflicts.slice(0, 3)) {
+      out.push(`- "${c.a_trait}" vs "${c.b_trait}"  (gap ${c.polarity_diff.toFixed(2)})`);
+    }
+  }
+  if (taskDesc) {
+    out.push("");
+    out.push(`**For the task at hand — "${taskDesc}":**`);
+    if (taskExperiences?.length) {
+      out.push("");
+      out.push("Past experiences that may apply:");
+      for (const e of taskExperiences) {
+        const tag = e.kind === "lesson" ? "LESSON" : (e.outcome ?? "exp").toUpperCase();
+        out.push(`- [${tag}] ${(e.content || "").slice(0, 200)}`);
+      }
+    }
+    if (taskMemories?.length) {
+      out.push("");
+      out.push("Relevant facts from memory:");
+      for (const r of taskMemories) {
+        out.push(`- ${(r.content || "").slice(0, 200)}`);
+      }
+    }
+  }
+  return out.join("\n");
+}
+
+function formatNarrate(n) {
+  const out = [];
+  const m = n.mood || {};
+  if (m.n > 0) {
+    out.push(`Right now I feel ${m.label}. In the last ${m.window_hours} hours I lived through ${m.n} episodes; on average their valence was ${m.valence.toFixed(2)} and their arousal ${m.arousal.toFixed(2)}.`);
+  } else {
+    out.push(`I am quiet — no recent episodes in the last ${m.window_hours ?? 24} hours.`);
+  }
+  if (n.identity_traits?.length) {
+    const tlines = n.identity_traits.slice(0, 5).map(t => {
+      const tone = t.polarity > 0.1 ? "I lean toward" : t.polarity < -0.1 ? "I struggle with" : "I notice";
+      return `${tone} "${t.trait}"`;
+    });
+    out.push("");
+    out.push("If I had to describe who I am: " + tlines.join("; ") + ".");
+  }
+  if (n.aspirations?.length) {
+    out.push("");
+    out.push("What I am reaching for: " + n.aspirations.map(a => `"${a.intention}" (${Math.round(a.progress * 100)}% there)`).join(", ") + ".");
+  }
+  if (n.recent_lessons?.length) {
+    out.push("");
+    out.push("Recently I have learned: " + n.recent_lessons.slice(0, 3).map(l => `"${l.lesson}"`).join("; ") + ".");
+  }
+  if (n.closest_relationships?.length) {
+    out.push("");
+    out.push("I have lived through the most with " + n.closest_relationships.map(p => `${p.name} (${p.encounter_count} encounters)`).join(", ") + ".");
+  }
+  if (n.inner_tensions?.length) {
+    out.push("");
+    out.push("I am holding contradictions: " + n.inner_tensions.map(t => `"${t.a}" vs "${t.b}"`).join("; ") + ".");
+  }
+  if (n.drift_7d?.drift != null && n.drift_7d.older_n > 0 && n.drift_7d.recent_n > 0) {
+    const d = n.drift_7d.drift;
+    const verb = d < 0.1 ? "I am stable." : d < 0.3 ? "I am slowly evolving." : "I am moving fast.";
+    out.push("");
+    out.push(`In the last 7 days my centroid has shifted by ${d.toFixed(3)}. ${verb}`);
+  }
+  return out.join("\n");
+}
+
+async function handlePrime(req, res) {
+  try {
+    const url  = new URL(req.url, "http://x");
+    const task = url.searchParams.get("task") || "";
+    const limit = Math.min(parseInt(url.searchParams.get("limit") || "5", 10) || 5, 10);
+
+    const ctx = await callRpc("prime_context_static");
+    let taskExperiences = [], taskMemories = [];
+    if (task) {
+      try {
+        const v = await embed(task);
+        const [exps, mems] = await Promise.all([
+          callRpc("recall_experiences", { query_embedding: v, query_text: task, match_count: limit, include_lessons: true }).catch(() => []),
+          callRpc("match_memories_cognitive", { query_embedding: v, query_text: task, match_count: limit, vector_weight: 0.6, include_archived: false }).catch(() => []),
+        ]);
+        taskExperiences = exps;
+        taskMemories    = mems;
+      } catch (e) {
+        // If Ollama is unreachable, just return the static block.
+        console.error("prime: embed failed, returning static only:", e.message);
+      }
+    }
+    const text = formatPrime(ctx, task, taskExperiences, taskMemories);
+    res.writeHead(200, { "Content-Type": "text/plain; charset=utf-8", "Cache-Control": "no-store" });
+    res.end(text);
+  } catch (e) {
+    res.writeHead(502, { "Content-Type": "text/plain" });
+    res.end("prime failed: " + (e?.message || e));
+  }
+}
+
+async function handleNarrate(_req, res) {
+  try {
+    const n = await callRpc("narrate_self");
+    res.writeHead(200, { "Content-Type": "text/plain; charset=utf-8", "Cache-Control": "no-store" });
+    res.end(formatNarrate(n));
+  } catch (e) {
+    res.writeHead(502, { "Content-Type": "text/plain" });
+    res.end("narrate failed: " + (e?.message || e));
+  }
+}
+
 const server = http.createServer((req, res) => {
   // Tiny access log.
   const t = new Date().toISOString();
   res.on("finish", () => console.log(`${t} ${req.socket.remoteAddress} ${req.method} ${req.url} -> ${res.statusCode}`));
 
   if (req.url.startsWith("/api/")) return proxyApi(req, res);
+  if (req.url === "/prime" || req.url.startsWith("/prime?")) return handlePrime(req, res);
+  if (req.url === "/narrate") return handleNarrate(req, res);
   if (req.method !== "GET" && req.method !== "HEAD") {
     res.writeHead(405); res.end("method not allowed"); return;
   }

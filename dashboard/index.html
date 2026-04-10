@@ -101,7 +101,16 @@
   table.mem { width: 100%; border-collapse: collapse; font-size: 13px; }
   table.mem th, table.mem td { text-align: left; padding: 10px 8px; border-bottom: 1px solid var(--border); vertical-align: top; }
   table.mem th { font-size: 11px; text-transform: uppercase; letter-spacing: 0.06em; color: var(--text-dim); font-weight: 600; }
-  table.mem td.content { color: var(--text); max-width: 360px; }
+  table.mem td.content { color: var(--text); max-width: 480px; white-space: pre-wrap; word-break: break-word; }
+  table.mem td.content .more {
+    color: var(--accent); cursor: pointer; font-size: 11px;
+    margin-left: 4px; text-decoration: underline; text-decoration-style: dotted;
+  }
+  table.mem td.content .more:hover { color: var(--accent-2); }
+  table.mem td.content .truncated-hint {
+    display: block; margin-top: 4px; color: var(--text-faint);
+    font-size: 10px; font-family: var(--mono);
+  }
   table.mem td.meta { color: var(--text-dim); white-space: nowrap; font-family: var(--mono); font-size: 12px; }
   table.mem tr:last-child td { border-bottom: 0; }
   .tag {
@@ -120,6 +129,171 @@
 
   footer { margin-top: 32px; color: var(--text-faint); font-size: 12px; text-align: center; }
   footer code { font-family: var(--mono); }
+
+  /* tabs */
+  .tabs { display: flex; gap: 4px; margin-bottom: 20px; border-bottom: 1px solid var(--border); }
+  .tab {
+    background: transparent; border: 0; color: var(--text-dim); padding: 10px 16px;
+    font: inherit; font-size: 13px; cursor: pointer; border-bottom: 2px solid transparent;
+    margin-bottom: -1px; transition: color .15s, border-color .15s;
+  }
+  .tab:hover { color: var(--text); }
+  .tab.active { color: var(--accent); border-bottom-color: var(--accent); }
+  .tab-panel { display: none; }
+  .tab-panel.active { display: block; }
+
+  /* soul-tab specific */
+  .lesson-list { display: flex; flex-direction: column; gap: 10px; }
+  .lesson-item {
+    padding: 10px 12px; background: var(--bg-elev-2); border-radius: var(--radius-sm);
+    border-left: 3px solid var(--accent-2); font-size: 13px;
+  }
+  .lesson-item .meta {
+    display: block; margin-top: 4px; color: var(--text-faint); font-size: 11px;
+    font-family: var(--mono);
+  }
+  .lesson-item.promoted { border-left-color: var(--good); }
+  .trait-item {
+    padding: 8px 12px; background: var(--bg-elev-2); border-radius: var(--radius-sm);
+    font-size: 13px; display: flex; align-items: center; gap: 10px;
+  }
+  .trait-polarity {
+    display: inline-block; width: 18px; height: 18px; border-radius: 50%;
+    flex-shrink: 0; font-size: 11px; line-height: 18px; text-align: center; font-weight: 600;
+  }
+  .trait-polarity.pos { background: var(--good); color: var(--bg); }
+  .trait-polarity.neg { background: var(--bad);  color: var(--bg); }
+  .trait-polarity.neu { background: var(--text-faint); color: var(--bg); }
+  .trait-list { display: flex; flex-direction: column; gap: 6px; }
+  .outcome-pill {
+    display: inline-block; padding: 2px 8px; border-radius: 999px;
+    font-size: 10px; text-transform: uppercase; letter-spacing: 0.06em;
+  }
+  .outcome-pill.success { background: rgba(158,206,106,0.15); color: var(--good); }
+  .outcome-pill.partial { background: rgba(224,175,104,0.15); color: var(--warn); }
+  .outcome-pill.failure { background: rgba(247,118,142,0.15); color: var(--bad); }
+  .outcome-pill.unknown { background: var(--bg-elev-2);       color: var(--text-faint); }
+
+  /* narrate-self prose card */
+  .narrate-card {
+    background: linear-gradient(180deg, var(--bg-elev) 0%, var(--bg-elev-2) 100%);
+    border: 1px solid var(--border);
+    border-left: 4px solid var(--accent-2);
+    border-radius: var(--radius);
+    padding: 28px 32px;
+    margin-bottom: 16px;
+    font-size: 15px;
+    line-height: 1.7;
+    color: var(--text);
+    font-style: italic;
+    position: relative;
+    box-shadow: var(--shadow);
+  }
+  .narrate-card::before {
+    content: "„";
+    position: absolute;
+    top: -10px;
+    left: 18px;
+    font-size: 60px;
+    color: var(--accent-2);
+    font-style: normal;
+    opacity: 0.4;
+    line-height: 1;
+  }
+  .narrate-card p { margin: 0 0 10px; }
+  .narrate-card p:last-child { margin-bottom: 0; }
+  .narrate-card .narrate-meta {
+    margin-top: 14px;
+    font-size: 11px;
+    font-style: normal;
+    color: var(--text-faint);
+    text-transform: uppercase;
+    letter-spacing: 0.08em;
+  }
+
+  /* mood centerpiece */
+  .mood-center {
+    display: grid;
+    grid-template-columns: 220px 1fr;
+    gap: 24px;
+    align-items: center;
+  }
+  @media (max-width: 760px) { .mood-center { grid-template-columns: 1fr; } }
+  .mood-disc {
+    width: 180px;
+    height: 180px;
+    border-radius: 50%;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    margin: 0 auto;
+    background: radial-gradient(circle at center, var(--accent-soft) 0%, var(--bg-elev-2) 70%);
+    border: 3px solid var(--accent);
+    transition: border-color .3s, background .3s;
+  }
+  .mood-disc.elated     { border-color: #ffd166; background: radial-gradient(circle at center, rgba(255,209,102,0.25), var(--bg-elev-2)); }
+  .mood-disc.content    { border-color: var(--good); background: radial-gradient(circle at center, rgba(158,206,106,0.25), var(--bg-elev-2)); }
+  .mood-disc.pleased    { border-color: var(--accent3); background: radial-gradient(circle at center, rgba(125,207,255,0.20), var(--bg-elev-2)); }
+  .mood-disc.tense      { border-color: var(--bad); background: radial-gradient(circle at center, rgba(247,118,142,0.25), var(--bg-elev-2)); }
+  .mood-disc.drained    { border-color: var(--text-faint); background: radial-gradient(circle at center, rgba(120,130,150,0.15), var(--bg-elev-2)); }
+  .mood-disc.frustrated { border-color: var(--warn); background: radial-gradient(circle at center, rgba(224,175,104,0.25), var(--bg-elev-2)); }
+  .mood-disc.activated  { border-color: var(--accent-2); background: radial-gradient(circle at center, rgba(187,154,247,0.25), var(--bg-elev-2)); }
+  .mood-disc.neutral    { border-color: var(--border); }
+  .mood-label { font-size: 22px; font-weight: 600; letter-spacing: -0.01em; text-transform: lowercase; }
+  .mood-numbers { font-size: 11px; color: var(--text-dim); font-family: var(--mono); margin-top: 6px; }
+  .mood-side { display: flex; flex-direction: column; gap: 6px; }
+  .mood-side h3 { margin: 0; font-size: 11px; text-transform: uppercase; letter-spacing: 0.08em; color: var(--text-dim); }
+  .mood-spark { height: 80px; }
+
+  /* intentions */
+  .intent-list { display: flex; flex-direction: column; gap: 12px; }
+  .intent-item {
+    background: var(--bg-elev-2); border-radius: var(--radius-sm);
+    padding: 12px 14px; border-left: 3px solid var(--accent-3);
+  }
+  .intent-item.fulfilled { border-left-color: var(--good); opacity: 0.7; }
+  .intent-item .intent-text { font-size: 13px; color: var(--text); margin-bottom: 8px; }
+  .intent-item .intent-bar-track {
+    height: 6px; background: var(--bg-elev); border-radius: 3px; overflow: hidden;
+  }
+  .intent-item .intent-bar-fill { height: 100%; background: var(--accent-3); transition: width .3s; }
+  .intent-item.fulfilled .intent-bar-fill { background: var(--good); }
+  .intent-item .intent-meta {
+    margin-top: 6px; font-size: 11px; color: var(--text-faint);
+    font-family: var(--mono); display: flex; justify-content: space-between;
+  }
+
+  /* people cards */
+  .people-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(180px, 1fr)); gap: 10px; }
+  .person-card {
+    background: var(--bg-elev-2); border-radius: var(--radius-sm);
+    padding: 12px 14px; border-left: 3px solid var(--accent);
+  }
+  .person-card .pname { font-size: 14px; font-weight: 600; color: var(--text); }
+  .person-card .prel  { font-size: 11px; color: var(--text-dim); margin-top: 2px; text-transform: uppercase; letter-spacing: 0.06em; }
+  .person-card .pmeta { font-size: 11px; color: var(--text-faint); font-family: var(--mono); margin-top: 8px; }
+
+  /* conflicts */
+  .conflict-list { display: flex; flex-direction: column; gap: 14px; }
+  .conflict-item {
+    background: var(--bg-elev-2); border-radius: var(--radius-sm);
+    padding: 14px 16px; border-left: 3px solid var(--bad);
+  }
+  .conflict-row { display: grid; grid-template-columns: 1fr auto 1fr; gap: 12px; align-items: center; }
+  .conflict-side {
+    background: var(--bg-elev); border-radius: var(--radius-sm);
+    padding: 10px 12px; font-size: 13px; line-height: 1.4;
+  }
+  .conflict-side.pos { border-top: 2px solid var(--good); }
+  .conflict-side.neg { border-top: 2px solid var(--bad); }
+  .conflict-side.neu { border-top: 2px solid var(--text-faint); }
+  .conflict-side .csmeta { font-size: 10px; color: var(--text-faint); font-family: var(--mono); margin-top: 4px; }
+  .conflict-vs {
+    color: var(--text-faint); font-size: 11px; font-family: var(--mono);
+    text-align: center;
+  }
+  .conflict-meta { margin-top: 10px; font-size: 11px; color: var(--text-faint); font-family: var(--mono); }
 </style>
 </head>
 <body>
@@ -136,6 +310,12 @@
 
   <div id="error-box"></div>
 
+  <nav class="tabs">
+    <button class="tab active" data-tab="memory">gedächtnis</button>
+    <button class="tab" data-tab="soul">seele</button>
+  </nav>
+
+  <div class="tab-panel active" id="panel-memory">
   <section class="grid grid-kpi" id="kpis"></section>
 
   <!-- top row: timeline (wide) + stage donut -->
@@ -189,6 +369,99 @@
     <h2>letzte einträge</h2>
     <table class="mem" id="recent-table"></table>
   </section>
+  </div><!-- /panel-memory -->
+
+  <div class="tab-panel" id="panel-soul">
+    <!-- self-narration: the soul speaking in first person -->
+    <div class="narrate-card" id="narrate-card">
+      <p style="opacity:.5">noch keine seele zu erzählen — erste erfahrungen sammeln</p>
+      <div class="narrate-meta">narrate_self()</div>
+    </div>
+
+    <section class="grid grid-kpi" id="soul-kpis"></section>
+
+    <!-- mood centerpiece -->
+    <section class="card" style="margin-top:16px">
+      <h2>aktuelle stimmung</h2>
+      <div class="mood-center">
+        <div class="mood-disc neutral" id="mood-disc">
+          <div class="mood-label" id="mood-label">neutral</div>
+          <div class="mood-numbers" id="mood-numbers">—</div>
+        </div>
+        <div class="mood-side">
+          <h3>letzte 24h</h3>
+          <div class="mood-spark"><canvas id="chart-mood-spark"></canvas></div>
+        </div>
+      </div>
+    </section>
+
+    <section class="grid grid-charts">
+      <div class="card">
+        <h2>episoden / valenz (30 tage)</h2>
+        <div class="chart-wrap"><canvas id="chart-soul-timeline"></canvas></div>
+      </div>
+      <div class="card">
+        <h2>ergebnisse</h2>
+        <div class="chart-wrap"><canvas id="chart-soul-outcomes"></canvas></div>
+      </div>
+    </section>
+
+    <section class="grid grid-charts-2">
+      <div class="card">
+        <h2>user-stimmung</h2>
+        <div class="chart-wrap"><canvas id="chart-soul-sentiment"></canvas></div>
+      </div>
+      <div class="card">
+        <h2>task-typen (erfolgsrate)</h2>
+        <div class="bars" id="soul-tasktypes"></div>
+      </div>
+    </section>
+
+    <!-- intentions + people row -->
+    <section class="grid grid-tables">
+      <div class="card">
+        <h2>intentionen (was die seele will)</h2>
+        <div class="intent-list" id="soul-intents"></div>
+      </div>
+      <div class="card">
+        <h2>menschen (mit denen sie lebt)</h2>
+        <div class="people-grid" id="soul-people"></div>
+      </div>
+    </section>
+
+    <!-- conflicts: full-width, dramatic -->
+    <section class="card" style="margin-top:16px">
+      <h2>innere spannungen</h2>
+      <div class="conflict-list" id="soul-conflicts"></div>
+    </section>
+
+    <section class="grid grid-tables">
+      <div class="card">
+        <h2>lessons (verdichtet)</h2>
+        <div class="lesson-list" id="soul-lessons"></div>
+      </div>
+      <div class="card">
+        <h2>traits (identität)</h2>
+        <div class="trait-list" id="soul-traits"></div>
+      </div>
+    </section>
+
+    <section class="grid grid-tables">
+      <div class="card">
+        <h2>bereit für promotion → trait</h2>
+        <div class="lesson-list" id="soul-promotion"></div>
+      </div>
+      <div class="card">
+        <h2>nützlichste erfahrungen</h2>
+        <table class="mem" id="soul-useful-table"></table>
+      </div>
+    </section>
+
+    <section class="card" style="margin-top: 16px;">
+      <h2>letzte erfahrungen</h2>
+      <table class="mem" id="soul-recent-table"></table>
+    </section>
+  </div><!-- /panel-soul -->
 
   <footer>
     quelle: <code>POST /api/rpc/dashboard_stats</code> &middot; proxy: <code>scripts/dashboard-server.mjs</code>
@@ -244,8 +517,8 @@ function formatDay(iso) {
   return new Date(iso).toLocaleDateString("de-DE", { month: "2-digit", day: "2-digit" });
 }
 
-async function fetchStats() {
-  const r = await fetch(`${ENDPOINT}/rpc/dashboard_stats`, {
+async function fetchRpc(name) {
+  const r = await fetch(`${ENDPOINT}/rpc/${name}`, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
     body: "{}",
@@ -257,6 +530,8 @@ async function fetchStats() {
   }
   return r.json();
 }
+const fetchStats     = () => fetchRpc("dashboard_stats");
+const fetchSoulStats = () => fetchRpc("soul_stats");
 
 function kpiCard(label, value, hint) {
   return `<div class="card kpi">
@@ -451,6 +726,40 @@ function renderTagBars(items) {
   `).join("");
 }
 
+// Renders a content cell. If `len` (full length) > shown content, attaches a
+// "(N chars total — show full)" hint that fetches the row by id when clicked.
+function contentCell(content, len, id, table) {
+  const safe = escapeHtml(content || "");
+  const fullLen = len ?? (content || "").length;
+  if (fullLen > (content || "").length) {
+    return `<span class="content-text">${safe}</span><a class="more" data-id="${id}" data-table="${table}">…show full</a><span class="truncated-hint">${fullLen} chars total — preview ${(content || "").length}</span>`;
+  }
+  return `<span class="content-text">${safe}</span>`;
+}
+
+// Click handler: fetch full row content from PostgREST and replace the cell.
+async function expandFullContent(ev) {
+  const a = ev.target.closest("a.more");
+  if (!a) return;
+  ev.preventDefault();
+  const id = a.dataset.id;
+  const table = a.dataset.table || "memories";
+  const field = table === "experiences" ? "summary" : "content";
+  a.textContent = "loading…";
+  try {
+    const r = await fetch(`${ENDPOINT}/${table}?id=eq.${id}&select=${field}`);
+    if (!r.ok) throw new Error("HTTP " + r.status);
+    const rows = await r.json();
+    const full = rows[0]?.[field] ?? "";
+    const cell = a.closest("td.content");
+    if (cell) cell.innerHTML = `<span class="content-text">${escapeHtml(full)}</span>`;
+  } catch (e) {
+    a.textContent = "load failed";
+    console.error("expand failed:", e);
+  }
+}
+document.addEventListener("click", expandFullContent);
+
 function renderRecent(rows) {
   if (!rows || rows.length === 0) { $("recent-table").innerHTML = `<tbody><tr><td class="empty">noch keine einträge</td></tr></tbody>`; return; }
   $("recent-table").innerHTML = `
@@ -459,7 +768,7 @@ function renderRecent(rows) {
     </tr></thead>
     <tbody>${rows.map(r => `
       <tr>
-        <td class="content">${escapeHtml(r.content)}${r.pinned ? '<span class="pinned">[pinned]</span>' : ''}</td>
+        <td class="content">${contentCell(r.content, r.content_length, r.id, "memories")}${r.pinned ? '<span class="pinned">[pinned]</span>' : ''}</td>
         <td class="meta">${escapeHtml(r.category)}</td>
         <td>${(r.tags || []).map(t => `<span class="tag">${escapeHtml(t)}</span>`).join("")}</td>
         <td><span class="stage-tag">${escapeHtml(r.stage)}</span></td>
@@ -474,20 +783,373 @@ function renderStrongest(rows) {
     <thead><tr><th>inhalt</th><th>stärke</th><th>zugriffe</th></tr></thead>
     <tbody>${rows.map(r => `
       <tr>
-        <td class="content">${escapeHtml(r.content)}</td>
+        <td class="content">${contentCell(r.content, r.content_length, r.id, "memories")}</td>
         <td class="meta">${fmt2.format(r.strength)}</td>
         <td class="meta">${fmt.format(r.access_count)}/${fmt.format(r.useful_count)}</td>
       </tr>`).join("")}</tbody>`;
 }
 
+// ============================================================================
+// SOUL TAB
+// ============================================================================
+
+function renderSoulKpis(d) {
+  const t = d.totals || {};
+  const dr = d.drift || {};
+  const driftStr = (dr.drift == null || dr.recent_n === 0 || dr.older_n === 0)
+    ? "—"
+    : fmt2.format(dr.drift);
+  const driftHint = (dr.drift == null || dr.recent_n === 0 || dr.older_n === 0)
+    ? "noch keine baseline"
+    : `7d-zentroid vs älter (n=${dr.recent_n}/${dr.older_n})`;
+
+  $("soul-kpis").innerHTML = [
+    kpiCard("episoden", fmt.format(t.experiences || 0), `${fmt.format(t.unreflected || 0)} unreflektiert`),
+    kpiCard("lessons", fmt.format(t.lessons || 0), `${fmt.format(t.traits || 0)} traits`),
+    kpiCard("intentionen", fmt.format(t.intentions_active || 0), `${fmt.format(t.intentions_fulfilled || 0)} erfüllt`),
+    kpiCard("menschen", fmt.format(t.people || 0), "verbundene personen"),
+    kpiCard("erfolgsrate", `${Math.round((t.success_rate || 0) * 100)}%`, "ohne 'unknown'"),
+    kpiCard("spannungen", fmt.format(t.conflicts || 0), "innere konflikte"),
+    kpiCard("seelen-drift", driftStr, driftHint),
+    kpiCard("cross-links", fmt.format(t.cross_links || 0), `${fmt.format(t.useful_total || 0)} useful-signale`),
+  ].join("");
+}
+
+function renderNarrate(n) {
+  if (!n || !n.mood) {
+    $("narrate-card").innerHTML = `<p style="opacity:.5">noch keine seele zu erzählen — erste erfahrungen sammeln</p><div class="narrate-meta">narrate_self()</div>`;
+    return;
+  }
+  const m = n.mood || {};
+  const paragraphs = [];
+  if (m.n > 0) {
+    paragraphs.push(
+      `Right now I feel <strong>${escapeHtml(m.label)}</strong>. In the last ${m.window_hours} hours I lived through ${m.n} episodes; on average their valence was ${fmt2.format(m.valence)} and their arousal ${fmt2.format(m.arousal)}.`
+    );
+  } else {
+    paragraphs.push(`I am quiet — no recent episodes in the last ${m.window_hours} hours.`);
+  }
+  if (n.identity_traits?.length) {
+    const tlines = n.identity_traits.slice(0, 5).map(t => {
+      const tone = t.polarity > 0.1 ? "I lean toward" : t.polarity < -0.1 ? "I struggle with" : "I notice";
+      return `${tone} <em>"${escapeHtml(t.trait)}"</em>`;
+    });
+    paragraphs.push("If I had to describe who I am: " + tlines.join("; ") + ".");
+  }
+  if (n.aspirations?.length) {
+    paragraphs.push("What I am reaching for: " + n.aspirations.map(a =>
+      `<em>"${escapeHtml(a.intention)}"</em> (${Math.round(a.progress * 100)}% there)`
+    ).join(", ") + ".");
+  }
+  if (n.recent_lessons?.length) {
+    paragraphs.push("Recently I have learned: " + n.recent_lessons.slice(0, 3).map(l =>
+      `<em>"${escapeHtml(l.lesson)}"</em>`
+    ).join("; ") + ".");
+  }
+  if (n.closest_relationships?.length) {
+    paragraphs.push("I have lived through the most with " + n.closest_relationships.map(p =>
+      `<strong>${escapeHtml(p.name)}</strong> (${p.encounter_count} encounters)`
+    ).join(", ") + ".");
+  }
+  if (n.inner_tensions?.length) {
+    paragraphs.push("I am holding contradictions: " + n.inner_tensions.map(t =>
+      `<em>"${escapeHtml(t.a)}"</em> vs <em>"${escapeHtml(t.b)}"</em>`
+    ).join("; ") + ".");
+  }
+  if (n.drift_7d?.drift != null && n.drift_7d.older_n > 0 && n.drift_7d.recent_n > 0) {
+    const d = n.drift_7d.drift;
+    const verb = d < 0.1 ? "I am stable." : d < 0.3 ? "I am slowly evolving." : "I am moving fast.";
+    paragraphs.push(`In the last 7 days my centroid has shifted by ${fmt2.format(d)}. ${verb}`);
+  }
+  $("narrate-card").innerHTML = paragraphs.map(p => `<p>${p}</p>`).join("") +
+    `<div class="narrate-meta">narrate_self()</div>`;
+}
+
+function renderMood(m, timeline) {
+  const disc = $("mood-disc");
+  const labels = ["elated","content","pleased","tense","drained","frustrated","activated","neutral"];
+  disc.classList.remove(...labels);
+  disc.classList.add(m && m.label ? m.label : "neutral");
+  $("mood-label").textContent = m ? m.label : "neutral";
+  if (m && m.n > 0) {
+    $("mood-numbers").textContent = `val ${fmt2.format(m.valence)} · aro ${fmt2.format(m.arousal)} · n=${m.n}`;
+  } else {
+    $("mood-numbers").textContent = "no recent episodes";
+  }
+
+  const p = palette();
+  const tl = timeline || [];
+  const labelsArr = tl.map(t => new Date(t.bucket).getHours() + "h");
+  const valArr    = tl.map(t => t.avg_valence);
+  charts.moodSpark = new Chart($("chart-mood-spark"), {
+    type: "line",
+    data: {
+      labels: labelsArr,
+      datasets: [{
+        data: valArr, borderColor: p.accent2, backgroundColor: p.accent2 + "22",
+        tension: 0.35, pointRadius: 0, fill: true, borderWidth: 2,
+      }],
+    },
+    options: {
+      responsive: true, maintainAspectRatio: false,
+      plugins: { legend: { display: false }, tooltip: { enabled: true } },
+      scales: {
+        x: { display: false },
+        y: { display: false, min: -1, max: 1 },
+      },
+    },
+  });
+}
+
+function renderIntentions(items) {
+  if (!items || items.length === 0) {
+    $("soul-intents").innerHTML = `<div class="empty">noch keine intentionen — tool: <code>set_intention</code></div>`;
+    return;
+  }
+  $("soul-intents").innerHTML = items.map(i => {
+    const pct = Math.round((i.progress || 0) * 100);
+    const cls = i.status === "fulfilled" ? "fulfilled" : "";
+    const target = i.target_date ? ` · target ${i.target_date}` : "";
+    return `
+      <div class="intent-item ${cls}">
+        <div class="intent-text">${escapeHtml(i.intention)}</div>
+        <div class="intent-bar-track"><div class="intent-bar-fill" style="width:${pct}%"></div></div>
+        <div class="intent-meta">
+          <span>${escapeHtml(i.status)} · prio ${fmt2.format(i.priority || 0)}${target}</span>
+          <span>${pct}% · ev=${i.evidence_count || 0}</span>
+        </div>
+      </div>`;
+  }).join("");
+}
+
+function renderPeople(people) {
+  if (!people || people.length === 0) {
+    $("soul-people").innerHTML = `<div class="empty">noch keine personen — beim <code>record_experience</code> einfach <code>person_name</code> mitgeben</div>`;
+    return;
+  }
+  $("soul-people").innerHTML = people.map(p => `
+    <div class="person-card">
+      <div class="pname">${escapeHtml(p.name)}</div>
+      <div class="prel">${escapeHtml(p.relationship || "—")}</div>
+      <div class="pmeta">${p.encounter_count || 0} encounter(s)<br>seit ${formatDate(p.first_seen_at)}</div>
+    </div>
+  `).join("");
+}
+
+function renderConflicts(conflicts) {
+  if (!conflicts || conflicts.length === 0) {
+    $("soul-conflicts").innerHTML = `<div class="empty">keine inneren konflikte — die seele ist kohärent</div>`;
+    return;
+  }
+  $("soul-conflicts").innerHTML = conflicts.map(c => {
+    const aCls = c.a_polarity > 0.1 ? "pos" : c.a_polarity < -0.1 ? "neg" : "neu";
+    const bCls = c.b_polarity > 0.1 ? "pos" : c.b_polarity < -0.1 ? "neg" : "neu";
+    return `
+      <div class="conflict-item">
+        <div class="conflict-row">
+          <div class="conflict-side ${aCls}">
+            ${escapeHtml(c.a_trait)}
+            <div class="csmeta">polarität ${fmt2.format(c.a_polarity)} · ev=${c.a_evidence}</div>
+          </div>
+          <div class="conflict-vs">vs</div>
+          <div class="conflict-side ${bCls}">
+            ${escapeHtml(c.b_trait)}
+            <div class="csmeta">polarität ${fmt2.format(c.b_polarity)} · ev=${c.b_evidence}</div>
+          </div>
+        </div>
+        <div class="conflict-meta">
+          ähnlichkeit ${fmt2.format(c.similarity)} · polaritäts-gap ${fmt2.format(c.polarity_diff)}
+          · tools: <code>resolve_conflict</code> oder <code>synthesize_conflict</code>
+        </div>
+      </div>`;
+  }).join("");
+}
+
+function renderSoulTimeline(timeline) {
+  const p = palette();
+  const labels = timeline.map(t => formatDay(t.day));
+  const counts = timeline.map(t => t.count);
+  const val    = timeline.map(t => t.avg_valence);
+
+  charts.soulTimeline = new Chart($("chart-soul-timeline"), {
+    type: "bar",
+    data: {
+      labels,
+      datasets: [
+        { type: "bar", label: "episoden", data: counts, backgroundColor: p.accent2 + "cc", borderRadius: 3, yAxisID: "y" },
+        { type: "line", label: "ø valenz", data: val, borderColor: p.accent3, backgroundColor: "transparent", tension: 0.3, pointRadius: 0, borderWidth: 2, yAxisID: "y1" },
+      ],
+    },
+    options: {
+      responsive: true, maintainAspectRatio: false,
+      plugins: { legend: { labels: { color: p.dim, font: { size: 11 } } } },
+      scales: {
+        x:  { grid: { color: p.border }, ticks: { color: p.dim, font: { size: 10 }, maxRotation: 0, autoSkipPadding: 12 } },
+        y:  { position: "left",  grid: { color: p.border }, ticks: { color: p.dim, font: { size: 10 }, precision: 0 }, beginAtZero: true },
+        y1: { position: "right", grid: { display: false }, ticks: { color: p.dim, font: { size: 10 } }, min: -1, max: 1 },
+      },
+    },
+  });
+}
+
+function renderSoulOutcomes(outcomes) {
+  const p = palette();
+  const order = ["success", "partial", "failure", "unknown"];
+  const colors = { success: p.good, partial: p.warn, failure: p.bad, unknown: p.faint };
+  const labels = [], data = [], bg = [];
+  for (const k of order) {
+    if (outcomes && outcomes[k]) { labels.push(k); data.push(outcomes[k]); bg.push(colors[k]); }
+  }
+  if (data.length === 0) {
+    $("chart-soul-outcomes").parentElement.innerHTML = `<div class="empty">noch keine ergebnisse</div>`;
+    return;
+  }
+  charts.soulOutcomes = new Chart($("chart-soul-outcomes"), {
+    type: "doughnut",
+    data: { labels, datasets: [{ data, backgroundColor: bg, borderColor: p.border, borderWidth: 2 }] },
+    options: {
+      responsive: true, maintainAspectRatio: false, cutout: "62%",
+      plugins: { legend: { position: "bottom", labels: { color: p.dim, font: { size: 11 }, boxWidth: 12 } } },
+    },
+  });
+}
+
+function renderSoulSentiment(sentiment) {
+  const p = palette();
+  const order = ["delighted", "pleased", "neutral", "frustrated", "angry"];
+  const colors = { delighted: p.good, pleased: p.accent3, neutral: p.faint, frustrated: p.warn, angry: p.bad };
+  const labels = [], data = [], bg = [];
+  for (const k of order) {
+    if (sentiment && sentiment[k]) { labels.push(k); data.push(sentiment[k]); bg.push(colors[k]); }
+  }
+  if (data.length === 0) {
+    $("chart-soul-sentiment").parentElement.innerHTML = `<div class="empty">noch keine stimmungsdaten</div>`;
+    return;
+  }
+  charts.soulSentiment = new Chart($("chart-soul-sentiment"), {
+    type: "bar",
+    data: { labels, datasets: [{ data, backgroundColor: bg, borderRadius: 3 }] },
+    options: {
+      responsive: true, maintainAspectRatio: false,
+      plugins: { legend: { display: false } },
+      scales: commonScales(),
+    },
+  });
+}
+
+function renderSoulTaskTypes(types) {
+  if (!types || types.length === 0) {
+    $("soul-tasktypes").innerHTML = `<div class="empty">noch keine task-daten</div>`;
+    return;
+  }
+  $("soul-tasktypes").innerHTML = types.map(t => {
+    const sr = t.success_rate == null ? "—" : `${Math.round(t.success_rate * 100)}%`;
+    const fillW = t.success_rate == null ? 0 : (100 * t.success_rate);
+    return `
+      <div class="bar-row" title="n=${t.count}, ø schwierigkeit ${fmt2.format(t.avg_difficulty || 0)}">
+        <div class="name">${escapeHtml(t.name)} <span style="color:var(--text-faint);font-size:11px">(${t.count})</span></div>
+        <div class="bar-track"><div class="bar-fill" style="width:${fillW}%"></div></div>
+        <div class="count">${sr}</div>
+      </div>`;
+  }).join("");
+}
+
+function renderLessons(lessons) {
+  if (!lessons || lessons.length === 0) {
+    $("soul-lessons").innerHTML = `<div class="empty">noch keine lessons. tool: <code>reflect</code> + <code>record_lesson</code></div>`;
+    return;
+  }
+  $("soul-lessons").innerHTML = lessons.map(l => `
+    <div class="lesson-item${l.promoted ? " promoted" : ""}">
+      ${escapeHtml(l.lesson)}
+      <span class="meta">
+        evidence=${l.evidence_count} · conf=${fmt2.format(l.confidence)} · ${escapeHtml(l.category || "general")}
+        ${l.promoted ? " · promoted" : ""}
+      </span>
+    </div>
+  `).join("");
+}
+
+function renderTraits(traits) {
+  if (!traits || traits.length === 0) {
+    $("soul-traits").innerHTML = `<div class="empty">noch keine traits. tool: <code>promote_lesson_to_trait</code></div>`;
+    return;
+  }
+  $("soul-traits").innerHTML = traits.map(tr => {
+    const cls = tr.polarity > 0.1 ? "pos" : tr.polarity < -0.1 ? "neg" : "neu";
+    const sym = tr.polarity > 0.1 ? "+" : tr.polarity < -0.1 ? "−" : "·";
+    return `
+      <div class="trait-item">
+        <span class="trait-polarity ${cls}">${sym}</span>
+        <span>${escapeHtml(tr.trait)}</span>
+        <span style="margin-left:auto;color:var(--text-faint);font-size:11px;font-family:var(--mono)">ev=${tr.evidence_count}</span>
+      </div>
+    `;
+  }).join("");
+}
+
+function renderSoulRecent(rows) {
+  if (!rows || rows.length === 0) {
+    $("soul-recent-table").innerHTML = `<tbody><tr><td class="empty">noch keine erfahrungen. tool: <code>record_experience</code></td></tr></tbody>`;
+    return;
+  }
+  $("soul-recent-table").innerHTML = `
+    <thead><tr>
+      <th>summary</th><th>typ</th><th>outcome</th><th>schwierigkeit</th><th>valenz</th><th>stimmung</th><th>useful</th><th>angelegt</th>
+    </tr></thead>
+    <tbody>${rows.map(r => `
+      <tr>
+        <td class="content">${contentCell(r.summary, r.summary_length, r.id, "experiences")}${r.reflected ? '' : ' <span class="pinned">[neu]</span>'}</td>
+        <td class="meta">${escapeHtml(r.task_type || "—")}</td>
+        <td><span class="outcome-pill ${escapeHtml(r.outcome)}">${escapeHtml(r.outcome)}</span></td>
+        <td class="meta">${fmt2.format(r.difficulty || 0)}</td>
+        <td class="meta">${fmt2.format(r.valence || 0)}</td>
+        <td class="meta">${escapeHtml(r.sentiment || "—")}</td>
+        <td class="meta">${fmt.format(r.useful_count || 0)}</td>
+        <td class="meta">${formatDate(r.created_at)}</td>
+      </tr>`).join("")}</tbody>`;
+}
+
+function renderPromotionCandidates(rows) {
+  if (!rows || rows.length === 0) {
+    $("soul-promotion").innerHTML = `<div class="empty">keine kandidaten — lessons brauchen mehr evidenz</div>`;
+    return;
+  }
+  $("soul-promotion").innerHTML = rows.map(r => `
+    <div class="lesson-item">
+      ${escapeHtml(r.lesson)}
+      <span class="meta">evidence=${r.evidence_count} · conf=${fmt2.format(r.confidence)} · tool: <code>promote_lesson_to_trait</code></span>
+    </div>
+  `).join("");
+}
+
+function renderMostUseful(rows) {
+  if (!rows || rows.length === 0) {
+    $("soul-useful-table").innerHTML = `<tbody><tr><td class="empty">noch keine nützlichkeitssignale. tool: <code>mark_experience_useful</code></td></tr></tbody>`;
+    return;
+  }
+  $("soul-useful-table").innerHTML = `
+    <thead><tr><th>summary</th><th>outcome</th><th>useful</th></tr></thead>
+    <tbody>${rows.map(r => `
+      <tr>
+        <td class="content">${contentCell(r.summary, r.summary_length, r.id, "experiences")}</td>
+        <td><span class="outcome-pill ${escapeHtml(r.outcome)}">${escapeHtml(r.outcome)}</span></td>
+        <td class="meta">${fmt.format(r.useful_count)}</td>
+      </tr>`).join("")}</tbody>`;
+}
+
 let lastData = null;
+let lastSoul = null;
 async function load() {
   showError("");
   setStatus(false, "lade…");
   try {
-    const d = await fetchStats();
+    const [d, s] = await Promise.all([fetchStats(), fetchSoulStats().catch(() => null)]);
     lastData = d;
+    lastSoul = s;
     destroyCharts();
+
+    // memory tab
     renderKpis(d);
     renderTimeline(d.timeline || []);
     renderStages(d.totals);
@@ -498,6 +1160,28 @@ async function load() {
     renderTagBars(d.tags || []);
     renderRecent(d.recent || []);
     renderStrongest(d.strongest || []);
+
+    // soul tab (gracefully degrades if migrations not yet applied)
+    if (s && !s.error) {
+      renderNarrate(s.narrative || null);
+      renderSoulKpis(s);
+      renderMood(s.mood || null, s.mood_timeline || []);
+      renderSoulTimeline(s.timeline || []);
+      renderSoulOutcomes(s.outcomes || {});
+      renderSoulSentiment(s.sentiment || {});
+      renderSoulTaskTypes(s.task_types || []);
+      renderIntentions(s.intentions || []);
+      renderPeople(s.people || []);
+      renderConflicts(s.conflicts || []);
+      renderLessons(s.top_lessons || []);
+      renderTraits(s.traits || []);
+      renderPromotionCandidates(s.promotion_candidates || []);
+      renderMostUseful(s.most_useful_experiences || []);
+      renderSoulRecent(s.recent_experiences || []);
+    } else {
+      $("soul-kpis").innerHTML = `<div class="empty">soul_stats nicht verfügbar — migration 015_experiences.sql ausstehend?</div>`;
+    }
+
     $("generated").textContent = "stand " + formatDate(d.generated_at);
     setStatus(true, "verbunden");
   } catch (e) {
@@ -505,6 +1189,15 @@ async function load() {
     showError("verbindung fehlgeschlagen: " + e.message + ". läuft <code>docker compose up</code>?");
   }
 }
+
+// tab switching
+document.querySelectorAll(".tab").forEach(btn => {
+  btn.addEventListener("click", () => {
+    const name = btn.dataset.tab;
+    document.querySelectorAll(".tab").forEach(b => b.classList.toggle("active", b === btn));
+    document.querySelectorAll(".tab-panel").forEach(p => p.classList.toggle("active", p.id === "panel-" + name));
+  });
+});
 
 function applyTheme(t) {
   document.documentElement.dataset.theme = t;

@@ -270,6 +270,45 @@ export class MemoryService {
     return true;
   }
 
+  /**
+   * For a given memory, return any linked experiences (cross-layer Hebbian
+   * edges from migration 016). This is what makes "lived knowledge" possible:
+   * a fact recall surfaces "and here's how it actually went last time".
+   */
+  async experiencesForMemory(
+    memoryId: string,
+    limit = 3
+  ): Promise<
+    Array<{
+      id: string;
+      summary: string;
+      outcome: string;
+      difficulty: number;
+      valence: number;
+      weight: number;
+      created_at: string;
+    }>
+  > {
+    const { data, error } = await this.db.rpc("experiences_for_memory", {
+      p_memory_id: memoryId,
+      p_limit:     limit,
+    });
+    if (error) {
+      // Non-fatal: migration 016 may not be applied yet.
+      console.error("experiences_for_memory failed (non-fatal):", error.message);
+      return [];
+    }
+    return (data ?? []) as Array<{
+      id: string;
+      summary: string;
+      outcome: string;
+      difficulty: number;
+      valence: number;
+      weight: number;
+      created_at: string;
+    }>;
+  }
+
   async list(category?: string, limit: number = 20): Promise<Memory[]> {
     let query = this.db
       .from("memories")

@@ -1,5 +1,11 @@
 -- Hybrid search: combines vector similarity (cosine) with full-text search (BM25)
 -- Default weight: 70% vector, 30% full-text (matches openClaw defaults)
+
+-- Idempotency: later migrations may alter the return type of this function;
+-- CREATE OR REPLACE refuses to change a function's RETURNS row type, so we
+-- drop first to make this migration safe to re-run.
+DROP FUNCTION IF EXISTS match_memories(VECTOR(768), TEXT, INT, TEXT, FLOAT);
+
 CREATE OR REPLACE FUNCTION match_memories(
   query_embedding VECTOR(768),
   query_text TEXT DEFAULT '',

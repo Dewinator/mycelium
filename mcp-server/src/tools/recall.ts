@@ -20,6 +20,13 @@ export const recallSchema = z.object({
     .optional()
     .default(true)
     .describe("Include associated memories via spreading activation"),
+  with_experiences: z
+    .boolean()
+    .optional()
+    .default(true)
+    .describe(
+      "For each top hit, also surface up to 2 linked past experiences (lived knowledge: 'how did it go last time?')"
+    ),
 });
 
 export async function recall(
@@ -47,10 +54,35 @@ export async function recall(
   // Spreading activation: surface neighbors that weren't in the direct hits.
   const neighbors = input.spread ? await service.spread(topIds.slice(0, 5), 5) : [];
 
+  // Cross-layer lived-knowledge overlay: pull linked experiences for the
+  // top results in parallel. Non-fatal if migration 016 isn't applied.
+  const topForOverlay = results.slice(0, Math.min(5, results.length));
+  const experiencesByMemory = new Map<string, Array<{
+    id: string; summary: string; outcome: string;
+    difficulty: number; valence: number; weight: number; created_at: string;
+  }>>();
+  if (input.with_experiences) {
+    const overlays = await Promise.all(
+      topForOverlay.map((r) => service.experiencesForMemory(r.id, 2))
+    );
+    topForOverlay.forEach((r, i) => {
+      if (overlays[i].length > 0) experiencesByMemory.set(r.id, overlays[i]);
+    });
+  }
+
   const formatted = results
     .map((r, i) => {
       const stageMark = r.pinned ? "*" : r.stage === "semantic" ? "S" : "e";
-      return `${i + 1}. [${r.category}/${stageMark}] score=${r.effective_score.toFixed(3)} (rel=${r.relevance.toFixed(2)} str=${r.strength_now.toFixed(2)} sal=${r.salience.toFixed(2)} ax=${r.access_count})\n   ${r.content}\n   id: ${r.id}${r.tags.length ? " | tags: " + r.tags.join(", ") : ""}`;
+      const head = `${i + 1}. [${r.category}/${stageMark}] score=${r.effective_score.toFixed(3)} (rel=${r.relevance.toFixed(2)} str=${r.strength_now.toFixed(2)} sal=${r.salience.toFixed(2)} ax=${r.access_count})\n   ${r.content}\n   id: ${r.id}${r.tags.length ? " | tags: " + r.tags.join(", ") : ""}`;
+      const exps = experiencesByMemory.get(r.id);
+      if (!exps || exps.length === 0) return head;
+      const lived = exps
+        .map(
+          (e) =>
+            `     ↳ [${e.outcome}] val=${e.valence.toFixed(2)} diff=${e.difficulty.toFixed(2)}: ${e.summary.slice(0, 140)}`
+        )
+        .join("\n");
+      return `${head}\n   lived experience:\n${lived}`;
     })
     .join("\n\n");
 
