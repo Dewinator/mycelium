@@ -213,12 +213,19 @@ export const primeContextSchema = z.object({
     .describe(
       "What the agent is about to do. If provided, semantically relevant past experiences are also surfaced."
     ),
+  task_type: z
+    .string()
+    .optional()
+    .describe(
+      "Task category (e.g. refactor, debug, implement, research, planning, event-planning). If provided, prime_context also surfaces skill-recommendations learned from past outcomes with the same task_type."
+    ),
   recall_limit: z.number().int().min(0).max(10).optional().default(5),
 });
 
 export async function primeContext(
   experienceService: ExperienceService,
   memoryService: MemoryService,
+  skillsService: import("../services/skills.js").SkillsService,
   input: z.infer<typeof primeContextSchema>
 ) {
   // Always pull the static block (mood, traits, intentions, conflicts).
@@ -283,6 +290,26 @@ export async function primeContext(
     }
   }
 
+  // Skill recommendations for the declared task_type — surfaces only when the
+  // caller is explicit about task_type, since mixing skill stats across types
+  // would dilute the signal.
+  if (input.task_type) {
+    try {
+      const recs = await skillsService.recommend(input.task_type, 2, 3);
+      if (recs.length > 0) {
+        lines.push("");
+        lines.push(`**For task_type='${input.task_type}' — what has worked before:**`);
+        for (const r of recs) {
+          const sr = r.success_rate != null ? `${Math.round(r.success_rate * 100)}%` : "?";
+          lines.push(`- ${r.skill}: ${sr} success over ${r.n_total} runs (${r.n_failure} failures)`);
+        }
+      }
+    } catch (err) {
+      // Non-fatal — prime_context still works without skill hints.
+      console.error("prime_context: skill_recommend failed (non-fatal):", err);
+    }
+  }
+
   if (taskExperiences.length || taskMemories.length) {
     lines.push("");
     lines.push(`**For the task at hand — "${input.task_description}":**`);
@@ -315,9 +342,15 @@ export const narrateSelfSchema = z.object({});
 
 export async function narrateSelf(
   service: ExperienceService,
+  genomeLabel: string,
   _input: z.infer<typeof narrateSelfSchema>
 ) {
   const n = await service.narrateSelf();
+  // Physiological self-description from the neurochemistry (independent of
+  // episodic mood). Best-effort — if the genome has no neurochem row it's
+  // just omitted.
+  let physiology: { exists: boolean; text: string } | null = null;
+  try { physiology = await service.narrateNeurochem(genomeLabel); } catch { /* non-fatal */ }
   // Compose a structured first-person narration. The LLM will polish naturally
   // when this is included in its context, but we render a coherent baseline.
   const lines: string[] = [];
@@ -384,6 +417,11 @@ export async function narrateSelf(
       `In the last 7 days, my centroid has shifted by ${n.drift_7d.drift.toFixed(3)} from the older baseline — ` +
         (n.drift_7d.drift < 0.1 ? "I am stable." : n.drift_7d.drift < 0.3 ? "I am slowly evolving." : "I am moving fast.")
     );
+  }
+
+  if (physiology?.exists && physiology.text) {
+    lines.push("");
+    lines.push("Physiologically: " + physiology.text);
   }
 
   return { content: [{ type: "text" as const, text: lines.join("\n") }] };

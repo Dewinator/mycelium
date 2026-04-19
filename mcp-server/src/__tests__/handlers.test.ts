@@ -6,12 +6,24 @@ import { forget } from "../tools/forget.js";
 import { update } from "../tools/update.js";
 import { list } from "../tools/list.js";
 import type { MemoryService } from "../services/supabase.js";
+import type { AffectService, AffectEvent, AffectState } from "../services/affect.js";
 import type {
   Memory,
   MemorySearchResult,
   CreateMemoryInput,
   UpdateMemoryInput,
 } from "../types/memory.js";
+
+class FakeAffectService implements Partial<AffectService> {
+  async apply(_e: AffectEvent, _i = 0.1): Promise<AffectState | null> { return null; }
+  async get(): Promise<AffectState> {
+    return {
+      curiosity: 0.5, frustration: 0, satisfaction: 0.5, confidence: 0.5,
+      decay_factor: 1, updated_at: "2026-04-18T00:00:00Z", hours_since: 0, last_event: null,
+    };
+  }
+}
+const fakeAffect = new FakeAffectService() as unknown as AffectService;
 
 const UUID = "11111111-2222-3333-4444-555555555555";
 
@@ -88,7 +100,7 @@ class FakeService implements Partial<MemoryService> {
 
 test("remember returns id and category in text", async () => {
   const svc = new FakeService();
-  const res = await remember(svc as unknown as MemoryService, {
+  const res = await remember(svc as unknown as MemoryService, fakeAffect, {
     content: "the sky is blue",
     category: "topics",
     tags: [],
@@ -102,7 +114,7 @@ test("remember returns id and category in text", async () => {
 test("remember truncates long content in output", async () => {
   const svc = new FakeService();
   const long = "x".repeat(200);
-  const res = await remember(svc as unknown as MemoryService, {
+  const res = await remember(svc as unknown as MemoryService, fakeAffect, {
     content: long,
     category: "general",
     tags: [],
@@ -112,11 +124,12 @@ test("remember truncates long content in output", async () => {
 
 test("recall returns 'no matching' when empty", async () => {
   const svc = new FakeService({ searchResults: [] });
-  const res = await recall(svc as unknown as MemoryService, {
+  const res = await recall(svc as unknown as MemoryService, fakeAffect, {
     query: "anything",
     limit: 10,
     vector_weight: 0.7,
     spread: false, with_experiences: false,
+    ignore_affect: true,
   });
   assert.match(res.content[0].text, /No matching memories/);
 });
@@ -143,11 +156,12 @@ test("recall formats results with rank, score and id", async () => {
       },
     ],
   });
-  const res = await recall(svc as unknown as MemoryService, {
+  const res = await recall(svc as unknown as MemoryService, fakeAffect, {
     query: "alice",
     limit: 10,
     vector_weight: 0.7,
     spread: false, with_experiences: false,
+    ignore_affect: true,
   });
   assert.match(res.content[0].text, /Found 1 memories/);
   assert.match(res.content[0].text, /1\. \[people\//);

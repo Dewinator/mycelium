@@ -378,6 +378,12 @@ export class ExperienceService {
     return data as NarrateSelf;
   }
 
+  async narrateNeurochem(label: string): Promise<{ exists: boolean; text: string }> {
+    const { data, error } = await this.db.rpc("narrate_neurochem", { p_label: label });
+    if (error) throw new Error(`narrate_neurochem failed: ${fmtErr(error)}`);
+    return data as { exists: boolean; text: string };
+  }
+
   /** Strongest signal: this past episode actually informed a later decision. */
   async markUseful(experienceId: string): Promise<void> {
     const { error } = await this.db.rpc("mark_experience_useful", {

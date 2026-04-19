@@ -1,2 +1,25 @@
-.mcp.json
+# macOS / editor hygiene
 .DS_Store
+.claude/settings.local.json
+
+# Secrets / local config
+.mcp.json
+.env
+docker/.env
+docker/volumes/
+
+# Build output
+node_modules/
+dist/
+__pycache__/
+*.pyc
+
+# Logs + ephemeral
+*.log
+*.sql.bak
+*.backup
+logs/
+
+# User-specific narrative / non-shippable docs
+SYSTEM_OVERVIEW.md
+SETUP_ANLEITUNG.md

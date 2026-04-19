@@ -1,5 +1,8 @@
 import { z } from "zod";
 import type { MemoryService } from "../services/supabase.js";
+import type { ExperienceService } from "../services/experiences.js";
+import type { AffectService } from "../services/affect.js";
+import { scoreEncoding } from "../services/heuristics.js";
 
 /**
  * `absorb` — the low-friction learning tool.
@@ -9,7 +12,16 @@ import type { MemoryService } from "../services/supabase.js";
  * valence/arousal scoring (via heuristics), duplicate checking, Hebbian
  * seeding, and interference. This is the "just tell me and I'll file it"
  * counterpart to the more manual `remember`.
+ *
+ * Emotional trigger: when the heuristic signals a strong feeling
+ * (|valence| >= 0.4 or arousal >= 0.5) and the text is not a one-off
+ * operational command, absorb ALSO records a lightweight experience.
+ * This fills the experience/soul layer without relying on end-of-conversation
+ * `digest` calls, which LLM agents rarely fire reliably in practice.
  */
+
+const EMOTIONAL_VALENCE_THRESHOLD = 0.4;
+const EMOTIONAL_AROUSAL_THRESHOLD = 0.5;
 
 export const absorbSchema = z.object({
   text: z
@@ -88,11 +100,61 @@ function extractTags(text: string): string[] {
 }
 
 // ---------------------------------------------------------------------------
+// Person name extraction — cheap heuristic for the emotional-trigger path
+// ---------------------------------------------------------------------------
+
+// Common function/opener words at sentence start that are NOT names.
+const NAME_STOPWORDS = new Set([
+  "der","die","das","den","dem","des","ein","eine","einen","einem","einer","eines",
+  "und","oder","aber","wenn","weil","dass","denn","doch","also","nun","dann",
+  "ich","du","er","sie","es","wir","ihr","mein","dein","sein","unser","euer","ihre",
+  "the","a","an","and","or","but","when","if","because","that","this","these","those",
+  "i","you","he","she","it","we","they","my","your","his","her","our","their",
+  "heute","morgen","gestern","jetzt","bitte","danke","warum","wie","was","wo","wann",
+  "rico","reed","user","nutzer","person","mensch",
+]);
+
+/**
+ * Try to pull a first-name-like token from the start of the text. Used to
+ * attach an auto-recorded experience to a person. False positives are cheap
+ * (they create a spurious person row, which dedup/people tooling can clean
+ * up later); false negatives mean the experience is still recorded but
+ * unattached, which is also fine.
+ *
+ * Exception: if a name is in NAME_STOPWORDS because it is a known recurring
+ * actor, the caller should pass that as `knownNames` so we still return it.
+ * For v1 we keep this simple and let the caller override.
+ */
+function extractPersonName(text: string): string | null {
+  const trimmed = text.trim();
+  // First capitalized word (German umlauts allowed)
+  const m = trimmed.match(/^([A-ZÄÖÜ][a-zäöüß]{1,20})\b/);
+  if (!m) return null;
+  const candidate = m[1];
+  if (NAME_STOPWORDS.has(candidate.toLowerCase())) return null;
+  // Reject all-caps 2-char tokens and anything that looks like an acronym
+  if (/^[A-ZÄÖÜ]+$/.test(candidate)) return null;
+  return candidate;
+}
+
+function sentimentFromValence(
+  valence: number
+): "angry" | "frustrated" | "neutral" | "pleased" | "delighted" | undefined {
+  if (valence <= -0.6) return "angry";
+  if (valence <= -0.2) return "frustrated";
+  if (valence <   0.2) return undefined; // no clear signal, don't label
+  if (valence <   0.6) return "pleased";
+  return "delighted";
+}
+
+// ---------------------------------------------------------------------------
 // Handler
 // ---------------------------------------------------------------------------
 
 export async function absorb(
-  service: MemoryService,
+  memoryService: MemoryService,
+  experienceService: ExperienceService,
+  affectService: AffectService,
   input: z.infer<typeof absorbSchema>
 ) {
   // Build the content: text + context if provided
@@ -104,12 +166,12 @@ export async function absorb(
   const tags = extractTags(content);
 
   // MemoryService.create() handles:
-  //  - heuristic scoring (importance, valence, arousal)
+  //  - heuristic scoring (importance, valence, arousal, decay_tau_days, ephemeral)
   //  - embedding generation
   //  - duplicate detection (>0.92 similarity → touch instead)
   //  - Hebbian seeding (link to neighbors)
   //  - interference (weaken similar old traces)
-  const memory = await service.create({
+  const memory = await memoryService.create({
     content,
     category,
     tags,
@@ -118,6 +180,47 @@ export async function absorb(
 
   const wasDuplicate = memory.source !== "absorb"; // create() returns existing if duplicate
   const preview = input.text.slice(0, 80) + (input.text.length > 80 ? "..." : "");
+
+  // ---- Emotional trigger -----------------------------------------------
+  // The soul/experience layer is otherwise only reachable via `digest`,
+  // which agents rarely call because they lack a reliable "end of
+  // conversation" signal. Auto-record an experience whenever absorb sees
+  // a real feeling — so at least the *emotional* spine of the soul stays
+  // alive even if digest never runs.
+  //
+  // Suppressed for:
+  //   - duplicates (don't double-count the same event)
+  //   - ephemeral commands (operational, not affective)
+  let experienceNote = "";
+  let experienceError: string | null = null;
+  if (!wasDuplicate) {
+    const signals = scoreEncoding(content);
+    const hasEmotion =
+      Math.abs(signals.valence) >= EMOTIONAL_VALENCE_THRESHOLD ||
+      signals.arousal >= EMOTIONAL_AROUSAL_THRESHOLD;
+
+    if (hasEmotion && !signals.ephemeral) {
+      try {
+        const personName = extractPersonName(input.text);
+        const exp = await experienceService.record({
+          summary: input.text,
+          valence: signals.valence,
+          arousal: signals.arousal,
+          user_sentiment: sentimentFromValence(signals.valence),
+          tags,
+          metadata: { auto_from: "absorb", memory_id: memory.id },
+          person_name: personName ?? undefined,
+          person_relationship: personName ? "user" : undefined,
+        });
+        experienceNote = ` + experience [${exp.id.slice(0, 8)}]`;
+      } catch (err) {
+        // Non-fatal: memory was still stored successfully. Surface a
+        // short error marker so the caller notices the missed soul hit.
+        experienceError = err instanceof Error ? err.message : String(err);
+        console.error("absorb: emotional trigger failed (non-fatal):", experienceError);
+      }
+    }
+  }
 
   if (wasDuplicate) {
     return {
@@ -130,11 +233,24 @@ export async function absorb(
     };
   }
 
+  // Affect: novel encoding — small curiosity bump. If the text also carried an
+  // explicit sentiment, map it onto success/failure so the soul-layer and the
+  // regulator stay in sync (failure-shaped text ⇒ frustration ↑, positive text
+  // ⇒ satisfaction ↑).
+  void affectService.apply("novel_encoding", 0.3);
+  const encoded = scoreEncoding(content);
+  if (encoded.valence <= -0.4) {
+    void affectService.apply("failure", Math.min(1, encoded.arousal + 0.3));
+  } else if (encoded.valence >= 0.4) {
+    void affectService.apply("success", Math.min(1, encoded.arousal + 0.3));
+  }
+
+  const errSuffix = experienceError ? ` (experience trigger failed: ${experienceError})` : "";
   return {
     content: [
       {
         type: "text" as const,
-        text: `Absorbed (${category}, ${tags.length} tags): "${preview}" [id: ${memory.id}]`,
+        text: `Absorbed (${category}, ${tags.length} tags)${experienceNote}: "${preview}" [id: ${memory.id}]${errSuffix}`,
       },
     ],
   };

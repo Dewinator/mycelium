@@ -1,5 +1,6 @@
 import { z } from "zod";
 import type { MemoryService } from "../services/supabase.js";
+import { AffectService } from "../services/affect.js";
 
 export const recallSchema = z.object({
   query: z.string().describe("What to search for (semantic + keyword)"),
@@ -27,18 +28,59 @@ export const recallSchema = z.object({
     .describe(
       "For each top hit, also surface up to 2 linked past experiences (lived knowledge: 'how did it go last time?')"
     ),
+  ignore_affect: z
+    .boolean()
+    .optional()
+    .default(false)
+    .describe(
+      "Disable affective biasing (dev/eval mode). Normally recall is modulated by agent_affect — high frustration widens search, high satisfaction narrows it."
+    ),
 });
 
 export async function recall(
   service: MemoryService,
+  affect: AffectService,
   input: z.infer<typeof recallSchema>
 ) {
+  // ---- Affective biasing --------------------------------------------------
+  // Pull the current state and translate it into small deltas on k and
+  // spread behaviour. Failure to read affect is non-fatal (returns null).
+  let effectiveLimit = input.limit;
+  let effectiveSpread = input.spread;
+  let biasNote = "";
+  if (!input.ignore_affect) {
+    try {
+      const state = await affect.get();
+      const bias = AffectService.biasFromState(state);
+      effectiveLimit = Math.max(3, Math.min(30, input.limit + bias.k_delta));
+      if (bias.spread_wide) effectiveSpread = true;
+      if (bias.reason !== "neutral") {
+        biasNote = `\n\n[affect] ${bias.reason} → limit ${input.limit}→${effectiveLimit}${effectiveSpread && !input.spread ? ", spread forced on" : ""}`;
+      }
+    } catch (err) {
+      // Affect unreachable → run plain. Don't block the user's query.
+      console.error("recall: affect lookup failed (non-fatal):", err);
+    }
+  }
+
   const results = await service.search(
     input.query,
     input.category,
-    input.limit,
+    effectiveLimit,
     input.vector_weight
   );
+
+  // ---- Auto-update affect from recall outcome -----------------------------
+  // Empty recalls nudge curiosity up / confidence down; rich recalls confirm
+  // confidence. Touches (single weak hit) don't move state.
+  if (!input.ignore_affect) {
+    const topScore = results[0]?.effective_score ?? 0;
+    if (results.length === 0) {
+      void affect.apply("recall_empty", 0.5);
+    } else if (results.length >= 5 && topScore >= 0.6) {
+      void affect.apply("recall_rich", 0.3);
+    }
+  }
 
   if (results.length === 0) {
     return { content: [{ type: "text" as const, text: "No matching memories found." }] };
@@ -52,7 +94,7 @@ export async function recall(
   ]);
 
   // Spreading activation: surface neighbors that weren't in the direct hits.
-  const neighbors = input.spread ? await service.spread(topIds.slice(0, 5), 5) : [];
+  const neighbors = effectiveSpread ? await service.spread(topIds.slice(0, 5), 5) : [];
 
   // Cross-layer lived-knowledge overlay: pull linked experiences for the
   // top results in parallel. Non-fatal if migration 016 isn't applied.
@@ -98,5 +140,5 @@ export async function recall(
     text += `\n\nAssociated (spreading activation):\n\n${assoc}`;
   }
 
-  return { content: [{ type: "text" as const, text }] };
+  return { content: [{ type: "text" as const, text: text + biasNote }] };
 }

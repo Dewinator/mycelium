@@ -31,3 +31,71 @@ test("clamps stay in range", () => {
   assert.ok(s.arousal <= 1);
   assert.ok(s.valence <= 1 && s.valence >= -1);
 });
+
+// ---------------------------------------------------------------------------
+// Ephemeral (one-time instruction) detection
+// ---------------------------------------------------------------------------
+
+test("ephemeral: German imperative to stop a cron job", () => {
+  const s = scoreEncoding("stoppe den cron job backup-daily");
+  assert.equal(s.ephemeral, true);
+  assert.equal(s.importance, 0.1);
+  assert.equal(s.decay_tau_days, 2);
+});
+
+test("ephemeral: English imperative to stop a cron job", () => {
+  const s = scoreEncoding("stop the cron job backup-daily");
+  assert.equal(s.ephemeral, true);
+  assert.equal(s.importance, 0.1);
+  assert.equal(s.decay_tau_days, 2);
+});
+
+test("ephemeral: past-tense action narration ('wir haben migration ausgeführt')", () => {
+  const s = scoreEncoding("wir haben migration 014 am Sonntag ausgeführt");
+  assert.equal(s.ephemeral, true);
+});
+
+test("ephemeral: real-world cron-stop phrase with hyphen ('Cron-Job stoppe')", () => {
+  // The exact phrasing that sits in the user's DB right now.
+  const s = scoreEncoding("Alex möchte, dass ich seinen Cron-Job stoppe.");
+  assert.equal(s.ephemeral, true);
+});
+
+test("ephemeral override beats importance keywords", () => {
+  // "wichtig" would normally boost importance; the ephemeral override wins.
+  const s = scoreEncoding("wichtig: lösche das backup file vor dem deploy");
+  assert.equal(s.ephemeral, true);
+  assert.equal(s.importance, 0.1);
+});
+
+test("not ephemeral: plain factual sentence", () => {
+  const s = scoreEncoding("der himmel ist blau");
+  assert.equal(s.ephemeral, false);
+  assert.equal(s.decay_tau_days, 30);
+});
+
+test("not ephemeral: user profile fact", () => {
+  const s = scoreEncoding("Reed ist Data Scientist und arbeitet an vectormemory");
+  assert.equal(s.ephemeral, false);
+});
+
+test("not ephemeral: policy / rule ('immer', 'niemals')", () => {
+  const s = scoreEncoding("niemals `git push --force` auf main ausführen");
+  assert.equal(s.ephemeral, false);
+});
+
+test("not ephemeral: stated preference ('bevorzugt')", () => {
+  const s = scoreEncoding("Reed bevorzugt, dass wir vor dem push alle tests laufen lassen");
+  assert.equal(s.ephemeral, false);
+});
+
+test("not ephemeral: decision / convention ('wir nutzen')", () => {
+  const s = scoreEncoding("wir nutzen Supabase mit pgvector als Vektordatenbank");
+  assert.equal(s.ephemeral, false);
+});
+
+test("not ephemeral: standing rule with 'ab jetzt'", () => {
+  // User escalated a one-off into a rule → must NOT be ephemeral.
+  const s = scoreEncoding("ab jetzt stoppen wir alle cron jobs vor dem deploy");
+  assert.equal(s.ephemeral, false);
+});

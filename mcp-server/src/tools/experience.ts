@@ -1,5 +1,6 @@
 import { z } from "zod";
 import type { ExperienceService } from "../services/experiences.js";
+import type { NeurochemistryService, NeurochemEvent } from "../services/neurochemistry.js";
 
 // ---------------------------------------------------------------------------
 // record_experience
@@ -56,6 +57,8 @@ export const recordExperienceSchema = z.object({
 
 export async function recordExperience(
   service: ExperienceService,
+  neurochem: NeurochemistryService,
+  genomeLabel: string,
   input: z.infer<typeof recordExperienceSchema>
 ) {
   const { id, cross_links, intentions_touched, person_id } = await service.record(input);
@@ -64,6 +67,26 @@ export async function recordExperience(
   if (intentions_touched > 0) notes.push(`→ advanced ${intentions_touched} intention(s)`);
   if (person_id)              notes.push(`with person`);
   const noteStr = notes.length ? "  " + notes.join("  ") : "";
+
+  // Neurochemistry feedback — fire only when outcome is meaningful AND the
+  // experience came in directly via record_experience (not through digest,
+  // which already fires its own richer event). We don't call from digest.ts'
+  // experienceService.record() pathway, only from this tool entry.
+  if (input.outcome) {
+    const numeric =
+      input.outcome === "success" ? 0.85 :
+      input.outcome === "partial" ? 0.55 :
+      input.outcome === "failure" ? 0.15 :
+      null;
+    const ev: NeurochemEvent =
+      input.outcome === "success" || input.outcome === "partial" ? "task_complete" :
+      input.outcome === "failure" ? "task_failed" :
+      "novel_stimulus";
+    const difficulty = input.difficulty ?? 0.5;
+    const intensity = Math.max(0.3, Math.min(2.0, 0.6 + difficulty * 0.6));
+    try { await neurochem.apply(genomeLabel, ev, numeric, intensity); } catch { /* non-fatal */ }
+  }
+
   return {
     content: [
       {
@@ -263,12 +286,19 @@ export const recordLessonSchema = z.object({
 
 export async function recordLesson(
   service: ExperienceService,
+  neurochem: NeurochemistryService,
+  genomeLabel: string,
   input: z.infer<typeof recordLessonSchema>
 ) {
   const id = await service.recordLesson(input.lesson, input.source_ids, {
     category: input.category,
     confidence: input.confidence,
   });
+  // Distilling a lesson is a small cognitive reward. We fire a mild
+  // 'task_complete' with outcome scaled by confidence — prediction-error
+  // stays small but positive. No arousal spike (intensity 0.5).
+  const rewardOutcome = 0.55 + input.confidence * 0.25;
+  try { await neurochem.apply(genomeLabel, "task_complete", rewardOutcome, 0.5); } catch { /* non-fatal */ }
   return {
     content: [
       {

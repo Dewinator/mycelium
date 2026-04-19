@@ -95,6 +95,7 @@ export class MemoryService {
     const importance = input.importance ?? auto.importance;
     const valence = input.valence ?? auto.valence;
     const arousal = input.arousal ?? auto.arousal;
+    const decay_tau_days = input.decay_tau_days ?? auto.decay_tau_days;
 
     const { data, error } = await this.db
       .from("memories")
@@ -109,6 +110,7 @@ export class MemoryService {
         valence,
         arousal,
         pinned: input.pinned ?? false,
+        decay_tau_days,
       })
       .select()
       .single();

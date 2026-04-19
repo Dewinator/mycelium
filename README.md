@@ -1,17 +1,21 @@
-# vectormemory-openclaw
+# engram
 
-> Ersetzt das Markdown-basierte Tier-3-Gedächtnis von [openClaw](https://github.com/openclaw/openclaw) durch eine lokal gehostete **Supabase-Vektordatenbank** (PostgreSQL + pgvector).
+> **Biologische Infrastruktur für LLM-Agenten**: persistentes assoziatives Gedächtnis, neurochemische Affekt-Engine, Fortpflanzung mit kryptografischer Lineage, Peer-to-Peer-Federation.
 
-## Warum?
+Die meisten Agent-Frameworks geben LLMs *Werkzeuge*. **engram** gibt ihnen *einen Körper*: ein Dopamin-System, das aus Prediction Errors lernt; ein Serotonin-System, das den Zeithorizont moduliert; ein Noradrenalin-System, das Aufmerksamkeit fokussiert. Dazu eine signierte Abstammungslinie, die zwei Agenten auf verschiedenen Maschinen nachweislich zu einem dritten paaren kann.
 
-openClaw nutzt standardmäßig ein dreistufiges Memory-System:
-- **Tier 1** (`MEMORY.md`): Kuratierte Kernfakten, immer im Kontext
-- **Tier 2** (`memory/YYYY-MM-DD.md`): Tägliche Notizen, automatisch geladen
-- **Tier 3** (`memory/people/`, `memory/topics/`, ...): Tiefes Wissen, bei Bedarf durchsucht via sqlite-vec
+Baut ursprünglich auf dem dreistufigen Markdown-Memory von [openClaw](https://github.com/openclaw/openclaw) auf — ersetzt dessen Tier 3 (Deep-Memory) durch eine lokal gehostete **Supabase-Vektordatenbank** (PostgreSQL + pgvector) und schichtet darauf eine kognitive Architektur aus Neurochemie, Active Inference (PyMDP), Motivation-Engine, Breeding und mTLS-Federation.
 
-**Das Problem:** Tier 3 mit sqlite-vec ist limitiert in Skalierbarkeit, Indexing-Optionen und Abfrageflexibilität. Eine dedizierte Vektordatenbank bietet bessere Performance, hybride Suche und professionelles Datenmanagement.
+## Was engram anders macht
 
-**Die Lösung:** Ein custom MCP Server verbindet openClaw mit einer lokal gehosteten Supabase-Instanz, die pgvector für semantische Vektorsuche und PostgreSQL-Volltextsuche kombiniert.
+| | typische Memory-Layer (Mem0, Letta, Zep) | **engram** |
+|---|---|---|
+| Memory | Vektorstore + RAG | Vektorstore **plus** Affekt, Intentions, Lessons, Soul-Traits |
+| Affekt | keine oder curiosity-counter | **3-System-Neurochemie** (DA/5-HT/NE) mit TD-Learning, Yerkes-Dodson |
+| Entscheidungen | reaktiv auf User-Input | **Active Inference** (Free-Energy-Minimierung) via PyMDP-Sidecar |
+| Identität | eine Session / ein Assistant | **persistente Genome** mit Ed25519-Lineage, Wright's F-Inzucht-Check |
+| Agent-Agent | nicht vorgesehen | **mTLS-Federation** mit Proof-of-Memory via Merkle-Challenges |
+| Motivation | User fragt → Agent antwortet | **Stimulus-Engine** (RSS / HN / Git / Kalender) → Selbst-generierte Tasks |
 
 ## Architektur
 
@@ -103,14 +107,14 @@ openClaw nutzt standardmäßig ein dreistufiges Memory-System:
 - **openClaw** — [github.com/openclaw/openclaw](https://github.com/openclaw/openclaw)
 - **psql** — `brew install postgresql` (für Migrationen)
 
-**Ressourcenbedarf:** ~1 GB RAM (Supabase ~500 MB, Ollama Embedding ~270 MB)
+**Ressourcenbedarf** (ohne lokales Chat-LLM): ~1 GB RAM (Supabase ~500 MB, Ollama-Embedding ~270 MB, Sidecars je ~100 MB). Mit lokalem 7-8B Modell zusätzlich 6–9 GB.
 
 ## Schnellstart
 
 ```bash
 # 1. Repo klonen
-git clone https://github.com/Dewinator/vectormemory-openclaw.git
-cd vectormemory-openclaw
+git clone https://github.com/Dewinator/engram-mcp.git
+cd engram-mcp
 
 # 2. Alles automatisch einrichten
 ./scripts/setup.sh
@@ -139,22 +143,67 @@ npx tsx scripts/import-memories.ts ~/.openclaw/workspace/memory
 ## Projektstruktur
 
 ```
-vectormemory-openclaw/
+engram/
 ├── CLAUDE.md                    # Detaillierter Entwicklungsplan
 ├── README.md                    # Diese Datei
 ├── docker/                      # Supabase Docker Setup
-│   ├── docker-compose.yml
-│   └── .env.example
-├── supabase/migrations/         # SQL-Migrationen
-├── mcp-server/                  # MCP Server (TypeScript)
-│   ├── src/tools/               # remember, recall, forget, ...
-│   ├── src/services/            # Supabase Client, Embedding Pipeline
-│   └── tests/
-├── openclaw-config/             # openClaw Konfiguration
-│   ├── TOOLS.md
-│   └── settings.example.json
-└── scripts/                     # Setup & Import Scripts
+├── supabase/migrations/         # SQL-Migrationen (44 Stück, thematisch gruppiert)
+├── mcp-server/                  # MCP Server (TypeScript) — 90 Tools
+│   ├── src/tools/               # remember, recall, digest, breed_agents, federation_*, neurochem_*, ...
+│   ├── src/services/            # Supabase, Embeddings, Identity, Federation, Neurochemistry, Crypto
+│   └── scripts/                 # E2E-Integrationstests (Federation, Breeding, Neurochemistry)
+├── openclaw-config/             # openClaw-Konfig
+└── scripts/                     # Setup, Import, Dashboard-Server, Provisioning
 ```
+
+## Lokale Modelle auf schmaler Hardware (16 GB RAM)
+
+engram ist darauf ausgelegt, **ohne Cloud-LLM** auf einem Mac Mini / Laptop mit 16 GB RAM zu laufen. Damit ein 7-8B-Modell (z.B. `qwen3:8b` via Ollama) nicht an der Tool-Schema-Last erstickt, **bietet der MCP-Server ein fokussiertes Profil**:
+
+**`OPENCLAW_TOOL_PROFILE=core`** → nur die 6 essentiellen Tools werden registriert (`prime_context`, `recall`, `remember`, `absorb`, `digest`, `update_affect`). Standard `full` registriert alle 90 — für Claude/Codex-Instanzen geeignet, aber **~18k Token reines Schema** für ein 8B-Modell zu viel.
+
+In der MCP-Config (`.mcp.json` oder openclaw-Settings):
+
+```json
+"vector-memory-core": {
+  "command": "node",
+  "args": ["/absolute/path/to/engram/mcp-server/dist/index.js"],
+  "env": {
+    "OPENCLAW_TOOL_PROFILE": "core",
+    "SUPABASE_URL": "http://localhost:54321",
+    "SUPABASE_KEY": "...",
+    "OLLAMA_URL": "http://localhost:11434",
+    "EMBEDDING_MODEL": "nomic-embed-text"
+  }
+}
+```
+
+### RAM-Tuning für parallele Modelle
+
+Wenn mehrere Modelle (z.B. ein 7B-Chat-Modell + ein 7B-Vision-Modell) gleichzeitig geladen wären, sprengt das 16 GB. Zwei macOS-Empfehlungen:
+
+**1. Ollama — Modelle nicht ewig im RAM halten**
+
+In `~/Library/LaunchAgents/homebrew.mxcl.ollama.plist` im `EnvironmentVariables`-Dict:
+
+```xml
+<key>OLLAMA_MAX_LOADED_MODELS</key><string>1</string>
+<key>OLLAMA_KEEP_ALIVE</key><string>2m</string>
+<key>OLLAMA_FLASH_ATTENTION</key><string>1</string>
+<key>OLLAMA_KV_CACHE_TYPE</key><string>q8_0</string>
+```
+
+Danach: `launchctl kickstart -k gui/$(id -u)/homebrew.mxcl.ollama`
+
+**2. Vision-Modelle on-demand statt permanent**
+
+In der plist des Vision-Servers (z.B. `ai.openclaw.vlm.plist`) `RunAtLoad` und `KeepAlive` auf `false` setzen — startet nur bei manuellem `launchctl kickstart`, entlädt nach Benutzung.
+
+## Roadmap — Small-Model-Middleware
+
+Der `core`-Filter ist der **erste Schritt**. Die vollständige Vision ist eine Middleware, die Tools komplett vor dem LLM verbirgt — `prime_context` wird deterministisch ins System-Prompt injiziert, das Modell muss nicht „entscheiden, ob es das Tool nutzt". Verfolgbar in den GitHub-Issues unter dem Label [`small-model`](../../issues?q=label%3Asmall-model).
+
+Ziel: **lokale Modelle sollen in ihrer Spezialisierung Cloud-Modellen nicht nachstehen**, weil sie die gesamte persistente Identität/Affekt/Erinnerung ab Token 1 mitbekommen — während ein Cloud-Modell bei jeder Session blank startet.
 
 ## Lizenz
 

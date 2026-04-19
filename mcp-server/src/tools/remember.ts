@@ -1,5 +1,6 @@
 import { z } from "zod";
 import type { MemoryService } from "../services/supabase.js";
+import type { AffectService } from "../services/affect.js";
 
 export const rememberSchema = z.object({
   content: z.string().describe("The information to remember"),
@@ -36,10 +37,25 @@ export const rememberSchema = z.object({
 
 export async function remember(
   service: MemoryService,
+  affect: AffectService,
   input: z.infer<typeof rememberSchema>
 ) {
   const memory = await service.create(input);
   const preview = memory.content.slice(0, 100) + (memory.content.length > 100 ? "..." : "");
+
+  // Auto-bump curiosity when genuinely new info lands. We can't cheaply detect
+  // the duplicate case here (service.create returns the existing memory in that
+  // case without signaling it), so we key off the memory's own updated_at vs
+  // created_at — an identical fresh row has them nanoseconds apart; a touched
+  // duplicate has updated_at advanced past created_at.
+  const wasDuplicate =
+    memory.created_at &&
+    memory.updated_at &&
+    new Date(memory.updated_at).getTime() - new Date(memory.created_at).getTime() > 1000;
+  if (!wasDuplicate) {
+    void affect.apply("novel_encoding", 0.3);
+  }
+
   return {
     content: [
       {

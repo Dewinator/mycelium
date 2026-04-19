@@ -61,6 +61,88 @@ import {
 } from "./tools/soul.js";
 import { absorbSchema, absorb } from "./tools/absorb.js";
 import { digestSchema, digest } from "./tools/digest.js";
+import { AffectService } from "./services/affect.js";
+import {
+  getAffectSchema, getAffect,
+  updateAffectSchema, updateAffect,
+  resetAffectSchema, resetAffect,
+} from "./tools/affect.js";
+import { BeliefService } from "./services/belief.js";
+import { inferActionSchema, inferAction } from "./tools/belief.js";
+import { CausalService } from "./services/causal.js";
+import { SkillsService } from "./services/skills.js";
+import {
+  suggestCausesSchema, suggestCauses,
+  recordCauseSchema, recordCause,
+  causalChainSchema, causalChain,
+} from "./tools/causal.js";
+import {
+  recommendSkillSchema, recommendSkill,
+  skillStatsSchema, skillStats,
+} from "./tools/skills.js";
+import { MotivationService } from "./services/motivation.js";
+import {
+  motivationStatusSchema, motivationStatus,
+  listStimuliSchema, listStimuli,
+  listGeneratedTasksSchema, listGeneratedTasks,
+  approveGeneratedTaskSchema, approveGeneratedTask,
+  dismissGeneratedTaskSchema, dismissGeneratedTask,
+  updateGeneratedTaskStatusSchema, updateGeneratedTaskStatus,
+  triggerMotivationCycleSchema, triggerMotivationCycle,
+  driftScanSchema, driftScan,
+} from "./tools/motivation.js";
+import { IdentityService } from "./services/identity.js";
+import { RegistryService } from "./services/registry.js";
+import { GuardService } from "./services/guard.js";
+import { NeurochemistryService } from "./services/neurochemistry.js";
+import { FederationService } from "./services/federation.js";
+import {
+  neurochemUpdateSchema, neurochemUpdate,
+  neurochemGetSchema, neurochemGet,
+  neurochemGetCompatSchema, neurochemGetCompat,
+  neurochemRecallParamsSchema, neurochemRecallParams,
+  neurochemHorizonSchema, neurochemHorizon,
+  neurochemHistorySchema, neurochemHistory,
+  neurochemResetSchema, neurochemReset,
+} from "./tools/neurochemistry.js";
+import {
+  trustAddSchema, trustAdd,
+  trustListSchema, trustList,
+  trustRevokeSchema, trustRevoke,
+  federationExportSchema, federationExport,
+  federationImportSchema, federationImport,
+  federationRecentSchema, federationRecent,
+  federationPullSchema, federationPull,
+  federationPushSchema, federationPush,
+  federationSyncRevocationsSchema, federationSyncRevocations,
+  peerUpsertSchema, peerUpsert,
+  peersListSchema, peersList,
+} from "./tools/federation.js";
+import {
+  classifyContentSchema, classifyContent,
+  guardStatusSchema, guardStatus,
+} from "./tools/guard.js";
+import {
+  getSelfModelSchema, getSelfModel,
+  updateSelfModelSchema, updateSelfModel,
+  listAgentsSchema, listAgents,
+  snapshotFitnessSchema, snapshotFitness,
+  breedAgentsSchema, breedAgents,
+  genomeInheritanceSchema, genomeInheritance,
+  collectCurrentKnowledgeSchema, collectCurrentKnowledge,
+  flagEmergenceSchema, flagEmergence,
+  listEmergenceSchema, listEmergence,
+  resolveEmergenceSchema, resolveEmergence,
+  tinderInbreedingCheckSchema, tinderInbreedingCheck,
+  tinderCardsSchema, tinderCards,
+  tinderPopulationHealthSchema, tinderPopulationHealth,
+  tinderRefreshProfileSchema, tinderRefreshProfile,
+  genomeKeygenSchema, genomeKeygen,
+  genomeSignProfileSchema, genomeSignProfile,
+  genomeRefreshMerkleSchema, genomeRefreshMerkle,
+  genomeVerifySchema, genomeVerify,
+  revocationIssueSchema, revocationIssue,
+} from "./tools/identity.js";
 
 const SUPABASE_URL = process.env.SUPABASE_URL ?? "http://localhost:54321";
 const SUPABASE_KEY = process.env.SUPABASE_KEY ?? "";
@@ -75,11 +157,114 @@ if (!SUPABASE_KEY) {
 const embeddings = createEmbeddingProvider();
 const memoryService = new MemoryService(SUPABASE_URL, SUPABASE_KEY, embeddings);
 const experienceService = new ExperienceService(SUPABASE_URL, SUPABASE_KEY, embeddings);
+const affectService = new AffectService(SUPABASE_URL, SUPABASE_KEY);
+const beliefService = new BeliefService(
+  process.env.BELIEF_URL ?? "http://127.0.0.1:18790",
+  parseInt(process.env.BELIEF_TIMEOUT_MS ?? "4000", 10)
+);
+const causalService = new CausalService(SUPABASE_URL, SUPABASE_KEY);
+const skillsService = new SkillsService(SUPABASE_URL, SUPABASE_KEY);
+const motivationService = new MotivationService(
+  SUPABASE_URL,
+  SUPABASE_KEY,
+  process.env.MOTIVATION_URL ?? "http://127.0.0.1:18792",
+  parseInt(process.env.MOTIVATION_TIMEOUT_MS ?? "4000", 10)
+);
+const identityService = new IdentityService(SUPABASE_URL, SUPABASE_KEY);
+const guardService = new GuardService(
+  process.env.GUARD_URL ?? "http://127.0.0.1:18793",
+  parseInt(process.env.GUARD_TIMEOUT_MS ?? "8000", 10)
+);
+const neurochemistryService = new NeurochemistryService(SUPABASE_URL, SUPABASE_KEY);
+const federationService = new FederationService(
+  SUPABASE_URL,
+  SUPABASE_KEY,
+  guardService,
+  process.env.OPENCLAW_HOST_ID ?? "self"
+);
+
+// --- agent registry: diese MCP-Instanz registriert sich als 'agent' ---------
+// Label default = 'main' (der produktive Agent). Weitere Instanzen setzen
+// OPENCLAW_AGENT_LABEL bzw. OPENCLAW_GENOME_LABEL explizit in ihrer MCP-Config.
+import { homedir as _homedir } from "node:os";
+import { join as _join } from "node:path";
+const AGENT_LABEL     = process.env.OPENCLAW_AGENT_LABEL    ?? "main";
+const GENOME_LABEL    = process.env.OPENCLAW_GENOME_LABEL   ?? AGENT_LABEL;
+const WORKSPACE_PATH  = process.env.OPENCLAW_WORKSPACE_PATH ?? _join(_homedir(), ".openclaw", "workspace");
+const registryService = new RegistryService(SUPABASE_URL, SUPABASE_KEY, {
+  label:         AGENT_LABEL,
+  genomeLabel:   GENOME_LABEL,
+  workspacePath: WORKSPACE_PATH,
+  version:       "0.1.0",
+  gatewayUrl:    process.env.OPENCLAW_GATEWAY_URL ?? undefined,
+  ports: {
+    gateway:    parseInt(process.env.OPENCLAW_GATEWAY_PORT    ?? "18789", 10),
+    belief:     parseInt(process.env.OPENCLAW_BELIEF_PORT     ?? "18790", 10),
+    motivation: parseInt(process.env.OPENCLAW_MOTIVATION_PORT ?? "18792", 10),
+    dashboard:  parseInt(process.env.OPENCLAW_DASHBOARD_PORT  ?? "8787",  10),
+    cockpit:    parseInt(process.env.OPENCLAW_COCKPIT_PORT    ?? "8767",  10),
+  },
+  capabilities: (process.env.OPENCLAW_CAPABILITIES ?? "memory,soul,motivation,belief,sleep").split(","),
+  metadata: {
+    started_at: new Date().toISOString(),
+    registered_by: "mcp-server",
+  },
+});
 
 const server = new McpServer({
   name: "vector-memory",
   version: "0.1.0",
 });
+
+// -------------------------------------------------------------------------
+// Tool-Profile-Filter
+//
+// Small local models (7-8B) collapse under the full 90-tool schema (~18k
+// tokens of pure tool declaration). This filter lets us expose a focused
+// subset by setting OPENCLAW_TOOL_PROFILE. The server still runs all tool
+// handlers — only the registration (what the model sees in its schema) is
+// scoped. Full server is untouched for Codex/Claude instances.
+//
+//   full (default) — all 90 tools
+//   core           — 6 tools covering the complete agent workflow
+//
+// Additional profiles can be added as the Small-Model-Middleware roadmap
+// (see issues #N1–#N9) materialises.
+// -------------------------------------------------------------------------
+const TOOL_PROFILE = (process.env.OPENCLAW_TOOL_PROFILE ?? "full").toLowerCase();
+
+const TOOL_PROFILES: Record<string, Set<string>> = {
+  full: new Set<string>(),   // empty = everything
+  all:  new Set<string>(),   // alias
+  core: new Set<string>([
+    "prime_context",
+    "recall",
+    "remember",
+    "absorb",
+    "digest",
+    "update_affect",
+  ]),
+};
+
+const _allowedTools = TOOL_PROFILES[TOOL_PROFILE];
+const _filterActive = _allowedTools !== undefined && _allowedTools.size > 0;
+
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+const _origTool: any = (server as any).tool.bind(server);
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+(server as any).tool = function (name: string, ...rest: any[]): unknown {
+  if (_filterActive && !_allowedTools.has(name)) {
+    return undefined;   // silently skip registration
+  }
+  return _origTool(name, ...rest);
+};
+
+console.error(
+  `[tool-profile] OPENCLAW_TOOL_PROFILE=${TOOL_PROFILE}` +
+    (_filterActive
+      ? `  (registering ${_allowedTools.size} tools: ${[..._allowedTools].join(", ")})`
+      : "  (registering all tools)"),
+);
 
 /** Wrap tool handlers with error handling — returns MCP error response instead of crashing */
 function withErrorHandling(
@@ -103,21 +288,21 @@ server.tool(
   "remember",
   "Store a new memory with automatic embedding generation. Use for important facts, decisions, people info, or project details.",
   rememberSchema.shape,
-  withErrorHandling((input) => remember(memoryService, rememberSchema.parse(input)))
+  withErrorHandling((input) => remember(memoryService, affectService, rememberSchema.parse(input)))
 );
 
 server.tool(
   "absorb",
-  "Low-friction learning: pass any text you picked up during conversation — a fact, preference, decision, person detail. The server auto-detects category, extracts tags, scores importance, checks for duplicates. USE THIS whenever you notice something worth remembering — don't wait to be asked.",
+  "Low-friction learning: pass any text you picked up during conversation — a fact, preference, decision, person detail. The server auto-detects category, extracts tags, scores importance, checks for duplicates, and — when the text carries real emotion — ALSO auto-records a lightweight experience so the soul layer fills up organically without waiting for digest. USE THIS whenever you notice something worth remembering — don't wait to be asked.",
   absorbSchema.shape,
-  withErrorHandling((input) => absorb(memoryService, absorbSchema.parse(input)))
+  withErrorHandling((input) => absorb(memoryService, experienceService, affectService, absorbSchema.parse(input)))
 );
 
 server.tool(
   "recall",
-  "Search memories using semantic similarity and keyword matching. Returns the most relevant memories for a query.",
+  "Search memories using semantic similarity and keyword matching. Returns the most relevant memories for a query. Biased by the agent's current affective state (high frustration widens search, high satisfaction narrows it) — pass ignore_affect=true to disable.",
   recallSchema.shape,
-  withErrorHandling((input) => recall(memoryService, recallSchema.parse(input)))
+  withErrorHandling((input) => recall(memoryService, affectService, recallSchema.parse(input)))
 );
 
 server.tool(
@@ -188,7 +373,7 @@ server.tool(
   "record_experience",
   "Record an episodic experience: what happened, how hard it felt, what worked, what failed, and the emotional tone. Use after completing any non-trivial task — these episodes feed the agent's evolving 'soul'.",
   recordExperienceSchema.shape,
-  withErrorHandling((input) => recordExperience(experienceService, recordExperienceSchema.parse(input)))
+  withErrorHandling((input) => recordExperience(experienceService, neurochemistryService, GENOME_LABEL, recordExperienceSchema.parse(input)))
 );
 
 server.tool(
@@ -209,7 +394,7 @@ server.tool(
   "record_lesson",
   "Store a synthesised lesson distilled from a cluster of episodes. Marks the source episodes as reflected.",
   recordLessonSchema.shape,
-  withErrorHandling((input) => recordLesson(experienceService, recordLessonSchema.parse(input)))
+  withErrorHandling((input) => recordLesson(experienceService, neurochemistryService, GENOME_LABEL, recordLessonSchema.parse(input)))
 );
 
 server.tool(
@@ -313,23 +498,90 @@ server.tool(
 
 server.tool(
   "prime_context",
-  "THE auto-prime entry point. Returns a complete first-person system-prompt prefix: current mood, identity traits, active intentions, inner tensions, and (if a task description is provided) semantically relevant past experiences and memories. Use this BEFORE starting any non-trivial task.",
+  "THE auto-prime entry point. Returns a complete first-person system-prompt prefix: current mood, identity traits, active intentions, inner tensions, (if task_description is provided) semantically relevant past experiences and memories, AND (if task_type is provided) the skills that have historically worked best for that kind of task. Use this BEFORE starting any non-trivial task.",
   primeContextSchema.shape,
-  withErrorHandling((input) => primeContext(experienceService, memoryService, primeContextSchema.parse(input)))
+  withErrorHandling((input) => primeContext(experienceService, memoryService, skillsService, primeContextSchema.parse(input)))
 );
 
 server.tool(
   "narrate_self",
   "Return a coherent first-person self-narration: who I am, what I want, what I have learned, who I am bonded with, what tensions I hold, and how fast I am evolving.",
   narrateSelfSchema.shape,
-  withErrorHandling((input) => narrateSelf(experienceService, narrateSelfSchema.parse(input)))
+  withErrorHandling((input) => narrateSelf(experienceService, GENOME_LABEL, narrateSelfSchema.parse(input)))
 );
 
 server.tool(
   "digest",
-  "END-OF-CONVERSATION soul development. Call this ONCE at the end of every conversation. It automatically: (1) records the experience, (2) stores extracted facts, (3) runs REM-sleep reflection to find patterns, (4) creates or reinforces lessons, (5) promotes mature lessons to soul traits, (6) consolidates memories. Pass a first-person summary of what happened, the outcome, and optionally facts you picked up. This is how the soul grows.",
+  "END-OF-CONVERSATION soul development. Call this ONCE at the end of every conversation. It automatically: (1) records the experience, (2) stores extracted facts, (3) runs REM-sleep reflection to find patterns, (4) creates or reinforces lessons, (5) promotes mature lessons to soul traits, (6) consolidates memories, (7) updates the agent's affective state from the outcome, (8) tracks skill performance per task_type from tools_used, (9) auto-ingests plausible causal edges to prior experiences. Pass a first-person summary, outcome, optional facts, and especially `tools_used` + `task_type` so the learning loop fills up.",
   digestSchema.shape,
-  withErrorHandling((input) => digest(experienceService, memoryService, digestSchema.parse(input)))
+  withErrorHandling((input) => digest(experienceService, memoryService, affectService, causalService, skillsService, neurochemistryService, GENOME_LABEL, digestSchema.parse(input)))
+);
+
+// --- affective state layer --------------------------------------------------
+server.tool(
+  "get_affect",
+  "Return the agent's current persistent affective state (curiosity, frustration, satisfaction, confidence) and the recall bias it currently imposes. Unlike `mood` (which is derived from recent experiences), this is a proper regulator with decay and event-driven updates.",
+  getAffectSchema.shape,
+  withErrorHandling((input) => getAffect(affectService, getAffectSchema.parse(input)))
+);
+
+server.tool(
+  "update_affect",
+  "Nudge the persistent affective state. Prefer letting remember/recall/digest update it implicitly — call this only when you have an explicit signal that the automated hooks missed (e.g. the user loudly praised or scolded, a task outcome you didn't run through digest).",
+  updateAffectSchema.shape,
+  withErrorHandling((input) => updateAffect(affectService, updateAffectSchema.parse(input)))
+);
+
+server.tool(
+  "reset_affect",
+  "Reset the persistent affective state to defaults (all 0.5 except frustration=0). Use sparingly — this wipes regulator history.",
+  resetAffectSchema.shape,
+  withErrorHandling((input) => resetAffect(affectService, resetAffectSchema.parse(input)))
+);
+
+// --- causal annotation layer -----------------------------------------------
+server.tool(
+  "suggest_causes",
+  "Find plausible causes for a given experience by semantic similarity + time-window. Returns CANDIDATES — confirm with record_cause to turn one into a recorded edge.",
+  suggestCausesSchema.shape,
+  withErrorHandling((input) => suggestCauses(causalService, suggestCausesSchema.parse(input)))
+);
+
+server.tool(
+  "record_cause",
+  "Record an explicit causal link between two experiences (cause_id → effect_id). Relation ∈ {caused, enabled, prevented, contributed}. Idempotent — re-recording the same edge strengthens its confidence + evidence_count. Use when you (or the user) confirm that one episode led to another.",
+  recordCauseSchema.shape,
+  withErrorHandling((input) => recordCause(causalService, recordCauseSchema.parse(input)))
+);
+
+server.tool(
+  "causal_chain",
+  "Walk the causal graph from a root experience. direction='causes' shows what led up to it (backwards), 'effects' shows what came from it (forwards). Depth-limited BFS with cumulative path confidence.",
+  causalChainSchema.shape,
+  withErrorHandling((input) => causalChain(causalService, causalChainSchema.parse(input)))
+);
+
+// --- skill-performance tracking --------------------------------------------
+server.tool(
+  "recommend_skill",
+  "Ask which skill has historically worked best for a given task_type (e.g. 'refactor', 'debug', 'implement', 'research', 'planning'). Uses Laplace-smoothed success rate × evidence. Use BEFORE picking which of your many skills to invoke.",
+  recommendSkillSchema.shape,
+  withErrorHandling((input) => recommendSkill(skillsService, recommendSkillSchema.parse(input)))
+);
+
+server.tool(
+  "skill_stats",
+  "Aggregate performance snapshot across all skills and task types. For introspection.",
+  skillStatsSchema.shape,
+  withErrorHandling((input) => skillStats(skillsService, skillStatsSchema.parse(input)))
+);
+
+// --- active inference (PyMDP sidecar) --------------------------------------
+server.tool(
+  "infer_action",
+  "Active-Inference decision: given a task description, probe the vector memory, then ask the PyMDP belief sidecar whether to recall (exploit known), research (explore), or ask_teacher (delegate). Minimises Expected Free Energy = pragmatic_value + epistemic_value + action_cost. Use BEFORE starting any non-trivial task to decide whether to lean on memory or escalate. Falls back to a simple rule-of-thumb if the sidecar is down.",
+  inferActionSchema.shape,
+  withErrorHandling((input) => inferAction(memoryService, beliefService, affectService, neurochemistryService, GENOME_LABEL, inferActionSchema.parse(input)))
 );
 
 server.tool(
@@ -337,6 +589,342 @@ server.tool(
   "Import existing openClaw markdown memory files into the vector database. Supports dry_run mode.",
   importSchema.shape,
   withErrorHandling((input) => importMarkdown(memoryService, importSchema.parse(input)))
+);
+
+// --- motivation engine (Ebene 4) -------------------------------------------
+server.tool(
+  "motivation_status",
+  "Return a snapshot of the motivation engine: sidecar health, last cycle, stimuli/task counts by band/status. Use when the user asks what the agent has been noticing, or before approving generated tasks.",
+  motivationStatusSchema.shape,
+  withErrorHandling((input) => motivationStatus(motivationService, motivationStatusSchema.parse(input)))
+);
+
+server.tool(
+  "list_stimuli",
+  "List recently collected external stimuli (HackerNews, RSS, git activity, …) with their relevance band. Pass band='act' or 'urgent' to see only things the agent thinks are worth acting on.",
+  listStimuliSchema.shape,
+  withErrorHandling((input) => listStimuli(motivationService, listStimuliSchema.parse(input)))
+);
+
+server.tool(
+  "list_generated_tasks",
+  "List tasks the agent has generated from high-relevance stimuli. Filter by status (proposed/approved/dismissed/in_progress/done/abandoned).",
+  listGeneratedTasksSchema.shape,
+  withErrorHandling((input) => listGeneratedTasks(motivationService, listGeneratedTasksSchema.parse(input)))
+);
+
+server.tool(
+  "approve_generated_task",
+  "Approve a proposed task (from list_generated_tasks) so it enters the agent's active queue. Use when the user (or you) confirms the task is actually worth doing.",
+  approveGeneratedTaskSchema.shape,
+  withErrorHandling((input) => approveGeneratedTask(motivationService, approveGeneratedTaskSchema.parse(input)))
+);
+
+server.tool(
+  "dismiss_generated_task",
+  "Dismiss a proposed task so the drift detector stops escalating it. Use when the task is off-topic or already handled.",
+  dismissGeneratedTaskSchema.shape,
+  withErrorHandling((input) => dismissGeneratedTask(motivationService, dismissGeneratedTaskSchema.parse(input)))
+);
+
+server.tool(
+  "update_generated_task_status",
+  "Move a generated task to any status (proposed/approved/dismissed/in_progress/done/abandoned). Resets drift when leaving 'proposed'.",
+  updateGeneratedTaskStatusSchema.shape,
+  withErrorHandling((input) => updateGeneratedTaskStatus(motivationService, updateGeneratedTaskStatusSchema.parse(input)))
+);
+
+server.tool(
+  "trigger_motivation_cycle",
+  "Manually trigger one motivation cycle (collect → score → generate → drift) in the sidecar. Normally the sidecar runs hourly on its own. `force=true` ignores the per-source interval gate.",
+  triggerMotivationCycleSchema.shape,
+  withErrorHandling((input) => triggerMotivationCycle(motivationService, triggerMotivationCycleSchema.parse(input)))
+);
+
+server.tool(
+  "drift_scan",
+  "Recompute drift_score for all dormant 'proposed' tasks. Tasks that sit idle too long develop urgency and should be surfaced.",
+  driftScanSchema.shape,
+  withErrorHandling((input) => driftScan(motivationService, driftScanSchema.parse(input)))
+);
+
+// --- identity & evolution (Ebene 5) ----------------------------------------
+server.tool(
+  "get_self_model",
+  "Return the agent's latest self-model snapshot (strengths, weaknesses, growth areas, open questions). Call this to see who the agent currently thinks it is.",
+  getSelfModelSchema.shape,
+  withErrorHandling((input) => getSelfModel(identityService, getSelfModelSchema.parse(input)))
+);
+
+server.tool(
+  "update_self_model",
+  "Observe the last N days of experiences/memories/traits and distill a new self-model snapshot. Heuristic-based, no LLM roundtrip. Call sparingly — weekly is enough.",
+  updateSelfModelSchema.shape,
+  withErrorHandling((input) => updateSelfModel(identityService, updateSelfModelSchema.parse(input)))
+);
+
+server.tool(
+  "list_agents",
+  "List all recorded agent genomes (values, interests, parameters, latest fitness). Generation 1 is the production agent.",
+  listAgentsSchema.shape,
+  withErrorHandling((input) => listAgents(identityService, listAgentsSchema.parse(input)))
+);
+
+server.tool(
+  "snapshot_fitness",
+  "Compute and persist a fitness snapshot for a genome: avg_outcome*0.4 + growth*0.25 + breadth*0.2 + autonomy*0.15. Window defaults to 30 days.",
+  snapshotFitnessSchema.shape,
+  withErrorHandling((input) => snapshotFitness(identityService, snapshotFitnessSchema.parse(input)))
+);
+
+server.tool(
+  "breed_agents",
+  "Create a new agent genome by crossing two parents. Inherits BOTH the instinct layer (weighted-union values/interests, averaged + Gaussian-mutated numeric traits) AND the knowledge layer (full union of parents' memories/experiences/lessons/soul-traits — child starts with complete inherited knowledge, not empty mind). Pass inheritance_mode='none' for old behaviour. REQUIRES explicit consent: either env OPENCLAW_ALLOW_BREEDING=1 or allow_breeding=true in the call. Ethical gate — the operator approves reproduction.",
+  breedAgentsSchema.shape,
+  withErrorHandling((input) => breedAgents(identityService, breedAgentsSchema.parse(input)))
+);
+
+server.tool(
+  "genome_inheritance",
+  "Show how much knowledge a genome has inherited from its parents: counts of memories/experiences/lessons/soul-traits plus a sample preview.",
+  genomeInheritanceSchema.shape,
+  withErrorHandling((input) => genomeInheritance(identityService, genomeInheritanceSchema.parse(input)))
+);
+
+server.tool(
+  "collect_current_knowledge",
+  "Freeze the current global pool of memories/experiences/lessons/soul-traits as this genome's inherited knowledge. Safety-gated (allow=true required). Useful once for Gen-1 to mark its starting-point snapshot before breeding its first child.",
+  collectCurrentKnowledgeSchema.shape,
+  withErrorHandling((input) => collectCurrentKnowledge(identityService, collectCurrentKnowledgeSchema.parse(input)))
+);
+
+server.tool(
+  "flag_emergence",
+  "Log an emergence event: something the agent did that indicates unexpected capability (refused a task with reasoning, generated a novel goal, expressed unprompted uncertainty, …). Severity info|notable|alarm.",
+  flagEmergenceSchema.shape,
+  withErrorHandling((input) => flagEmergence(identityService, flagEmergenceSchema.parse(input)))
+);
+
+server.tool(
+  "list_emergence",
+  "List recent emergence events (ordered by detection time). Pass only_open=true to see unresolved ones.",
+  listEmergenceSchema.shape,
+  withErrorHandling((input) => listEmergence(identityService, listEmergenceSchema.parse(input)))
+);
+
+server.tool(
+  "resolve_emergence",
+  "Mark an emergence event resolved with a short explanation of the outcome or decision.",
+  resolveEmergenceSchema.shape,
+  withErrorHandling((input) => resolveEmergence(identityService, resolveEmergenceSchema.parse(input)))
+);
+
+// --- tinder / anti-inbreeding (Migration 034 + 035) ----------------------
+server.tool(
+  "tinder_check_inbreeding",
+  "Compute Wright's F coefficient between two genomes. Returns blocked=true if F > 0.125 (cousins-level). Use BEFORE proposing a breeding pair.",
+  tinderInbreedingCheckSchema.shape,
+  withErrorHandling((input) => tinderInbreedingCheck(identityService, tinderInbreedingCheckSchema.parse(input)))
+);
+
+server.tool(
+  "tinder_cards",
+  "List candidate genomes for breeding/swiping, ranked by diversity_score = (1-F) × cosine_distance(profile_embeddings). Excludes inbreeding-blocked candidates by default. Already-swiped candidates excluded too unless include_seen=true.",
+  tinderCardsSchema.shape,
+  withErrorHandling((input) => tinderCards(identityService, tinderCardsSchema.parse(input)))
+);
+
+server.tool(
+  "tinder_population_health",
+  "Diagnose the genome pool: avg pairwise centroid distance, avg/max Wright's F, and migrant_recommended flag (true when diversity is low). Use periodically to detect inbreeding drift.",
+  tinderPopulationHealthSchema.shape,
+  withErrorHandling((input) => tinderPopulationHealth(identityService, tinderPopulationHealthSchema.parse(input)))
+);
+
+server.tool(
+  "tinder_refresh_profile",
+  "Recompute a genome's profile_embedding (centroid of its memories). Run after a genome has accumulated significant new memory, or to bootstrap a freshly-bred child.",
+  tinderRefreshProfileSchema.shape,
+  withErrorHandling((input) => tinderRefreshProfile(identityService, tinderRefreshProfileSchema.parse(input)))
+);
+
+// --- PKI / signed lineage (Migration 037) -------------------------------
+server.tool(
+  "genome_keygen",
+  "Generate an Ed25519 keypair for a genome. Privkey is stored at ~/.openclaw/keys/<id>.key (0600), pubkey goes to the DB. Idempotent — refuses to overwrite unless force=true (which would invalidate all prior signatures).",
+  genomeKeygenSchema.shape,
+  withErrorHandling((input) => genomeKeygen(identityService, genomeKeygenSchema.parse(input)))
+);
+
+server.tool(
+  "genome_sign_profile",
+  "Sign the genome's canonical profile payload (values, interests, traits, centroid hash) with its privkey. Run after profile changes (new keygen, refreshed centroid, edited values).",
+  genomeSignProfileSchema.shape,
+  withErrorHandling((input) => genomeSignProfile(identityService, genomeSignProfileSchema.parse(input)))
+);
+
+server.tool(
+  "genome_refresh_merkle",
+  "Build a SHA-256 merkle root over all memories owned by this genome (created_by_agent_id). Stores the root + leaf-count for later inclusion-proofs. Skip-able for genomes with no own memories.",
+  genomeRefreshMerkleSchema.shape,
+  withErrorHandling((input) => genomeRefreshMerkle(identityService, genomeRefreshMerkleSchema.parse(input)))
+);
+
+server.tool(
+  "genome_verify",
+  "Verify a genome's PKI artefacts: profile self-signature against pubkey, birth-certificate signatures against parent pubkeys, optionally re-build the memory merkle root and compare. Returns per-check verdicts and human-readable notes.",
+  genomeVerifySchema.shape,
+  withErrorHandling((input) => genomeVerify(identityService, genomeVerifySchema.parse(input)))
+);
+
+// --- federation Phase 2 (Migration 038) ---------------------------------
+server.tool(
+  "trust_add",
+  "Add a Trust-Root to the allowlist. Bundles importing from a foreign source are accepted only if their lineage chain reaches a key on this list (or the source pubkey itself is trusted).",
+  trustAddSchema.shape,
+  withErrorHandling((input) => trustAdd(federationService, trustAddSchema.parse(input)))
+);
+
+server.tool(
+  "trust_list",
+  "List configured Trust-Roots (active by default; pass include_revoked=true for the full history).",
+  trustListSchema.shape,
+  withErrorHandling((input) => trustList(federationService, trustListSchema.parse(input)))
+);
+
+server.tool(
+  "trust_revoke",
+  "Revoke a key (Trust-Root or any other key). Future imports referencing this key in their lineage will be rejected.",
+  trustRevokeSchema.shape,
+  withErrorHandling((input) => trustRevoke(federationService, trustRevokeSchema.parse(input)))
+);
+
+server.tool(
+  "federation_export",
+  "Serialize a genome plus its full lineage chain (with all signatures + birth-certificates) into a portable JSON bundle. Privkeys NEVER leave the host. Memories are NOT included in Phase 2 (Phase 3 will add PoM-verified memory transfer).",
+  federationExportSchema.shape,
+  withErrorHandling((input) => federationExport(federationService, federationExportSchema.parse(input)))
+);
+
+server.tool(
+  "federation_import",
+  "Verify and import a foreign genome bundle. Walks the lineage chain (every profile-sig + birth-cert), checks revocation, finds a Trust-Root anchor, runs classify_content on free-text fields, and only then inserts the genome with federated_from set. Every attempt is audited.",
+  federationImportSchema.shape,
+  withErrorHandling((input) => federationImport(federationService, federationImportSchema.parse(input)))
+);
+
+server.tool(
+  "federation_recent",
+  "Show the recent federation_imports audit log with decisions and reasons.",
+  federationRecentSchema.shape,
+  withErrorHandling((input) => federationRecent(federationService, federationRecentSchema.parse(input)))
+);
+
+// --- neurochemistry (Migration 042, ersetzt die 4-Variablen-Engine) -----
+server.tool(
+  "neurochemistry_update",
+  "Apply an event to the agent's neurochemical state. Events: task_complete / task_failed (need outcome), novel_stimulus / familiar_task / idle / error / teacher_consulted (arousal). Dopamin wird als Prediction-Error (δ = actual − predicted) verrechnet, Serotonin als langsamer Trend, Noradrenalin als event-getriebener Delta mit Pull zu optimal=0.5.",
+  neurochemUpdateSchema.shape,
+  withErrorHandling((input) => neurochemUpdate(neurochemistryService, neurochemUpdateSchema.parse(input)))
+);
+
+server.tool(
+  "neurochemistry_get",
+  "Return the full neurochemical state (dopamin/serotonin/noradrenalin details + last event + history-count).",
+  neurochemGetSchema.shape,
+  withErrorHandling((input) => neurochemGet(neurochemistryService, neurochemGetSchema.parse(input)))
+);
+
+server.tool(
+  "neurochemistry_get_compat",
+  "Backward-compatible view: returns the old 4 variables (curiosity/frustration/satisfaction/confidence) computed from the neurochemistry row. Same values the legacy affect_get RPC now returns.",
+  neurochemGetCompatSchema.shape,
+  withErrorHandling((input) => neurochemGetCompat(neurochemistryService, neurochemGetCompatSchema.parse(input)))
+);
+
+server.tool(
+  "neurochemistry_recall_params",
+  "Compute recall parameters (k, score_threshold, include_adjacent) from Yerkes-Dodson performance curve. Peaks at noradrenalin=0.5.",
+  neurochemRecallParamsSchema.shape,
+  withErrorHandling((input) => neurochemRecallParams(neurochemistryService, neurochemRecallParamsSchema.parse(input)))
+);
+
+server.tool(
+  "neurochemistry_horizon",
+  "Planning horizon (1-14 days) and patience-threshold for teacher consultation, derived from serotonin level.",
+  neurochemHorizonSchema.shape,
+  withErrorHandling((input) => neurochemHorizon(neurochemistryService, neurochemHorizonSchema.parse(input)))
+);
+
+server.tool(
+  "neurochemistry_history",
+  "Last N snapshots (max 30, newest first) showing event, outcome, δ and all three system levels at that moment.",
+  neurochemHistorySchema.shape,
+  withErrorHandling((input) => neurochemHistory(neurochemistryService, neurochemHistorySchema.parse(input)))
+);
+
+server.tool(
+  "neurochemistry_reset",
+  "Reset the neurochemistry of a genome to defaults (all three systems at 0.5). Dev/debug only.",
+  neurochemResetSchema.shape,
+  withErrorHandling((input) => neurochemReset(neurochemistryService, neurochemResetSchema.parse(input)))
+);
+
+server.tool(
+  "federation_pull",
+  "Pull a genome bundle from a peer host over mTLS and import it locally. Requires the peer's host pubkey to be in trust_roots (kind=host).",
+  federationPullSchema.shape,
+  withErrorHandling((input) => federationPull(federationService, federationPullSchema.parse(input)))
+);
+
+server.tool(
+  "federation_push",
+  "Export a local genome and push it to a peer's /federation/import endpoint. Peer decides whether to accept based on its own trust roots.",
+  federationPushSchema.shape,
+  withErrorHandling((input) => federationPush(federationService, federationPushSchema.parse(input)))
+);
+
+server.tool(
+  "revocation_issue",
+  "Issue a signed revocation certificate (Ed25519). signer_label must have its privkey locally; allowed when signer is the target (self-revoke) or when signer is an active trust-root with kind genome/group. The revocation propagates via federation_sync_revocations.",
+  revocationIssueSchema.shape,
+  withErrorHandling((input) => revocationIssue(identityService, revocationIssueSchema.parse(input)))
+);
+
+server.tool(
+  "federation_sync_revocations",
+  "Pull a peer's signed revocation list, verify each signature + signer authority (self-revoke or local trust-root), merge accepted ones into our revoked_keys. Returns counts per verdict category.",
+  federationSyncRevocationsSchema.shape,
+  withErrorHandling((input) => federationSyncRevocations(federationService, federationSyncRevocationsSchema.parse(input)))
+);
+
+server.tool(
+  "peer_upsert",
+  "Register or update a federation peer in the local directory. Set auto_sync_enabled=true to include it in the periodic revocation-sync loop running in the dashboard server.",
+  peerUpsertSchema.shape,
+  withErrorHandling((input) => peerUpsert(federationService, peerUpsertSchema.parse(input)))
+);
+
+server.tool(
+  "peers_list",
+  "List known federation peers (inbound + outbound directory). Pass only_autosync=true to see just the ones in the auto-sync loop.",
+  peersListSchema.shape,
+  withErrorHandling((input) => peersList(federationService, peersListSchema.parse(input)))
+);
+
+// --- guard (prompt-injection defence) --------------------------------------
+server.tool(
+  "classify_content",
+  "Run untrusted text through the prompt-injection guard (structural sanitizer + llama-guard3 classifier). Returns verdict safe|suspicious|malicious + action_hint allow|demote|block + a list of detected injection patterns. Use BEFORE ingesting foreign content (HackerNews titles, RSS feeds, foreign bot profiles, user-submitted notes) into memory or passing it to another LLM call.",
+  classifyContentSchema.shape,
+  withErrorHandling((input) => classifyContent(guardService, classifyContentSchema.parse(input)))
+);
+
+server.tool(
+  "guard_status",
+  "Check the prompt-injection guard sidecar: up/down, whether the llama-guard3 classifier is loaded, or if we're running in regex-only fallback.",
+  guardStatusSchema.shape,
+  withErrorHandling((input) => guardStatus(guardService, guardStatusSchema.parse(input)))
 );
 
 async function main() {
@@ -360,9 +948,20 @@ async function main() {
     );
   }
 
+  // Register in the agents-Tabelle. Non-fatal if it fails — memory operations
+  // still work.
+  try {
+    await registryService.start();
+  } catch (err) {
+    console.error(
+      "agent registry unavailable (non-fatal):",
+      err instanceof Error ? err.message : String(err)
+    );
+  }
+
   const transport = new StdioServerTransport();
   await server.connect(transport);
-  console.error("vector-memory MCP server started");
+  console.error(`vector-memory MCP server started (agent=${AGENT_LABEL} genome=${GENOME_LABEL})`);
 }
 
 main().catch((err) => {

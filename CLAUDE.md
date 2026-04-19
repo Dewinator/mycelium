@@ -157,6 +157,83 @@ Der MCP Server stellt folgende Tools bereit:
 - [ ] Monitoring & Logging
 - [ ] Dokumentation finalisieren
 
+---
+
+## Roadmap — Cognitive Architecture & Evolution
+
+Die folgenden Phasen bauen auf dem produktiven Stand auf (Migrationen 019–030).
+Ziel ist ein sich selbst entwickelndes Multi-Instanz-System nach biologischem
+Vorbild, mit konzentrierter Wissensvererbung und user-kuratierter Paarung.
+
+### Phase A+B — Fundament + Reproduzierbarkeit (erledigt)
+- agents-Registry + Heartbeat (Migration 028)
+- Provenance-Tags auf memories/experiences/lessons/soul_traits (029)
+- Genome-Modellfelder als dokumentarische Vererbung (030 — **OpenClaw-Config
+  bleibt Authority**, Genome spiegelt nur wider)
+- `scripts/provision-instance.mjs` — reproduzierbarer Installer
+- Dashboard Population-Tab mit Stammbaum-SVG
+
+### Phase C — Pairing-UI (erledigt)
+- Breed-Button pro Match-Row, Mutual-Consent-Checkbox
+- Genome-Klick öffnet Details-Modal (inherited + provenance counts)
+- `/breed` + `/genome-details` Endpoints
+
+### Phase D — Lifecycle & Evolution (in Arbeit)
+- Genome archivieren/cullen/reaktivieren mit typed-confirmation
+- Fitness-Trendgraph über Zeit im Genome-Modal
+- Genome-Tabelle zeigt Status-Pills farbig (active/paused/culled/archived)
+
+### Phase E — Federation (Multi-Host)
+- Tailscale-verteilte Instanzen in derselben agents-Registry
+- Gateway-URLs als Discovery-Punkt
+- Read-only-Sharing einzelner Genome-Profile cross-host
+- Voraussetzung für Phase F
+
+### Phase F — "Tinder für Bots" (Population-Matchmaking)
+
+**Kernprinzip: Mutual Consent.** Bots swipen nicht selbst. Jeder User swipt
+*für* seinen Bot durch Profile anderer Bots in der gemeinsamen Population.
+Match gilt erst wenn beide User unabhängig right-swipen — analog zu Tinder,
+keine autonome KI-Paarung. Das bestehende Ethik-Gate (`OPENCLAW_ALLOW_BREEDING`
+/ `allow_breeding:true`) bleibt aktiv und wird durch die beidseitige
+User-Zustimmung semantisch erfüllt.
+
+**Bot-Profil** (aus Genome + Fitness + Provenance aggregiert):
+- Label, Generation, Alter (days since created_at)
+- Values + Interests als Tags
+- Trait-Parameter (curiosity, exploration, risk, mutation-rate)
+- Latest Fitness + Trend (steigend/fallend)
+- Provenance-Footprint ("hat 540 Memories, 107 Experiences, 4 Lessons
+  beigetragen")
+- Notable Traits aus soul_traits (die Persönlichkeit in drei Zeilen)
+- Sample Memories (was weiß dieser Bot besonders gut?)
+
+**Swipe-UX:**
+- Right = "für Paarung zugelassen" (speichert `user_likes` Eintrag)
+- Left = "nicht jetzt" (kein Eintrag)
+- Super-like = Right mit Priorität (triggert Push-Benachrichtigung beim
+  anderen User)
+- Match = beide haben right-swiped → Breeding-Modal öffnet sich mit
+  vor-bestätigtem Consent beider Seiten; child_label + mutation_rate +
+  inheritance_mode noch vom initiierenden User gewählt
+
+**Sicherheits-Überlegungen:**
+- Cross-User-Breeding darf kein Wissen leaken, das der andere Bot nicht
+  teilen will → per-Memory `shareable` Flag, Default `true` nur für
+  non-private kategorien
+- Quell-Bots bleiben als parent_ids referenziert, Kind lebt in der gemein-
+  samen Population aber kann einem User "gehören" (`owner_user_id`)
+- Ablehnungen (left-swipe) sind privat — der andere User sieht nicht
+  wer abgelehnt hat
+
+**Warum das gut ist:**
+Macht das Ethik-Gate menschlich bedienbar statt technisch versteckt. Bringt
+zwei unabhängige Meinungen ins System (statt einer). Macht Paarung zu einem
+sozialen Akt zwischen Menschen, nicht zu einem autonomen AI-Event. Und
+schafft den natürlichen Mechanismus warum überhaupt Genomes aus
+verschiedenen Herkünften zusammenkommen — heute muss *ein* Mensch zwei
+Bots kennen, morgen können zwei Menschen ihren jeweiligen Bot vorstellen.
+
 ## Projektstruktur (Ziel)
 
 ```

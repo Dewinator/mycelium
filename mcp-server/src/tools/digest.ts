@@ -1,6 +1,10 @@
 import { z } from "zod";
 import type { ExperienceService } from "../services/experiences.js";
 import type { MemoryService } from "../services/supabase.js";
+import type { AffectService, AffectEvent } from "../services/affect.js";
+import type { NeurochemistryService, NeurochemEvent } from "../services/neurochemistry.js";
+import type { CausalService } from "../services/causal.js";
+import type { SkillsService } from "../services/skills.js";
 
 /**
  * `digest` — the end-of-conversation soul development pipeline.
@@ -54,16 +58,58 @@ export const digestSchema = z.object({
   task_type: z
     .string()
     .optional()
-    .describe("e.g. refactor, debug, explain, implement, research, chat, planning"),
+    .describe("e.g. refactor, debug, explain, implement, research, chat, planning, event-planning"),
+  tools_used: z
+    .array(z.string())
+    .optional()
+    .describe(
+      "Which skills / tools you actually used. Drives skill_outcomes tracking — the server learns which skill wins for which task_type."
+    ),
 });
 
 export async function digest(
   experienceService: ExperienceService,
   memoryService: MemoryService,
+  affectService: AffectService,      // kept for backward compat with existing callers; no longer used here
+  causalService: CausalService,
+  skillsService: SkillsService,
+  neurochem: NeurochemistryService,
+  genomeLabel: string,
   input: z.infer<typeof digestSchema>
 ) {
   const report: string[] = [];
   report.push("# Digest Report\n");
+
+  // --- Neurochemistry: direct write with numeric outcome -------------------
+  // Sentiment nudges the felt reward a few points; difficulty becomes arousal
+  // intensity. 'unknown' outcome is treated as no-prediction-error (event only).
+  const sentimentOutcomeNudge =
+    input.user_sentiment === "delighted"   ?  0.15 :
+    input.user_sentiment === "pleased"     ?  0.05 :
+    input.user_sentiment === "neutral"     ?  0    :
+    input.user_sentiment === "frustrated"  ? -0.10 :
+    input.user_sentiment === "angry"       ? -0.20 : 0;
+  const baseOutcome: Record<string, number | null> = {
+    success: 0.85, partial: 0.55, failure: 0.15, unknown: null,
+  };
+  const base = baseOutcome[input.outcome];
+  const outcomeNumeric: number | null = base == null
+    ? null
+    : Math.max(0, Math.min(1, base + sentimentOutcomeNudge));
+  const ncEvent: NeurochemEvent =
+    input.outcome === "success" || input.outcome === "partial" ? "task_complete" :
+    input.outcome === "failure" ? "task_failed" :
+    "novel_stimulus";
+  const difficulty = input.difficulty ?? 0.5;
+  const ncIntensity = Math.max(0.3, Math.min(2.0, 0.7 + difficulty * 0.8));
+  try { await neurochem.apply(genomeLabel, ncEvent, outcomeNumeric, ncIntensity); } catch { /* non-fatal */ }
+  // Angry / strongly-frustrated users additionally bump the consecutive-failures
+  // counter via a secondary 'error' event — this triggers the frustration-side
+  // of the compat derivation.
+  if (input.user_sentiment === "angry" ||
+      (input.user_sentiment === "frustrated" && input.outcome === "failure")) {
+    try { await neurochem.apply(genomeLabel, "error", null, 0.8); } catch { /* non-fatal */ }
+  }
 
   // =========================================================================
   // Step 1: Record the experience
@@ -78,6 +124,7 @@ export async function digest(
       what_worked: input.what_worked,
       what_failed: input.what_failed,
       task_type: input.task_type,
+      tools_used: input.tools_used,
       person_name: input.person_name,
       person_relationship: input.person_name ? "user" : undefined,
     });
@@ -87,6 +134,35 @@ export async function digest(
     if (result.intentions_touched > 0) notes.push(`${result.intentions_touched} intention(s) advanced`);
     if (result.person_id) notes.push(`person tracked`);
     report.push(`**Experience:** ${notes.join(", ")} [${input.outcome}]`);
+
+    // --- skill-performance tracking ---------------------------------------
+    // Every skill the agent used on this task gets an outcome row, broken
+    // down by task_type. Feeds skill_recommend() going forward.
+    if (input.tools_used && input.tools_used.length > 0) {
+      const written = await skillsService.record(
+        input.tools_used,
+        input.task_type ?? "unknown",
+        input.outcome,
+        input.difficulty ?? 0.5
+      );
+      if (written > 0) {
+        report.push(`**Skills:** ${written} outcome(s) tracked for [${input.tools_used.join(", ")}]`);
+      }
+    }
+
+    // --- causal auto-ingest ------------------------------------------------
+    // After a new experience lands, look for plausible causes in the recent
+    // window and record them as `digest_extracted` edges with conservative
+    // 'contributed' relation. The agent (or user) can promote them later
+    // via record_cause(..., source='user_confirmed').
+    try {
+      const edges = await causalService.autoIngest(experienceId, 48, 0.68, 0.75, 2);
+      if (edges > 0) {
+        report.push(`**Causal:** ${edges} auto-suggested edge(s) recorded (review via causal_chain)`);
+      }
+    } catch (err) {
+      console.error("digest: causal auto-ingest failed (non-fatal):", err);
+    }
   } catch (err) {
     report.push(`**Experience:** failed — ${err instanceof Error ? err.message : String(err)}`);
   }
