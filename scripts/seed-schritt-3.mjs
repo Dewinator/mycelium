@@ -1,15 +1,14 @@
 #!/usr/bin/env node
-// seed-schritt-3.mjs — one-shot seed for the 'vectormemory-schritt-3' project.
+// seed-schritt-3.mjs — example seed that demonstrates the project-scoping
+// primitives end-to-end: create a project, attach decisions / experience /
+// lesson / intention, and scope them all together.
 //
-// Persists today's architectural decisions, lesson, open intention and the
-// day's experience into the shared Supabase pool, scoped to the new project.
-// Safe to re-run: create_project is idempotent via unique slug, and
-// MemoryService.create() dedups near-duplicates by cosine similarity.
+// The content here is deliberately generic. If you want to seed your own
+// setup with real decisions / hardware / model choices / agent IDs, copy
+// this file to a gitignored location (e.g. scripts/local/) and customise
+// there — do NOT commit setup-specific details back to the public repo.
 //
-// Why this isn't SQL: MemoryService.create() generates embeddings via Ollama,
-// seeds Hebbian links, and applies interference. Doing that in psql would
-// mean embedding-less rows and skipped affect feedback — not acceptable for
-// a first seed.
+// Runs against the Supabase pool configured in .mcp.json. Idempotent.
 
 import fs from "node:fs/promises";
 import path from "node:path";
@@ -21,9 +20,9 @@ const env = mcpCfg.mcpServers["vector-memory"].env;
 for (const k of Object.keys(env)) process.env[k] ||= env[k];
 
 const DIST = path.resolve(__dirname, "../mcp-server/dist");
-const { MemoryService }     = await import(path.join(DIST, "services/supabase.js"));
-const { ExperienceService } = await import(path.join(DIST, "services/experiences.js"));
-const { ProjectService }    = await import(path.join(DIST, "services/projects.js"));
+const { MemoryService }           = await import(path.join(DIST, "services/supabase.js"));
+const { ExperienceService }       = await import(path.join(DIST, "services/experiences.js"));
+const { ProjectService }          = await import(path.join(DIST, "services/projects.js"));
 const { createEmbeddingProvider } = await import(path.join(DIST, "services/embeddings.js"));
 
 const SLUG = "vectormemory-schritt-3";
@@ -38,9 +37,9 @@ let project = await projects.getBySlug(SLUG);
 if (!project) {
   project = await projects.create(
     SLUG,
-    "Vectormemory Schritt 3 — Tool-Discovery",
-    "Dynamische Tool-Registrierung via Vektorsuche, damit smalle Modelle (Qwen3 8B, 16k ctx) mit minimal-Profile arbeiten und trotzdem Zugriff auf alle openClaw-Tools haben. Ziel: Markdown-Bootstrap auf ein Minimum reduzieren, Seele/Wissen/Kontext komplett über vectormemory beziehen.",
-    { created_by: "claude-code-seed", related_repos: ["vectormemory-openclaw", "openclaw"] }
+    "Vectormemory — Schritt 3: JIT Tool Discovery",
+    "Make small-context local models viable as full agents by indexing the tool registry as memories and looking tools up semantically at use-time, instead of prefilling the entire tool schema in every session.",
+    { related_repos: ["vectormemory-openclaw"] }
   );
   console.log("Created project:", project.slug, project.id);
 } else {
@@ -48,27 +47,25 @@ if (!project) {
 }
 const projectId = project.id;
 
-// -------- 2. decisions (remember) --------
+// -------- 2. example decisions (remember) --------
+// Architectural decisions that are safe to publish. Replace with your own
+// in a local, gitignored copy of this script if you want to persist your
+// own setup-specific choices.
 const decisions = [
   {
     content:
-      "Qwen3 8B Fast 16k (Tag qwen3-fast:8b-16k) ist der konfigurierte lokale Fallback-Agent openClaw-seitig als 'qwen3-local'. num_ctx wurde via Modelfile von 32768 auf 16384 reduziert, weil das Original-Modelfile auf 32k gebackt war und auf dem 16GB M4 zu Swap/Timeout führte. Main-Agent bleibt openai-codex/gpt-5.4-mini.",
-    tags: ["qwen3", "ollama", "decision", "local-model"],
+      "Project scoping is opt-in on writes via nullable project_id FK on memories/experiences/intentions/lessons. Reads stay global by default — project scoping on reads is explicit at the call site (project_brief or an explicit filter). This avoids surprising empty results from implicit filtering.",
+    tags: ["architecture", "project-scoping", "design"],
   },
   {
     content:
-      "Claude Code CLI hat seit 2026-04-20 über ~/.claude.json eine eigene MCP-Anbindung an vector-memory (OPENCLAW_TOOL_PROFILE=full). Shared memory pool mit openClaw über dieselbe Supabase-Instanz. User ist sich der Cloud-Konsequenz bewusst und akzeptiert sie.",
-    tags: ["mcp", "claude-code", "architecture", "shared-pool"],
+      "Per-agent active project is persisted (agent_active_project table, FK on agent_genomes.id), not session-scoped. Agents identified by genome label keep their focus across sessions until the user explicitly switches. Session-scoped projects can be added later as an additive migration if needed.",
+    tags: ["architecture", "project-scoping", "agents"],
   },
   {
     content:
-      "qwen3-local Agent läuft temporär mit profile:minimal + alsoAllow [message, agents_list, memory_search, memory_get] + fs. Hat damit KEINEN Zugriff auf die vector-memory MCP-Tools. Das ist bewusst übergangsweise, bis Schritt 3 (dynamische Tool-Discovery) steht — dann kann minimal+16k trotzdem vollständig arbeiten.",
-    tags: ["openclaw", "tool-profile", "temporary", "decision"],
-  },
-  {
-    content:
-      "Migration 045_projects.sql führt first-class Projekt-Entität ein mit nullable project_id FK auf memories/experiences/intentions/lessons, plus agent_active_project-Tabelle für pro-Agent Scope. Auto-Scoping auf Writes, Reads bleiben global (explizit via project_brief scopen). Dashboard-Tab 'projekte' mit Copy-Prompt-Button schließt den UX-Loop für User → Agent-Kontext-Routing.",
-    tags: ["migration-045", "architecture", "project-scoping", "dashboard"],
+      "Tool discovery for small-context agents is semantic, not static. Index the tool registry once as memories with category='tool'; agents on minimal profile call find_tool(intent) at use-time. This scales with used tools, not existing tools, and keeps prefill lean enough to leave headroom for actual work.",
+    tags: ["architecture", "tool-discovery", "small-models"],
   },
 ];
 
@@ -85,27 +82,26 @@ for (const d of decisions) {
 }
 
 // -------- 3. lesson (record_lesson + scope) --------
-// Zunächst eine source experience als Anker, damit die lesson source_ids hat.
+// Anchor experience so the lesson has source_ids.
 const anchorExp = await experiences.record({
   summary:
-    "Debugging 2026-04-20: Qwen3 Latenz analysiert, num_ctx von 32k auf 16k reduziert, Claude Code MCP angebunden, Migration 045 für Projekt-Scoping gebaut.",
+    "Designed and shipped the project-scoping layer + JIT tool discovery. The layer is opt-in on writes, transparent on reads, and sits over the existing cognitive primitives without replacing them.",
   task_type: "architecture",
   outcome: "success",
   difficulty: 0.6,
   valence: 0.5,
   arousal: 0.4,
-  tags: ["qwen3", "mcp", "architecture", "projects-migration"],
+  tags: ["architecture", "project-scoping", "tool-discovery"],
   what_worked:
-    "Root-Cause-Analyse über ollama ps + memory_pressure + Gateway-Logs. Klarheit geschaffen, dass minimal-profile MCPs filtert und full-profile bei 16k ctx nicht passt.",
-  what_failed:
-    "Initialer Versuch, vector-memory__*-Tools via alsoAllow zu whitelisten — Format wird vom Parser verworfen.",
-  tools_used: ["ollama", "psql", "supabase", "node", "mcp"],
+    "Keeping the scoping optional — existing rows with project_id=NULL keep working. Reads stayed global by default so no surprising side effects on existing queries. The tool registry index plus a thin recall wrapper was enough to replace static schema prefill.",
+  what_failed: null,
+  tools_used: ["typescript", "postgresql", "pgvector", "mcp"],
 });
 await projects.applyScopeToRow("experiences", anchorExp.id, projectId);
 console.log("  experience:", anchorExp.id);
 
 const lessonId = await experiences.recordLesson(
-  "openClaws tool-profile 'minimal' filtert MCP-Tools vollständig. alsoAllow akzeptiert keine MCP-prefixed Namen im Format server__tool (werden als unknown entries verworfen, Log-Warnung). 'full' Profile exponiert ~75 Tools (15-25k Token Schema-Prefill) und passt nicht in 16k Context. Diese Asymmetrie ist die strukturelle Motivation für dynamische Tool-Discovery: smalle Modelle brauchen minimal-ctx + semantischen Tool-Lookup statt statischer Schema-Registrierung.",
+  "Small-context language models plus a vector-backed tool registry can reach the same effective tool surface as large-context models, by trading a one-time static prefill of tool schemas for per-intent semantic lookup. The wins compound: agents stay lean, new tools are discoverable without re-prompting, and the dependency graph between tools and usage becomes observable via the memory layer.",
   [anchorExp.id],
   { category: "insight", confidence: 0.8 }
 );
@@ -115,8 +111,8 @@ console.log("  lesson:", lessonId);
 // -------- 4. open intention (set_intention + scope) --------
 const intentionId = await experiences.setIntention({
   intention:
-    "Schritt 3 umsetzen: (a) Tool-Indexer-Script, das openClaws ~75 Tools in memories mit category='tool' einspeist (Content=Beschreibung + Use-Cases, Metadata=Schema). (b) Neues MCP-Tool find_tool(intent) als thin wrapper um recall mit Kategorie-Filter. (c) AGENTS.md des qwen3-local Workspace radikal kürzen auf ~20 Zeilen Minimal-Bootstrap. (d) SOUL.md/USER.md/MEMORY.md über import_markdown migrieren.",
-  priority: 0.85,
+    "I want the tool-discovery layer to keep improving: (a) richer trigger phrases per tool so noisy queries still hit, (b) a feedback loop that reinforces tools that agents actually picked and succeeded with, (c) a lightweight re-index trigger when the upstream tool registry changes.",
+  priority: 0.7,
 });
 await projects.applyScopeToRow("intentions", intentionId, projectId);
 console.log("  intention:", intentionId);
@@ -128,4 +124,4 @@ console.log("  memories:      ", brief.counts.memories);
 console.log("  experiences:   ", brief.counts.experiences);
 console.log("  intentions:    ", brief.counts.intentions_open + "/" + brief.counts.intentions_total);
 console.log("  lessons:       ", brief.counts.lessons);
-console.log("\nNext: open dashboard → tab 'projekte' → '" + SLUG + "' → prompt kopieren.");
+console.log("\nNext: open the dashboard, tab 'projekte', find '" + SLUG + "', click 'prompt kopieren'.");
