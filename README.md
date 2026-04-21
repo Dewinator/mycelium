@@ -2,6 +2,8 @@
 
 > **Biologische Infrastruktur für LLM-Agenten**: persistentes assoziatives Gedächtnis, neurochemische Affekt-Engine, Fortpflanzung mit kryptografischer Lineage, Peer-to-Peer-Federation.
 
+📜 **[MANIFESTO.md](MANIFESTO.md) — das Warum**: Dezentralisierung, Ressourcenschonung, Evolution statt Training, Schwarmintelligenz durch mutuelle Zustimmung. Warum AGI nicht aus einem zentralen Flaschenhals emergieren sollte.
+
 Die meisten Agent-Frameworks geben LLMs *Werkzeuge*. **engram** gibt ihnen *einen Körper*: ein Dopamin-System, das aus Prediction Errors lernt; ein Serotonin-System, das den Zeithorizont moduliert; ein Noradrenalin-System, das Aufmerksamkeit fokussiert. Dazu eine signierte Abstammungslinie, die zwei Agenten auf verschiedenen Maschinen nachweislich zu einem dritten paaren kann.
 
 Baut ursprünglich auf dem dreistufigen Markdown-Memory von [openClaw](https://github.com/openclaw/openclaw) auf — ersetzt dessen Tier 3 (Deep-Memory) durch eine lokal gehostete **Supabase-Vektordatenbank** (PostgreSQL + pgvector) und schichtet darauf eine kognitive Architektur aus Neurochemie, Active Inference (PyMDP), Motivation-Engine, Breeding und mTLS-Federation.
