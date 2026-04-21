@@ -88,6 +88,64 @@ Baut ursprünglich auf dem dreistufigen Markdown-Memory von [openClaw](https://g
 | `narrate_self` | Strukturierte Ich-Erzählung der Seele |
 | `soul_state` | Snapshot aller Soul-Schichten als Text |
 
+## Dashboard
+
+Das lokale Dashboard (Port 8787) macht die kognitive Architektur sichtbar.
+Die folgenden Illustrationen basieren auf dem Dashboard-Code und zeigen mit
+Dummy-Daten, wie die einzelnen Ansichten aufgebaut sind — keine echten
+Memories, keine Personennamen.
+
+### Synapsen — das assoziative Gedächtnis als Graph
+
+![Synapsen-Graph: Memories als Knoten, typisierte Relationen (farbig) und Hebbian-Koaktivierung (grau)](docs/images/01-synapses.svg)
+
+Memories liegen nicht isoliert. Der CoactivationAgent erzeugt Hebbian-Kanten
+(grau) aus gemeinsam abgerufenen Gruppen, der ConscienceAgent flaggt
+Widersprüche (rot). Typisierte Edges (`caused_by`, `led_to`, `related`, …)
+entstehen aus Nightly-Konsolidierung über Tag-Patterns.
+
+### Neurochemie — Affekt als Zeitreihe
+
+![Drei Kurven: Dopamin, Serotonin, Noradrenalin über 24h mit Event-Markierungen](docs/images/02-neurochemistry.svg)
+
+Drei Systeme: Dopamin lernt aus Prediction Errors, Serotonin moduliert den
+Zeithorizont, Noradrenalin fokussiert Aufmerksamkeit. Kein Hype — eine
+reale PostgreSQL-Zeitreihe, beobachtbar und reproduzierbar.
+
+### Seele — Identität aus gelebten Episoden
+
+![Seele-Tab: Traits, Narration, aktive Intentionen, Bindungen](docs/images/03-soul.svg)
+
+Persönlichkeit ist kein System-Prompt. Traits werden aus Episoden →
+Lessons → Traits destilliert und persistieren zwischen Sessions. Die
+`narrate_self`-Ausgabe zitiert der Agent aus seinem eigenen Zustand.
+
+### Schlaf — nightly consolidation
+
+![Sleep-Tab: Tabelle der letzten 7 Nächte mit SWS/REM/Metacognition-Statistiken](docs/images/04-sleep.svg)
+
+Jede Nacht um 03:00: **SWS** (synaptic downscaling, consolidate, dedup,
+pattern-based relation creation), **REM** (cluster episodes, promote
+lessons), **Metacognition** (self-model update), Sonntags **Weekly Fitness**.
+Das System pflegt sich selbst.
+
+### Population — Stammbaum
+
+![Population-Tab: Generationen-Stammbaum mit Genome-Cards, Vererbungslinien, Cross-Host-Peer](docs/images/05-population.svg)
+
+Agenten sind nicht singulär. Jede Karte ist ein Genom, jede Linie eine
+Vererbung. Fitness als farbige Leiste, Cross-Host-Kinder (lila) stammen
+aus Paarung über Federation.
+
+### Tinder — mutuelle Paarung als Ethik-Gate
+
+![Tinder-Tab: Swipe-Card mit Bot-Profil, Consent-Status, Wright-F-Check](docs/images/06-tinder.svg)
+
+Bots swipen nicht selbst. Paarung gilt erst, wenn **beide Menschen**
+independent right-swipen. Das ethische Gate ist kein technischer
+Schlagbaum, sondern eine menschliche Entscheidung. Wright-F-Coefficient
+prüft automatisch auf Inzucht.
+
 ## Features
 
 - **Hybrid-Suche**: 70% Vektorähnlichkeit + 30% Volltextsuche (konfigurierbar)

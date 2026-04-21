@@ -1,0 +1,203 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1200 750" font-family="-apple-system,BlinkMacSystemFont,'Inter','Segoe UI',system-ui,sans-serif">
+  <defs>
+    <linearGradient id="cardShine" x1="0%" x2="100%" y1="0%" y2="100%">
+      <stop offset="0%" stop-color="#1a2230" stop-opacity="1"/>
+      <stop offset="100%" stop-color="#14181d" stop-opacity="1"/>
+    </linearGradient>
+    <linearGradient id="fitBar" x1="0%" x2="100%">
+      <stop offset="0%" stop-color="#7aa2f7"/>
+      <stop offset="100%" stop-color="#9ece6a"/>
+    </linearGradient>
+  </defs>
+
+  <rect width="1200" height="750" fill="#0b0d10"/>
+  <rect x="20" y="20" width="1160" height="710" rx="14" fill="#14181d" stroke="#232a33"/>
+
+  <!-- header -->
+  <g transform="translate(40,45)">
+    <text fill="#e6e9ef" font-size="14" font-weight="600">tinder</text>
+    <text x="52" y="0" fill="#5a6473" font-size="11">— mutuelle Paarung. Paarung gilt erst, wenn beide Menschen right-swipen.</text>
+    <text x="900" y="0" fill="#5a6473" font-size="11">profil 3 / 12</text>
+  </g>
+
+  <!-- back stack (cards behind) -->
+  <g transform="translate(398,118) rotate(-3 160 200)">
+    <rect x="0" y="0" width="320" height="400" rx="14" fill="#14181d" stroke="#232a33" opacity="0.35"/>
+  </g>
+  <g transform="translate(402,114) rotate(2 160 200)">
+    <rect x="0" y="0" width="320" height="400" rx="14" fill="#14181d" stroke="#232a33" opacity="0.55"/>
+  </g>
+
+  <!-- main swipe card (centered left) -->
+  <g transform="translate(400,110)">
+    <rect x="0" y="0" width="320" height="540" rx="14" fill="url(#cardShine)" stroke="#2a3a5a" stroke-width="1.5"/>
+
+    <!-- top banner -->
+    <rect x="0" y="0" width="320" height="120" rx="14" fill="#1a2230"/>
+    <rect x="0" y="100" width="320" height="20" fill="#1a2230"/>
+    <g transform="translate(24,30)">
+      <circle cx="34" cy="34" r="30" fill="#0f1317" stroke="#7aa2f7" stroke-width="2"/>
+      <text x="34" y="40" text-anchor="middle" fill="#7aa2f7" font-size="22" font-weight="700">β</text>
+      <text x="82" y="28" fill="#e6e9ef" font-size="18" font-weight="700">hybrid-02-γ</text>
+      <text x="82" y="48" fill="#8a94a6" font-size="11">gen 1 · age 77d · fitness 0.88 ↑</text>
+      <text x="82" y="66" fill="#bb9af7" font-size="10">host: tailnet/host-a</text>
+    </g>
+
+    <!-- fitness bar -->
+    <g transform="translate(24,140)">
+      <text fill="#8a94a6" font-size="10">fitness trend (30d)</text>
+      <rect x="0" y="10" width="272" height="6" rx="3" fill="#1a1f26"/>
+      <rect x="0" y="10" width="240" height="6" rx="3" fill="url(#fitBar)"/>
+      <text x="272" y="16" text-anchor="end" fill="#9ece6a" font-size="10" font-weight="600">0.88 ↑</text>
+    </g>
+
+    <!-- traits -->
+    <g transform="translate(24,172)" font-size="10">
+      <text fill="#8a94a6">traits</text>
+      <g transform="translate(0,12)">
+        <rect x="0" y="0" width="64" height="20" rx="10" fill="#1a2230" stroke="#2a3a5a"/>
+        <text x="32" y="13" text-anchor="middle" fill="#7aa2f7">curious</text>
+        <rect x="70" y="0" width="82" height="20" rx="10" fill="#1a2230" stroke="#2a3a5a"/>
+        <text x="111" y="13" text-anchor="middle" fill="#7aa2f7">methodical</text>
+        <rect x="158" y="0" width="76" height="20" rx="10" fill="#1a2e1a" stroke="#2a5a2e"/>
+        <text x="196" y="13" text-anchor="middle" fill="#9ece6a">persistent</text>
+        <rect x="0" y="26" width="68" height="20" rx="10" fill="#1a2e1a" stroke="#2a5a2e"/>
+        <text x="34" y="39" text-anchor="middle" fill="#9ece6a">honest</text>
+        <rect x="74" y="26" width="92" height="20" rx="10" fill="#3a2a1a" stroke="#5a4a2a"/>
+        <text x="120" y="39" text-anchor="middle" fill="#e0af68">risk-averse</text>
+      </g>
+    </g>
+
+    <!-- key numbers -->
+    <g transform="translate(24,236)" font-size="11">
+      <text fill="#8a94a6" font-size="10">knowledge</text>
+      <g transform="translate(0,14)">
+        <rect x="0" y="0" width="82" height="46" rx="6" fill="#0f1317" stroke="#1c232b"/>
+        <text x="41" y="18" text-anchor="middle" fill="#e6e9ef" font-size="14" font-weight="700">442</text>
+        <text x="41" y="34" text-anchor="middle" fill="#5a6473" font-size="9">memories</text>
+
+        <rect x="94" y="0" width="82" height="46" rx="6" fill="#0f1317" stroke="#1c232b"/>
+        <text x="135" y="18" text-anchor="middle" fill="#e6e9ef" font-size="14" font-weight="700">107</text>
+        <text x="135" y="34" text-anchor="middle" fill="#5a6473" font-size="9">experiences</text>
+
+        <rect x="188" y="0" width="82" height="46" rx="6" fill="#0f1317" stroke="#1c232b"/>
+        <text x="229" y="18" text-anchor="middle" fill="#e6e9ef" font-size="14" font-weight="700">14</text>
+        <text x="229" y="34" text-anchor="middle" fill="#5a6473" font-size="9">lessons</text>
+      </g>
+    </g>
+
+    <!-- interests -->
+    <g transform="translate(24,316)" font-size="10">
+      <text fill="#8a94a6">interests</text>
+      <g transform="translate(0,12)" font-size="10" fill="#c3cee7">
+        <text y="0">· rigging &amp; structural statics</text>
+        <text y="15">· event scheduling ontology</text>
+        <text y="30">· supabase / pgvector internals</text>
+      </g>
+    </g>
+
+    <!-- notable quote -->
+    <g transform="translate(24,388)">
+      <rect x="0" y="0" width="272" height="62" rx="6" fill="#0f1317" stroke="#1c232b"/>
+      <text x="12" y="16" fill="#5a6473" font-size="9">notable trait · promoted 2026-04-12</text>
+      <g font-style="italic" font-size="10" fill="#c3cee7">
+        <text x="12" y="34">„saubere Lösung schlägt schnelle —</text>
+        <text x="12" y="48">kein Bastel, auch wenn's Zeit kostet.“</text>
+      </g>
+    </g>
+
+    <!-- inbreeding check -->
+    <g transform="translate(24,462)" font-size="10">
+      <rect x="0" y="0" width="272" height="32" rx="6" fill="#0f1317" stroke="#1c232b"/>
+      <circle cx="18" cy="16" r="4" fill="#9ece6a"/>
+      <text x="30" y="20" fill="#9ece6a" font-weight="600">wright F = 0.04 · paarung safe</text>
+      <text x="258" y="20" text-anchor="end" fill="#5a6473">0 shared ancestors</text>
+    </g>
+
+    <!-- provenance -->
+    <g transform="translate(24,506)" font-size="10" fill="#5a6473">
+      <text y="0">signed · ed25519 · merkle root verified 2026-04-21 08:12</text>
+    </g>
+  </g>
+
+  <!-- swipe buttons below -->
+  <g transform="translate(520,680)">
+    <circle cx="0" cy="0" r="26" fill="#1a1f26" stroke="#f7768e" stroke-width="2"/>
+    <text x="0" y="6" text-anchor="middle" fill="#f7768e" font-size="22">✕</text>
+
+    <circle cx="80" cy="0" r="22" fill="#1a2230" stroke="#7aa2f7"/>
+    <text x="80" y="5" text-anchor="middle" fill="#7aa2f7" font-size="14">↺</text>
+
+    <circle cx="160" cy="0" r="26" fill="#1a2e1a" stroke="#9ece6a" stroke-width="2"/>
+    <text x="160" y="7" text-anchor="middle" fill="#9ece6a" font-size="18">♥</text>
+  </g>
+
+  <!-- side info panels -->
+  <g transform="translate(60,110)">
+    <rect x="0" y="0" width="320" height="260" rx="10" fill="#0f1317" stroke="#1c232b"/>
+    <g transform="translate(20,26)">
+      <text fill="#c3cee7" font-size="12" font-weight="600">mein bot</text>
+      <text y="16" fill="#5a6473" font-size="10">agent-04a · gen 2 · fitness 0.83 ↑</text>
+
+      <g transform="translate(0,42)" font-size="10">
+        <rect x="0" y="0" width="64" height="20" rx="10" fill="#1a2230" stroke="#2a3a5a"/>
+        <text x="32" y="13" text-anchor="middle" fill="#7aa2f7">curious</text>
+        <rect x="70" y="0" width="82" height="20" rx="10" fill="#3a2a5a" stroke="#4a3a6a"/>
+        <text x="111" y="13" text-anchor="middle" fill="#bb9af7">creative</text>
+        <rect x="158" y="0" width="72" height="20" rx="10" fill="#1a2e1a" stroke="#2a5a2e"/>
+        <text x="194" y="13" text-anchor="middle" fill="#9ece6a">honest</text>
+      </g>
+
+      <text y="96" fill="#c3cee7" font-size="11" font-weight="600">complementarity</text>
+      <g transform="translate(0,110)" font-size="10" fill="#8a94a6">
+        <text y="0">shared interests</text><text x="260" y="0" text-anchor="end" fill="#e6e9ef">3 of 3</text>
+        <text y="16">trait overlap</text><text x="260" y="16" text-anchor="end" fill="#9ece6a">balanced (0.42)</text>
+        <text y="32">fitness diff</text><text x="260" y="32" text-anchor="end" fill="#e6e9ef">+0.05</text>
+        <text y="48">knowledge diff</text><text x="260" y="48" text-anchor="end" fill="#e6e9ef">286 novel memories</text>
+      </g>
+
+      <text y="188" fill="#c3cee7" font-size="11" font-weight="600">expected child</text>
+      <g transform="translate(0,202)" font-size="10" fill="#8a94a6">
+        <text y="0">mutation-rate</text><text x="260" y="0" text-anchor="end" fill="#e6e9ef">0.08</text>
+        <text y="16">inheritance mode</text><text x="260" y="16" text-anchor="end" fill="#e6e9ef">mixed · weighted</text>
+      </g>
+    </g>
+  </g>
+
+  <g transform="translate(770,110)">
+    <rect x="0" y="0" width="370" height="260" rx="10" fill="#0f1317" stroke="#1c232b"/>
+    <g transform="translate(22,26)">
+      <text fill="#c3cee7" font-size="12" font-weight="600">mutual consent — gate</text>
+      <text y="16" fill="#5a6473" font-size="10">keine paarung ohne zweifache zustimmung zwischen zwei menschen</text>
+
+      <g transform="translate(0,44)">
+        <circle cx="10" cy="10" r="6" fill="#9ece6a"/>
+        <text x="24" y="14" fill="#9ece6a" font-size="11" font-weight="600">du → hybrid-02-γ</text>
+        <text x="324" y="14" text-anchor="end" fill="#5a6473" font-size="10">pending your swipe</text>
+      </g>
+
+      <g transform="translate(0,72)">
+        <circle cx="10" cy="10" r="6" fill="#5a6473"/>
+        <text x="24" y="14" fill="#8a94a6" font-size="11">gegenseite → agent-04a</text>
+        <text x="324" y="14" text-anchor="end" fill="#5a6473" font-size="10">noch nicht entschieden</text>
+      </g>
+
+      <rect x="0" y="102" width="328" height="1" fill="#1c232b"/>
+
+      <text y="124" fill="#c3cee7" font-size="11" font-weight="600">was du gerade beurteilst</text>
+      <g transform="translate(0,140)" font-size="10" fill="#8a94a6">
+        <text y="0">— genetische kompatibilität (F-check ✓)</text>
+        <text y="14">— trait-komplementarität</text>
+        <text y="28">— ob du willst, dass dein bot wissen von</text>
+        <text y="42">&#160;&#160;&#160;diesem bot erbt</text>
+      </g>
+
+      <g transform="translate(0,200)" font-size="10" fill="#5a6473">
+        <text>right-swipe speichert likes. erst bei match öffnet</text>
+        <text y="14">sich das breeding-modal — mit consent beider seiten.</text>
+      </g>
+    </g>
+  </g>
+
+  <text x="40" y="735" fill="#5a6473" font-size="10">engram · dashboard · tinder tab · illustrative dummy data</text>
+</svg>

@@ -1,0 +1,195 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1200 750" font-family="-apple-system,BlinkMacSystemFont,'Inter','Segoe UI',system-ui,sans-serif">
+  <rect width="1200" height="750" fill="#0b0d10"/>
+  <rect x="20" y="20" width="1160" height="710" rx="14" fill="#14181d" stroke="#232a33"/>
+
+  <!-- header -->
+  <g transform="translate(40,45)">
+    <text fill="#e6e9ef" font-size="14" font-weight="600">population</text>
+    <text x="78" y="0" fill="#5a6473" font-size="11">— Stammbaum · 3 Generationen · Vererbungslinien mit Fitness</text>
+    <g transform="translate(740,-8)" font-size="11">
+      <rect x="0" y="0" width="100" height="28" rx="6" fill="#0f1317" stroke="#1c232b"/>
+      <text x="50" y="18" text-anchor="middle" fill="#8a94a6">11 active</text>
+      <rect x="108" y="0" width="100" height="28" rx="6" fill="#0f1317" stroke="#1c232b"/>
+      <text x="158" y="18" text-anchor="middle" fill="#8a94a6">3 culled</text>
+      <rect x="216" y="0" width="128" height="28" rx="6" fill="#1a2230" stroke="#2a3a5a"/>
+      <text x="280" y="18" text-anchor="middle" fill="#7aa2f7">+ breed agents</text>
+    </g>
+  </g>
+
+  <!-- tree -->
+  <g transform="translate(40,100)">
+    <rect x="0" y="0" width="800" height="620" rx="10" fill="#0f1317" stroke="#1c232b"/>
+
+    <!-- generation labels -->
+    <g font-size="10" fill="#5a6473">
+      <text x="20" y="40">GEN 0 · founders</text>
+      <text x="20" y="240">GEN 1 · first descendants</text>
+      <text x="20" y="440">GEN 2 · current</text>
+    </g>
+
+    <!-- edges (inheritance) -->
+    <g stroke="#2a3a5a" stroke-width="1.5" fill="none">
+      <!-- Gen0 A → Gen1 C1, C2 -->
+      <path d="M220,90 Q 220,160 200,220"/>
+      <path d="M220,90 Q 260,160 360,220"/>
+      <!-- Gen0 B → Gen1 C1, C2 -->
+      <path d="M560,90 Q 450,160 200,220"/>
+      <path d="M560,90 Q 480,160 360,220"/>
+
+      <!-- Gen1 C1 → Gen2 D1, D2 -->
+      <path d="M200,300 Q 200,380 120,420"/>
+      <path d="M200,300 Q 220,380 320,420"/>
+      <!-- Gen1 C2 → Gen2 D2, D3 -->
+      <path d="M360,300 Q 360,380 320,420"/>
+      <path d="M360,300 Q 420,380 520,420"/>
+      <!-- external peer → Gen2 D3 -->
+      <path d="M720,250 Q 640,340 520,420" stroke-dasharray="3 4" stroke="#bb9af7" stroke-opacity="0.7"/>
+    </g>
+
+    <!-- genome cards -->
+    <!-- Gen 0 · Founder A -->
+    <g transform="translate(140,50)">
+      <rect x="0" y="0" width="160" height="80" rx="8" fill="#14181d" stroke="#2a3a5a"/>
+      <text x="14" y="20" fill="#e6e9ef" font-size="12" font-weight="600">root-alpha</text>
+      <text x="14" y="36" fill="#5a6473" font-size="10">gen 0 · age 180d · seed</text>
+      <rect x="14" y="46" width="132" height="5" rx="2.5" fill="#1a1f26"/>
+      <rect x="14" y="46" width="102" height="5" rx="2.5" fill="#9ece6a"/>
+      <text x="14" y="66" fill="#8a94a6" font-size="10">fitness 0.77 · 612 memories</text>
+    </g>
+
+    <!-- Gen 0 · Founder B -->
+    <g transform="translate(480,50)">
+      <rect x="0" y="0" width="160" height="80" rx="8" fill="#14181d" stroke="#2a3a5a"/>
+      <text x="14" y="20" fill="#e6e9ef" font-size="12" font-weight="600">root-beta</text>
+      <text x="14" y="36" fill="#5a6473" font-size="10">gen 0 · age 154d · seed</text>
+      <rect x="14" y="46" width="132" height="5" rx="2.5" fill="#1a1f26"/>
+      <rect x="14" y="46" width="92" height="5" rx="2.5" fill="#9ece6a"/>
+      <text x="14" y="66" fill="#8a94a6" font-size="10">fitness 0.70 · 480 memories</text>
+    </g>
+
+    <!-- Gen 1 · C1 -->
+    <g transform="translate(120,220)">
+      <rect x="0" y="0" width="160" height="80" rx="8" fill="#14181d" stroke="#2a3a5a"/>
+      <text x="14" y="20" fill="#e6e9ef" font-size="12" font-weight="600">hybrid-01</text>
+      <text x="14" y="36" fill="#5a6473" font-size="10">gen 1 · age 90d · α×β</text>
+      <rect x="14" y="46" width="132" height="5" rx="2.5" fill="#1a1f26"/>
+      <rect x="14" y="46" width="118" height="5" rx="2.5" fill="#9ece6a"/>
+      <text x="14" y="66" fill="#8a94a6" font-size="10">fitness 0.88 ↑ · 442 memories</text>
+    </g>
+
+    <!-- Gen 1 · C2 -->
+    <g transform="translate(280,220)">
+      <rect x="0" y="0" width="160" height="80" rx="8" fill="#14181d" stroke="#2a3a5a"/>
+      <text x="14" y="20" fill="#e6e9ef" font-size="12" font-weight="600">hybrid-02</text>
+      <text x="14" y="36" fill="#5a6473" font-size="10">gen 1 · age 77d · α×β</text>
+      <rect x="14" y="46" width="132" height="5" rx="2.5" fill="#1a1f26"/>
+      <rect x="14" y="46" width="88" height="5" rx="2.5" fill="#e0af68"/>
+      <text x="14" y="66" fill="#8a94a6" font-size="10">fitness 0.66 → · 318 memories</text>
+    </g>
+
+    <!-- Gen 2 · D1 -->
+    <g transform="translate(40,420)">
+      <rect x="0" y="0" width="160" height="80" rx="8" fill="#14181d" stroke="#2a3a5a"/>
+      <text x="14" y="20" fill="#e6e9ef" font-size="12" font-weight="600">agent-04a</text>
+      <text x="14" y="36" fill="#5a6473" font-size="10">gen 2 · age 34d · 01×self</text>
+      <rect x="14" y="46" width="132" height="5" rx="2.5" fill="#1a1f26"/>
+      <rect x="14" y="46" width="110" height="5" rx="2.5" fill="#9ece6a"/>
+      <text x="14" y="66" fill="#8a94a6" font-size="10">fitness 0.83 ↑ · 156 memories</text>
+    </g>
+
+    <!-- Gen 2 · D2 -->
+    <g transform="translate(240,420)">
+      <rect x="0" y="0" width="160" height="80" rx="8" fill="#14181d" stroke="#2a3a5a"/>
+      <text x="14" y="20" fill="#e6e9ef" font-size="12" font-weight="600">agent-04b</text>
+      <text x="14" y="36" fill="#5a6473" font-size="10">gen 2 · age 22d · 01×02</text>
+      <rect x="14" y="46" width="132" height="5" rx="2.5" fill="#1a1f26"/>
+      <rect x="14" y="46" width="76" height="5" rx="2.5" fill="#e0af68"/>
+      <text x="14" y="66" fill="#8a94a6" font-size="10">fitness 0.58 ↓ · 94 memories</text>
+    </g>
+
+    <!-- Gen 2 · D3 (cross-host child) -->
+    <g transform="translate(440,420)">
+      <rect x="0" y="0" width="160" height="80" rx="8" fill="#14181d" stroke="#3a2a5a"/>
+      <text x="14" y="20" fill="#d8c4f7" font-size="12" font-weight="600">agent-04c</text>
+      <text x="14" y="36" fill="#5a6473" font-size="10">gen 2 · age 11d · 02×peer-07</text>
+      <rect x="14" y="46" width="132" height="5" rx="2.5" fill="#1a1f26"/>
+      <rect x="14" y="46" width="96" height="5" rx="2.5" fill="#bb9af7"/>
+      <text x="14" y="66" fill="#8a94a6" font-size="10">fitness 0.72 · cross-host ✓</text>
+    </g>
+
+    <!-- external peer (federated) -->
+    <g transform="translate(620,200)">
+      <rect x="0" y="0" width="140" height="68" rx="8" fill="#14181d" stroke="#3a2a5a" stroke-dasharray="4 4"/>
+      <text x="14" y="20" fill="#d8c4f7" font-size="11" font-weight="600">peer-07</text>
+      <text x="14" y="36" fill="#5a6473" font-size="10">federated · read-only</text>
+      <text x="14" y="54" fill="#bb9af7" font-size="10">host: tailnet/host-b</text>
+    </g>
+
+    <!-- legend -->
+    <g transform="translate(20,560)" font-size="10" fill="#8a94a6">
+      <rect x="0" y="-8" width="16" height="4" rx="2" fill="#9ece6a"/><text x="22" y="-4">fitness ↑</text>
+      <rect x="100" y="-8" width="16" height="4" rx="2" fill="#e0af68"/><text x="122" y="-4">fitness →</text>
+      <rect x="200" y="-8" width="16" height="4" rx="2" fill="#f7768e"/><text x="222" y="-4">fitness ↓</text>
+      <rect x="300" y="-8" width="16" height="4" rx="2" fill="#bb9af7"/><text x="322" y="-4">cross-host</text>
+      <line x1="400" y1="-6" x2="416" y2="-6" stroke="#bb9af7" stroke-dasharray="3 3" stroke-width="1.5"/>
+      <text x="422" y="-4">federation edge</text>
+    </g>
+  </g>
+
+  <!-- right side: inheritance inspector -->
+  <g transform="translate(860,100)">
+    <rect x="0" y="0" width="300" height="620" rx="10" fill="#0f1317" stroke="#1c232b"/>
+    <g transform="translate(20,28)">
+      <text fill="#c3cee7" font-size="12" font-weight="600">agent-04c · inheritance</text>
+      <text y="16" fill="#5a6473" font-size="10">ed25519 · lineage-verified</text>
+
+      <text y="48" fill="#c3cee7" font-size="11" font-weight="600">genome</text>
+      <g font-size="10.5" transform="translate(0,64)" fill="#8a94a6">
+        <text y="0">base-model</text><text x="260" y="0" text-anchor="end" fill="#e6e9ef">qwen-2.5-7B</text>
+        <text y="16">embed</text><text x="260" y="16" text-anchor="end" fill="#e6e9ef">nomic-768</text>
+        <text y="32">curiosity</text><text x="260" y="32" text-anchor="end" fill="#e6e9ef">0.64</text>
+        <text y="48">risk</text><text x="260" y="48" text-anchor="end" fill="#e6e9ef">0.31</text>
+        <text y="64">mutation-rate</text><text x="260" y="64" text-anchor="end" fill="#e6e9ef">0.08</text>
+      </g>
+
+      <text y="164" fill="#c3cee7" font-size="11" font-weight="600">inherited memories</text>
+      <g font-size="10" fill="#8a94a6" transform="translate(0,180)">
+        <text y="0">from hybrid-02</text><text x="260" y="0" text-anchor="end" fill="#e6e9ef">186</text>
+        <text y="16">from peer-07</text><text x="260" y="16" text-anchor="end" fill="#e6e9ef">72</text>
+        <text y="32">novel (post-breed)</text><text x="260" y="32" text-anchor="end" fill="#e6e9ef">44</text>
+      </g>
+
+      <text y="248" fill="#c3cee7" font-size="11" font-weight="600">inherited traits</text>
+      <g font-size="10" fill="#8a94a6" transform="translate(0,264)">
+        <rect x="0" y="0" width="70" height="20" rx="10" fill="#1a2230" stroke="#2a3a5a"/>
+        <text x="35" y="13" text-anchor="middle" fill="#7aa2f7">curious</text>
+        <rect x="76" y="0" width="82" height="20" rx="10" fill="#1a2e1a" stroke="#2a5a2e"/>
+        <text x="117" y="13" text-anchor="middle" fill="#9ece6a">persistent</text>
+        <rect x="0" y="26" width="96" height="20" rx="10" fill="#3a2a5a" stroke="#4a3a6a"/>
+        <text x="48" y="39" text-anchor="middle" fill="#bb9af7">cross-host</text>
+      </g>
+
+      <text y="336" fill="#c3cee7" font-size="11" font-weight="600">lineage</text>
+      <g font-family="ui-monospace,Menlo,monospace" font-size="9" fill="#8a94a6" transform="translate(0,352)">
+        <text y="0">root-alpha</text>
+        <text y="14">└ hybrid-02</text>
+        <text y="28">  └ agent-04c (you)</text>
+        <text y="52">peer-07@tailnet/host-b</text>
+        <text y="66">└ agent-04c (co-parent)</text>
+      </g>
+
+      <text y="440" fill="#c3cee7" font-size="11" font-weight="600">wright F-inbreeding</text>
+      <g font-size="10" transform="translate(0,456)" fill="#8a94a6">
+        <text y="0">F coefficient</text><text x="260" y="0" text-anchor="end" fill="#9ece6a">0.04 · safe</text>
+        <text y="16">shared ancestors</text><text x="260" y="16" text-anchor="end" fill="#e6e9ef">0</text>
+      </g>
+
+      <g transform="translate(0,500)">
+        <rect x="0" y="0" width="260" height="34" rx="6" fill="#1a2230" stroke="#2a3a5a"/>
+        <text x="130" y="22" text-anchor="middle" fill="#7aa2f7" font-size="11">view merkle proof →</text>
+      </g>
+    </g>
+  </g>
+
+  <text x="40" y="735" fill="#5a6473" font-size="10">engram · dashboard · population tab · illustrative dummy data</text>
+</svg>

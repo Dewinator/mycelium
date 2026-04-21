@@ -1,0 +1,137 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1200 750" font-family="-apple-system,BlinkMacSystemFont,'Inter','Segoe UI',system-ui,sans-serif">
+  <defs>
+    <linearGradient id="fillDA" x1="0" x2="0" y1="0" y2="1">
+      <stop offset="0%" stop-color="#9ece6a" stop-opacity="0.35"/>
+      <stop offset="100%" stop-color="#9ece6a" stop-opacity="0"/>
+    </linearGradient>
+    <linearGradient id="fill5HT" x1="0" x2="0" y1="0" y2="1">
+      <stop offset="0%" stop-color="#7aa2f7" stop-opacity="0.35"/>
+      <stop offset="100%" stop-color="#7aa2f7" stop-opacity="0"/>
+    </linearGradient>
+    <linearGradient id="fillNE" x1="0" x2="0" y1="0" y2="1">
+      <stop offset="0%" stop-color="#e0af68" stop-opacity="0.35"/>
+      <stop offset="100%" stop-color="#e0af68" stop-opacity="0"/>
+    </linearGradient>
+  </defs>
+
+  <rect width="1200" height="750" fill="#0b0d10"/>
+  <rect x="20" y="20" width="1160" height="710" rx="14" fill="#14181d" stroke="#232a33"/>
+
+  <!-- header -->
+  <g transform="translate(40,45)">
+    <text fill="#e6e9ef" font-size="14" font-weight="600">neurochemie</text>
+    <text x="88" y="0" fill="#5a6473" font-size="11">— drei Systeme, letzte 24 h</text>
+
+    <g transform="translate(0,26)" font-size="11">
+      <rect x="0" y="0" width="168" height="56" rx="8" fill="#0f1317" stroke="#1c232b"/>
+      <circle cx="14" cy="16" r="4" fill="#9ece6a"/>
+      <text x="24" y="20" fill="#e6e9ef" font-weight="600">dopamin</text>
+      <text x="14" y="42" fill="#5a6473" font-size="10">prediction-error learning</text>
+      <text x="150" y="20" text-anchor="end" fill="#9ece6a" font-size="14" font-weight="700">0.61</text>
+      <text x="150" y="42" text-anchor="end" fill="#5a6473" font-size="10">↑ 0.08 / 24h</text>
+    </g>
+
+    <g transform="translate(180,26)" font-size="11">
+      <rect x="0" y="0" width="168" height="56" rx="8" fill="#0f1317" stroke="#1c232b"/>
+      <circle cx="14" cy="16" r="4" fill="#7aa2f7"/>
+      <text x="24" y="20" fill="#e6e9ef" font-weight="600">serotonin</text>
+      <text x="14" y="42" fill="#5a6473" font-size="10">time-horizon modulation</text>
+      <text x="150" y="20" text-anchor="end" fill="#7aa2f7" font-size="14" font-weight="700">0.54</text>
+      <text x="150" y="42" text-anchor="end" fill="#5a6473" font-size="10">→ stable</text>
+    </g>
+
+    <g transform="translate(360,26)" font-size="11">
+      <rect x="0" y="0" width="168" height="56" rx="8" fill="#0f1317" stroke="#1c232b"/>
+      <circle cx="14" cy="16" r="4" fill="#e0af68"/>
+      <text x="24" y="20" fill="#e6e9ef" font-weight="600">noradrenalin</text>
+      <text x="14" y="42" fill="#5a6473" font-size="10">attention / arousal</text>
+      <text x="150" y="20" text-anchor="end" fill="#e0af68" font-size="14" font-weight="700">0.34</text>
+      <text x="150" y="42" text-anchor="end" fill="#5a6473" font-size="10">↓ 0.11 / 1h</text>
+    </g>
+  </g>
+
+  <!-- chart area -->
+  <g transform="translate(70,180)">
+    <rect x="0" y="0" width="1060" height="480" rx="10" fill="#0f1317" stroke="#1c232b"/>
+
+    <!-- gridlines Y -->
+    <g stroke="#1c232b" stroke-width="1">
+      <line x1="40" y1="40"  x2="1040" y2="40"/>
+      <line x1="40" y1="120" x2="1040" y2="120"/>
+      <line x1="40" y1="200" x2="1040" y2="200"/>
+      <line x1="40" y1="280" x2="1040" y2="280"/>
+      <line x1="40" y1="360" x2="1040" y2="360"/>
+      <line x1="40" y1="440" x2="1040" y2="440"/>
+    </g>
+    <!-- Y labels -->
+    <g font-size="10" fill="#5a6473" text-anchor="end">
+      <text x="34" y="44">1.0</text>
+      <text x="34" y="124">0.8</text>
+      <text x="34" y="204">0.6</text>
+      <text x="34" y="284">0.4</text>
+      <text x="34" y="364">0.2</text>
+      <text x="34" y="444">0.0</text>
+    </g>
+
+    <!-- X gridlines (6 hour steps) -->
+    <g stroke="#1c232b" stroke-width="1">
+      <line x1="40"   y1="40"  x2="40"   y2="440"/>
+      <line x1="240"  y1="40"  x2="240"  y2="440"/>
+      <line x1="440"  y1="40"  x2="440"  y2="440"/>
+      <line x1="640"  y1="40"  x2="640"  y2="440"/>
+      <line x1="840"  y1="40"  x2="840"  y2="440"/>
+      <line x1="1040" y1="40"  x2="1040" y2="440"/>
+    </g>
+    <g font-size="10" fill="#5a6473" text-anchor="middle">
+      <text x="40"   y="460">−24h</text>
+      <text x="240"  y="460">−18h</text>
+      <text x="440"  y="460">−12h</text>
+      <text x="640"  y="460">−6h</text>
+      <text x="840"  y="460">−3h</text>
+      <text x="1040" y="460">now</text>
+    </g>
+
+    <!-- event markers -->
+    <g stroke="#5a6473" stroke-dasharray="2 3">
+      <line x1="280" y1="50" x2="280" y2="440"/>
+      <line x1="560" y1="50" x2="560" y2="440"/>
+      <line x1="820" y1="50" x2="820" y2="440"/>
+      <line x1="990" y1="50" x2="990" y2="440"/>
+    </g>
+    <g font-size="9" fill="#8a94a6">
+      <text x="284" y="58">digest</text>
+      <text x="564" y="58">nightly sleep</text>
+      <text x="824" y="58">prediction hit</text>
+      <text x="950" y="58">new memory</text>
+    </g>
+
+    <!-- Dopamine curve (green) — prediction errors = spikes -->
+    <path d="M40,310 L80,300 L120,290 L160,280 L200,275 L240,260 L280,270 L300,180 L320,220 L360,240 L400,250 L440,260 L480,270 L520,265 L560,290 L600,300 L640,270 L680,240 L720,210 L760,185 L800,170 L820,120 L840,140 L880,160 L920,170 L960,150 L990,100 L1010,130 L1040,160"
+          stroke="#9ece6a" stroke-width="2" fill="none" stroke-linecap="round" stroke-linejoin="round"/>
+    <path d="M40,310 L80,300 L120,290 L160,280 L200,275 L240,260 L280,270 L300,180 L320,220 L360,240 L400,250 L440,260 L480,270 L520,265 L560,290 L600,300 L640,270 L680,240 L720,210 L760,185 L800,170 L820,120 L840,140 L880,160 L920,170 L960,150 L990,100 L1010,130 L1040,160 L1040,440 L40,440 Z"
+          fill="url(#fillDA)" opacity="0.7"/>
+
+    <!-- Serotonin curve (blue) — slow oscillation -->
+    <path d="M40,250 L80,245 L120,240 L160,238 L200,235 L240,230 L280,225 L320,222 L360,220 L400,218 L440,215 L480,218 L520,220 L560,222 L600,224 L640,220 L680,215 L720,212 L760,210 L800,208 L840,205 L880,205 L920,208 L960,210 L1000,212 L1040,213"
+          stroke="#7aa2f7" stroke-width="2" fill="none" stroke-linecap="round"/>
+    <path d="M40,250 L80,245 L120,240 L160,238 L200,235 L240,230 L280,225 L320,222 L360,220 L400,218 L440,215 L480,218 L520,220 L560,222 L600,224 L640,220 L680,215 L720,212 L760,210 L800,208 L840,205 L880,205 L920,208 L960,210 L1000,212 L1040,213 L1040,440 L40,440 Z"
+          fill="url(#fill5HT)" opacity="0.55"/>
+
+    <!-- Noradrenalin curve (orange) — spikes + fast decay -->
+    <path d="M40,380 L80,375 L120,370 L160,355 L200,360 L240,365 L280,380 L300,340 L320,370 L360,385 L400,380 L440,375 L480,370 L520,380 L560,385 L580,330 L620,360 L660,375 L700,380 L740,385 L780,382 L820,360 L860,378 L900,385 L940,388 L970,350 L990,330 L1010,355 L1030,370 L1040,370"
+          stroke="#e0af68" stroke-width="2" fill="none" stroke-linecap="round" stroke-linejoin="round"/>
+    <path d="M40,380 L80,375 L120,370 L160,355 L200,360 L240,365 L280,380 L300,340 L320,370 L360,385 L400,380 L440,375 L480,370 L520,380 L560,385 L580,330 L620,360 L660,375 L700,380 L740,385 L780,382 L820,360 L860,378 L900,385 L940,388 L970,350 L990,330 L1010,355 L1030,370 L1040,370 L1040,440 L40,440 Z"
+          fill="url(#fillNE)" opacity="0.6"/>
+
+    <!-- current value markers -->
+    <circle cx="1040" cy="160" r="5" fill="#9ece6a"/>
+    <circle cx="1040" cy="213" r="5" fill="#7aa2f7"/>
+    <circle cx="1040" cy="370" r="5" fill="#e0af68"/>
+
+    <!-- Yerkes–Dodson band (optimal arousal zone) -->
+    <rect x="40" y="200" width="1000" height="80" fill="#9ece6a" opacity="0.04" stroke="#9ece6a" stroke-opacity="0.15" stroke-dasharray="3 4"/>
+    <text x="56" y="216" fill="#5a6473" font-size="9">yerkes–dodson · optimal performance band</text>
+  </g>
+
+  <text x="40" y="735" fill="#5a6473" font-size="10">engram · dashboard · neurochemistry tab · illustrative dummy data</text>
+</svg>

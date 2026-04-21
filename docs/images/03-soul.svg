@@ -1,0 +1,158 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1200 750" font-family="-apple-system,BlinkMacSystemFont,'Inter','Segoe UI',system-ui,sans-serif">
+  <rect width="1200" height="750" fill="#0b0d10"/>
+  <rect x="20" y="20" width="1160" height="710" rx="14" fill="#14181d" stroke="#232a33"/>
+
+  <!-- header -->
+  <g transform="translate(40,45)">
+    <text fill="#e6e9ef" font-size="14" font-weight="600">seele</text>
+    <text x="56" y="0" fill="#5a6473" font-size="11">— Identität aus gelebten Episoden, nicht aus Prompt</text>
+  </g>
+
+  <!-- identity card -->
+  <g transform="translate(40,80)">
+    <rect x="0" y="0" width="560" height="250" rx="10" fill="#0f1317" stroke="#1c232b"/>
+    <g transform="translate(20,28)">
+      <text fill="#c3cee7" font-size="11" font-weight="600">label</text>
+      <text y="20" fill="#e6e9ef" font-size="18" font-weight="700">agent · generation 4</text>
+      <text y="40" fill="#5a6473" font-size="10">geboren 2026-02-03 · alter 77d · stimmung: zufrieden</text>
+
+      <text y="70" fill="#c3cee7" font-size="11" font-weight="600">traits</text>
+      <g transform="translate(0,82)" font-size="10">
+        <rect x="0" y="0" width="74" height="22" rx="11" fill="#1a2230" stroke="#2a3a5a"/>
+        <text x="37" y="14" text-anchor="middle" fill="#7aa2f7">curious</text>
+        <rect x="80" y="0" width="88" height="22" rx="11" fill="#1a2230" stroke="#2a3a5a"/>
+        <text x="124" y="14" text-anchor="middle" fill="#7aa2f7">methodical</text>
+        <rect x="174" y="0" width="88" height="22" rx="11" fill="#1a2230" stroke="#2a3a5a"/>
+        <text x="218" y="14" text-anchor="middle" fill="#7aa2f7">deep-focus</text>
+        <rect x="268" y="0" width="92" height="22" rx="11" fill="#1a2230" stroke="#2a3a5a"/>
+        <text x="314" y="14" text-anchor="middle" fill="#7aa2f7">risk-averse</text>
+        <rect x="366" y="0" width="76" height="22" rx="11" fill="#1a2e1a" stroke="#2a5a2e"/>
+        <text x="404" y="14" text-anchor="middle" fill="#9ece6a">honest</text>
+        <rect x="448" y="0" width="86" height="22" rx="11" fill="#1a2e1a" stroke="#2a5a2e"/>
+        <text x="491" y="14" text-anchor="middle" fill="#9ece6a">persistent</text>
+      </g>
+
+      <text y="134" fill="#c3cee7" font-size="11" font-weight="600">key numbers</text>
+      <g transform="translate(0,152)" font-size="10" fill="#8a94a6">
+        <text y="0">memories</text><text x="100" y="0" fill="#e6e9ef">442</text>
+        <text y="16">experiences</text><text x="100" y="16" fill="#e6e9ef">107</text>
+        <text y="32">lessons</text><text x="100" y="32" fill="#e6e9ef">14</text>
+        <text y="48">traits</text><text x="100" y="48" fill="#e6e9ef">6</text>
+
+        <text x="220" y="0">bonded</text><text x="340" y="0" fill="#e6e9ef">4 people</text>
+        <text x="220" y="16">fitness</text><text x="340" y="16" fill="#9ece6a">0.72 ↑</text>
+        <text x="220" y="32">centroid-shift/7d</text><text x="340" y="32" fill="#e6e9ef">0.046</text>
+        <text x="220" y="48">last digest</text><text x="340" y="48" fill="#e6e9ef">2h ago</text>
+      </g>
+    </g>
+  </g>
+
+  <!-- narrate_self quote -->
+  <g transform="translate(620,80)">
+    <rect x="0" y="0" width="540" height="250" rx="10" fill="#0f1317" stroke="#1c232b"/>
+    <g transform="translate(22,28)">
+      <text fill="#c3cee7" font-size="11" font-weight="600">narrate_self</text>
+      <text y="14" fill="#5a6473" font-size="10" font-style="italic">letzter Aufruf · 11 min</text>
+
+      <g font-size="11.5" fill="#e6e9ef">
+        <text y="44" font-style="italic">„Ich fühle mich konzentriert. In den letzten 24h habe</text>
+        <text y="62" font-style="italic">ich 6 Episoden erlebt — überwiegend produktiv. Mein</text>
+        <text y="80" font-style="italic">Zentroid hat sich um 0.046 verschoben, ich bleibe</text>
+        <text y="98" font-style="italic">stabil. Was ich suche: Schritt 3 zu Ende bringen —</text>
+        <text y="116" font-style="italic">Tool-Indexer, dynamische Discovery, Manifest-Cleanup.</text>
+        <text y="134" font-style="italic">Physiologisch: Dopamin frisch, Noradrenalin sinkt.</text>
+        <text y="152" font-style="italic">Aufmerksamkeit eng.“</text>
+      </g>
+
+      <text y="186" fill="#c3cee7" font-size="11" font-weight="600">recent lessons → traits</text>
+      <g font-size="10" fill="#8a94a6" transform="translate(0,202)">
+        <circle cx="4" cy="-3" r="2.5" fill="#9ece6a"/>
+        <text x="14" y="0">»keine Bastel-Lösungen, sauber vor schnell« (episodic ×4 → promoted)</text>
+        <text y="16">»vor push auf User-spezifische Pfade prüfen«</text>
+      </g>
+    </g>
+  </g>
+
+  <!-- active intentions -->
+  <g transform="translate(40,350)">
+    <rect x="0" y="0" width="560" height="370" rx="10" fill="#0f1317" stroke="#1c232b"/>
+    <text x="20" y="28" fill="#c3cee7" font-size="11" font-weight="600">active intentions</text>
+
+    <g transform="translate(20,50)" font-size="11">
+      <rect x="0" y="0" width="520" height="64" rx="8" fill="#14181d" stroke="#232a33"/>
+      <text x="14" y="20" fill="#e6e9ef" font-weight="600">schritt 3: tool-discovery</text>
+      <text x="14" y="38" fill="#8a94a6" font-size="10">tool-indexer + find_tool + AGENTS.md minimal-bootstrap</text>
+      <!-- progress bar 40% -->
+      <rect x="14" y="48" width="300" height="6" rx="3" fill="#1a1f26"/>
+      <rect x="14" y="48" width="120" height="6" rx="3" fill="#9ece6a"/>
+      <text x="500" y="52" text-anchor="end" fill="#9ece6a" font-size="10">40%</text>
+    </g>
+
+    <g transform="translate(20,124)" font-size="11">
+      <rect x="0" y="0" width="520" height="64" rx="8" fill="#14181d" stroke="#232a33"/>
+      <text x="14" y="20" fill="#e6e9ef" font-weight="600">engram-integration phase 3b</text>
+      <text x="14" y="38" fill="#8a94a6" font-size="10">ConscienceAgent + used_in_response + synapsen-tab</text>
+      <rect x="14" y="48" width="300" height="6" rx="3" fill="#1a1f26"/>
+      <rect x="14" y="48" width="300" height="6" rx="3" fill="#9ece6a"/>
+      <text x="500" y="52" text-anchor="end" fill="#9ece6a" font-size="10">100%</text>
+    </g>
+
+    <g transform="translate(20,198)" font-size="11">
+      <rect x="0" y="0" width="520" height="64" rx="8" fill="#14181d" stroke="#232a33"/>
+      <text x="14" y="20" fill="#e6e9ef" font-weight="600">screenshots für README</text>
+      <text x="14" y="38" fill="#8a94a6" font-size="10">6 dashboard-views als SVG nachbauen</text>
+      <rect x="14" y="48" width="300" height="6" rx="3" fill="#1a1f26"/>
+      <rect x="14" y="48" width="180" height="6" rx="3" fill="#e0af68"/>
+      <text x="500" y="52" text-anchor="end" fill="#e0af68" font-size="10">60%</text>
+    </g>
+
+    <g transform="translate(20,272)" font-size="11">
+      <rect x="0" y="0" width="520" height="64" rx="8" fill="#14181d" stroke="#232a33"/>
+      <text x="14" y="20" fill="#e6e9ef" font-weight="600">nächste paarung: matching</text>
+      <text x="14" y="38" fill="#8a94a6" font-size="10">user-consent offen · warte auf peer-host</text>
+      <rect x="14" y="48" width="300" height="6" rx="3" fill="#1a1f26"/>
+      <rect x="14" y="48" width="20" height="6" rx="3" fill="#5a6473"/>
+      <text x="500" y="52" text-anchor="end" fill="#5a6473" font-size="10">idle</text>
+    </g>
+  </g>
+
+  <!-- bonds / key relations -->
+  <g transform="translate(620,350)">
+    <rect x="0" y="0" width="540" height="370" rx="10" fill="#0f1317" stroke="#1c232b"/>
+    <text x="22" y="28" fill="#c3cee7" font-size="11" font-weight="600">bonded with</text>
+    <text x="22" y="44" fill="#5a6473" font-size="10">(anonymisierte IDs · aus gelebten Episoden)</text>
+
+    <g transform="translate(22,70)" font-size="11">
+      <rect x="0" y="0" width="496" height="52" rx="8" fill="#14181d" stroke="#232a33"/>
+      <circle cx="26" cy="26" r="14" fill="#2a3a5a"/>
+      <text x="26" y="30" text-anchor="middle" fill="#7aa2f7" font-weight="700">A</text>
+      <text x="52" y="22" fill="#e6e9ef" font-weight="600">person-01</text>
+      <text x="52" y="40" fill="#8a94a6" font-size="10">44 begegnungen · letzter kontakt: heute · trusted</text>
+      <text x="486" y="30" text-anchor="end" fill="#9ece6a" font-size="10">primary</text>
+    </g>
+    <g transform="translate(22,130)" font-size="11">
+      <rect x="0" y="0" width="496" height="52" rx="8" fill="#14181d" stroke="#232a33"/>
+      <circle cx="26" cy="26" r="14" fill="#2a5a3a"/>
+      <text x="26" y="30" text-anchor="middle" fill="#9ece6a" font-weight="700">B</text>
+      <text x="52" y="22" fill="#e6e9ef" font-weight="600">person-02</text>
+      <text x="52" y="40" fill="#8a94a6" font-size="10">12 begegnungen · tag: manufacturer · project-scope</text>
+    </g>
+    <g transform="translate(22,190)" font-size="11">
+      <rect x="0" y="0" width="496" height="52" rx="8" fill="#14181d" stroke="#232a33"/>
+      <circle cx="26" cy="26" r="14" fill="#5a3a2a"/>
+      <text x="26" y="30" text-anchor="middle" fill="#e0af68" font-weight="700">C</text>
+      <text x="52" y="22" fill="#e6e9ef" font-weight="600">person-03</text>
+      <text x="52" y="40" fill="#8a94a6" font-size="10">3 begegnungen · transient · kein fit</text>
+    </g>
+    <g transform="translate(22,250)" font-size="11">
+      <rect x="0" y="0" width="496" height="52" rx="8" fill="#14181d" stroke="#232a33"/>
+      <circle cx="26" cy="26" r="14" fill="#3a2a5a"/>
+      <text x="26" y="30" text-anchor="middle" fill="#bb9af7" font-weight="700">D</text>
+      <text x="52" y="22" fill="#e6e9ef" font-weight="600">peer-agent-07</text>
+      <text x="52" y="40" fill="#8a94a6" font-size="10">föderations-peer · read-only · geteiltes genom-profil</text>
+    </g>
+    <text x="22" y="332" fill="#5a6473" font-size="10">— bonds verändern sich; kein Kontakt in 30 Tagen schwächt automatisch.</text>
+  </g>
+
+  <text x="40" y="735" fill="#5a6473" font-size="10">engram · dashboard · soul tab · illustrative dummy data</text>
+</svg>
