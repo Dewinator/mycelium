@@ -363,6 +363,115 @@
     table.mem td.content { max-width: 180px; }
     .bar-row { grid-template-columns: 80px 1fr 40px; gap: 6px; }
   }
+
+  /* ============================================================== */
+  /*   synapses panel — interactive neural-network visualisation    */
+  /* ============================================================== */
+  #panel-synapses.tab-panel.active { display: flex; flex-direction: column; gap: 12px; }
+  .syn-toolbar {
+    display: flex; flex-wrap: wrap; gap: 8px; align-items: center;
+    padding: 10px 12px; background: var(--bg-elev); border: 1px solid var(--border);
+    border-radius: var(--radius); box-shadow: var(--shadow);
+  }
+  .syn-toolbar label { display: inline-flex; align-items: center; gap: 6px; font-size: 12px; color: var(--text-dim); cursor: pointer; user-select: none; }
+  .syn-toolbar select,
+  .syn-toolbar input[type="text"] {
+    background: var(--bg-elev-2); color: var(--text); border: 1px solid var(--border);
+    border-radius: var(--radius-sm); padding: 6px 8px; font: inherit; font-size: 12px;
+  }
+  .syn-toolbar input[type="text"] { min-width: 160px; }
+  .syn-toolbar .chip {
+    padding: 3px 8px; border-radius: 999px; font-size: 11px;
+    background: var(--bg-elev-2); color: var(--text-dim); border: 1px solid var(--border);
+  }
+  .syn-toolbar .chip b { color: var(--text); }
+
+  .syn-stage {
+    position: relative; background: radial-gradient(ellipse at 30% 20%, rgba(122,162,247,0.08), transparent 55%),
+                               radial-gradient(ellipse at 75% 80%, rgba(187,154,247,0.08), transparent 60%),
+                               var(--bg);
+    border: 1px solid var(--border); border-radius: var(--radius);
+    height: calc(100vh - 220px); min-height: 520px; overflow: hidden;
+    box-shadow: inset 0 0 60px rgba(0,0,0,0.4), var(--shadow);
+  }
+  :root[data-theme="light"] .syn-stage {
+    background: radial-gradient(ellipse at 30% 20%, rgba(59,108,217,0.07), transparent 55%),
+                radial-gradient(ellipse at 75% 80%, rgba(138,77,217,0.07), transparent 60%),
+                #f9fbfe;
+    box-shadow: inset 0 0 60px rgba(20,30,50,0.04), var(--shadow);
+  }
+  .syn-canvas { position: absolute; inset: 0; display: block; touch-action: none; cursor: grab; }
+  .syn-canvas:active { cursor: grabbing; }
+
+  .syn-legend {
+    position: absolute; left: 12px; top: 12px; z-index: 2;
+    display: flex; flex-direction: column; gap: 4px;
+    padding: 8px 10px; background: color-mix(in srgb, var(--bg-elev) 82%, transparent);
+    border: 1px solid var(--border); border-radius: var(--radius-sm);
+    font-size: 11px; color: var(--text-dim);
+    max-height: calc(100% - 24px); overflow-y: auto;
+    backdrop-filter: blur(6px);
+  }
+  .syn-legend .row { display: flex; align-items: center; gap: 6px; cursor: pointer; padding: 2px 0; white-space: nowrap; }
+  .syn-legend .row.off { opacity: 0.35; }
+  .syn-legend .row .dash { width: 18px; height: 3px; border-radius: 2px; }
+  .syn-legend .row .ct { margin-left: auto; color: var(--text-faint); }
+
+  .syn-details {
+    position: absolute; right: 12px; top: 12px; bottom: 12px; width: 320px; z-index: 3;
+    padding: 14px 16px; background: color-mix(in srgb, var(--bg-elev) 92%, transparent);
+    border: 1px solid var(--border); border-radius: var(--radius);
+    box-shadow: var(--shadow); overflow-y: auto;
+    transform: translateX(calc(100% + 20px)); transition: transform .25s cubic-bezier(.4,0,.2,1);
+    backdrop-filter: blur(8px);
+  }
+  .syn-details.open { transform: translateX(0); }
+  .syn-details h3 { margin: 0 0 6px; font-size: 13px; font-weight: 600; line-height: 1.35; }
+  .syn-details .meta { font-size: 11px; color: var(--text-dim); margin-bottom: 10px; display: flex; gap: 8px; flex-wrap: wrap; }
+  .syn-details .meta span { background: var(--bg-elev-2); padding: 2px 6px; border-radius: 4px; }
+  .syn-details .body { font-size: 12px; color: var(--text); white-space: pre-wrap; word-break: break-word; line-height: 1.5; }
+  .syn-details .section { margin-top: 14px; }
+  .syn-details .section h4 { margin: 0 0 6px; font-size: 11px; text-transform: uppercase; letter-spacing: 0.08em; color: var(--text-dim); font-weight: 600; }
+  .syn-details .edge-row { font-size: 11px; color: var(--text-dim); padding: 3px 0; border-bottom: 1px dashed var(--border); cursor: pointer; }
+  .syn-details .edge-row:hover { color: var(--text); }
+  .syn-details .edge-row .etype { color: var(--accent-2); font-weight: 600; }
+  .syn-details .close-x {
+    position: absolute; top: 8px; right: 8px; background: none; border: none;
+    color: var(--text-faint); font-size: 16px; cursor: pointer; padding: 4px 8px;
+  }
+  .syn-details .close-x:hover { color: var(--text); }
+  .syn-hud {
+    position: absolute; left: 12px; bottom: 12px; z-index: 2;
+    font-size: 11px; color: var(--text-faint); font-family: var(--mono);
+    background: color-mix(in srgb, var(--bg-elev) 70%, transparent);
+    padding: 4px 8px; border-radius: var(--radius-sm); pointer-events: none;
+  }
+  .syn-hint {
+    position: absolute; right: 12px; bottom: 12px; z-index: 2;
+    font-size: 11px; color: var(--text-faint);
+    background: color-mix(in srgb, var(--bg-elev) 70%, transparent);
+    padding: 4px 8px; border-radius: var(--radius-sm); pointer-events: none;
+  }
+
+  @media (max-width: 820px) {
+    .syn-stage { height: calc(100vh - 200px); min-height: 420px; }
+    .syn-details {
+      top: auto; bottom: 0; left: 0; right: 0; width: 100%;
+      max-height: 55%;
+      transform: translateY(calc(100% + 20px));
+      border-radius: var(--radius) var(--radius) 0 0;
+    }
+    .syn-details.open { transform: translateY(0); }
+    .syn-legend { max-width: 60%; font-size: 10px; }
+    .syn-toolbar { padding: 8px; gap: 6px; }
+    .syn-toolbar label { font-size: 11px; }
+    .syn-toolbar input[type="text"] { min-width: 120px; flex: 1; }
+    .syn-hint { display: none; }
+  }
+  @media (max-width: 520px) {
+    .syn-legend .row .ct { display: none; }
+    .syn-legend .row { font-size: 10px; }
+  }
 </style>
 </head>
 <body>
@@ -386,6 +495,7 @@
       <button class="tab" data-tab="emergence">emergenz</button>
       <button class="tab" data-tab="federation">föderation</button>
       <button class="tab" data-tab="neurochemistry">neurochemie</button>
+      <button class="tab" data-tab="synapses">synapsen</button>
     </nav>
   </aside>
   <div class="backdrop" id="sidebar-backdrop"></div>
@@ -937,6 +1047,70 @@
       <div id="project-detail-body"></div>
     </section>
   </div><!-- /panel-projects -->
+
+  <div class="tab-panel" id="panel-synapses">
+    <div class="syn-toolbar">
+      <label>hebb
+        <input type="checkbox" id="syn-hebbian" checked />
+      </label>
+      <label>kategorie
+        <select id="syn-category">
+          <option value="">alle</option>
+          <option value="general">general</option>
+          <option value="people">people</option>
+          <option value="projects">projects</option>
+          <option value="topics">topics</option>
+          <option value="decisions">decisions</option>
+        </select>
+      </label>
+      <label>limit
+        <select id="syn-limit">
+          <option value="200">200</option>
+          <option value="400" selected>400</option>
+          <option value="800">800</option>
+          <option value="1500">1500</option>
+        </select>
+      </label>
+      <label>min.gewicht
+        <select id="syn-min-weight">
+          <option value="0">0</option>
+          <option value="0.3">0.3</option>
+          <option value="0.5">0.5</option>
+          <option value="0.7">0.7</option>
+        </select>
+      </label>
+      <input type="text" id="syn-search" placeholder="suchen (inhalt / tag)…" autocomplete="off" />
+      <button class="btn" id="syn-reload">neu laden</button>
+      <button class="btn" id="syn-recenter">zentrieren</button>
+      <button class="btn" id="syn-pulse" title="simuliere aktivierungswelle">puls</button>
+      <span class="chip"><b id="syn-node-count">0</b>&nbsp;neuronen</span>
+      <span class="chip"><b id="syn-edge-count">0</b>&nbsp;synapsen</span>
+    </div>
+    <div class="syn-stage" id="syn-stage">
+      <canvas class="syn-canvas" id="syn-canvas"></canvas>
+      <div class="syn-legend" id="syn-legend"></div>
+      <div class="syn-details" id="syn-details">
+        <button class="close-x" id="syn-details-close">✕</button>
+        <h3 id="syn-det-title">—</h3>
+        <div class="meta" id="syn-det-meta"></div>
+        <div class="body" id="syn-det-body"></div>
+        <div class="section" id="syn-det-causes-wrap" style="display:none">
+          <h4>verursacht von</h4>
+          <div id="syn-det-causes"></div>
+        </div>
+        <div class="section" id="syn-det-consequences-wrap" style="display:none">
+          <h4>führt zu</h4>
+          <div id="syn-det-consequences"></div>
+        </div>
+        <div class="section" id="syn-det-history-wrap" style="display:none">
+          <h4>ereignisse</h4>
+          <div id="syn-det-history" style="font-size:11px;color:var(--text-dim);font-family:var(--mono);line-height:1.6"></div>
+        </div>
+      </div>
+      <div class="syn-hud" id="syn-hud">zoom 1.00 · —</div>
+      <div class="syn-hint">drag: schwenken · rad/pinch: zoom · node-click: details · drag node: fixieren · R: layout</div>
+    </div>
+  </div><!-- /panel-synapses -->
 
   <!-- Create-project dialog -->
   <div id="project-create-modal" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,0.55);z-index:40;align-items:center;justify-content:center">
@@ -3321,6 +3495,740 @@ $("refresh").addEventListener("click", load);
 $("theme").addEventListener("click", () => {
   applyTheme(document.documentElement.dataset.theme === "light" ? "dark" : "light");
 });
+
+// ===========================================================================
+// synapses panel — force-directed neural-network visualisation
+// ===========================================================================
+const SYN = (() => {
+  const RELATION_COLOURS = {
+    caused_by:        "#f7768e",
+    led_to:           "#e0af68",
+    supersedes:       "#bb9af7",
+    contradicts:      "#f7768e",
+    related:          "#7aa2f7",
+    overrides:        "#bb9af7",
+    originated_in:    "#7dcfff",
+    learned_from:     "#9ece6a",
+    depends_on:       "#7dcfff",
+    exemplifies:      "#9ece6a",
+    fixed_by:         "#9ece6a",
+    repeated_mistake: "#f7768e",
+    validated_by:     "#9ece6a",
+    hebbian:          "#5a6473",
+  };
+  const RELATION_LABELS = {
+    caused_by:        "verursacht von",
+    led_to:           "führt zu",
+    supersedes:       "ersetzt",
+    contradicts:      "widerspricht",
+    related:          "verwandt",
+    overrides:        "übersteuert",
+    originated_in:    "entstand in",
+    learned_from:     "gelernt aus",
+    depends_on:       "hängt ab von",
+    exemplifies:      "exemplifiziert",
+    fixed_by:         "gefixt durch",
+    repeated_mistake: "wiederholter fehler",
+    validated_by:     "validiert durch",
+    hebbian:          "hebb (co-aktivierung)",
+  };
+  const CATEGORY_COLOURS = {
+    general:   "#7aa2f7",
+    people:    "#f7768e",
+    projects:  "#e0af68",
+    topics:    "#bb9af7",
+    decisions: "#9ece6a",
+  };
+
+  const state = {
+    nodes: [],
+    edges: [],
+    byId: new Map(),
+    transform: { x: 0, y: 0, k: 1 },
+    hover: null,
+    selected: null,
+    draggingNode: null,
+    panning: null,
+    pulses: [],                 // {fromId,toId,t,color,speed}
+    disabledTypes: new Set(),
+    searchTerm: "",
+    running: false,
+    frame: 0,
+    tickCount: 0,
+    lastPointer: null,          // for tap vs drag distinction
+    initialLoadDone: false,
+  };
+
+  let canvas = null, ctx = null, stage = null;
+  let rafId = null;
+
+  function $(id) { return document.getElementById(id); }
+  function isDark() { return document.documentElement.dataset.theme !== "light"; }
+
+  function resizeCanvas() {
+    if (!canvas || !stage) return;
+    const dpr = Math.max(1, Math.min(window.devicePixelRatio || 1, 2));
+    const r = stage.getBoundingClientRect();
+    canvas.width  = Math.floor(r.width  * dpr);
+    canvas.height = Math.floor(r.height * dpr);
+    canvas.style.width  = r.width  + "px";
+    canvas.style.height = r.height + "px";
+    ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+  }
+
+  // ---- force simulation (velocity Verlet, custom — no d3) -----------------
+  function initLayout(bounds) {
+    const cx = bounds.w / 2, cy = bounds.h / 2;
+    const R  = Math.min(bounds.w, bounds.h) * 0.35;
+    const n  = state.nodes.length || 1;
+    state.nodes.forEach((node, i) => {
+      const a = (i / n) * Math.PI * 2;
+      node.x  = node.x ?? (cx + Math.cos(a) * R * (0.6 + Math.random() * 0.4));
+      node.y  = node.y ?? (cy + Math.sin(a) * R * (0.6 + Math.random() * 0.4));
+      node.vx = 0; node.vy = 0;
+      node.fixed = false;
+    });
+  }
+
+  function nodeRadius(n) {
+    const base = 4;
+    const byAccess = Math.log(1 + (n.access || 0)) * 1.8;
+    const byStrength = (n.strength ?? 0.5) * 4;
+    return Math.max(3.5, base + byAccess + byStrength);
+  }
+
+  function tick(w, h) {
+    const nodes = state.nodes;
+    const edges = state.edges;
+    if (nodes.length === 0) return;
+    const cx = w / 2, cy = h / 2;
+
+    // Barnes-Hut würde hier glänzen, aber n≤1500 schafft auch der naive Kern.
+    // Wir nutzen eine grid-partition zur Repulsion-Beschleunigung.
+    const cellSize = 80;
+    const cols = Math.max(1, Math.ceil(w / cellSize));
+    const rows = Math.max(1, Math.ceil(h / cellSize));
+    const grid = new Map();
+    for (const n of nodes) {
+      const cxCell = Math.max(0, Math.min(cols - 1, Math.floor(n.x / cellSize)));
+      const ryCell = Math.max(0, Math.min(rows - 1, Math.floor(n.y / cellSize)));
+      const key = ryCell * cols + cxCell;
+      if (!grid.has(key)) grid.set(key, []);
+      grid.get(key).push(n);
+      n._cx = cxCell; n._cy = ryCell;
+    }
+
+    const reducedRepulsion = nodes.length > 600;
+    const repulsionK = reducedRepulsion ? 140 : 260;
+
+    // repulsion between neighbours in 3x3 cells
+    for (const n of nodes) {
+      let fx = 0, fy = 0;
+      for (let dy = -1; dy <= 1; dy++) {
+        for (let dx = -1; dx <= 1; dx++) {
+          const cx2 = n._cx + dx, cy2 = n._cy + dy;
+          if (cx2 < 0 || cy2 < 0 || cx2 >= cols || cy2 >= rows) continue;
+          const bucket = grid.get(cy2 * cols + cx2);
+          if (!bucket) continue;
+          for (const o of bucket) {
+            if (o === n) continue;
+            let dxx = n.x - o.x, dyy = n.y - o.y;
+            let d2 = dxx * dxx + dyy * dyy;
+            if (d2 < 0.01) { dxx = (Math.random() - 0.5); dyy = (Math.random() - 0.5); d2 = 0.5; }
+            const d = Math.sqrt(d2);
+            const f = repulsionK / d2;
+            fx += (dxx / d) * f;
+            fy += (dyy / d) * f;
+          }
+        }
+      }
+      // center spring
+      fx += (cx - n.x) * 0.004;
+      fy += (cy - n.y) * 0.004;
+      n._fx = fx; n._fy = fy;
+    }
+
+    // spring forces along edges
+    for (const e of edges) {
+      if (!e._a || !e._b) continue;
+      const a = e._a, b = e._b;
+      const dx = b.x - a.x, dy = b.y - a.y;
+      const d = Math.sqrt(dx * dx + dy * dy) || 0.01;
+      const target = 80 + (1 - (e.weight ?? 0.5)) * 90;
+      const diff = d - target;
+      const k = 0.02 * (0.5 + (e.weight ?? 0.5));
+      const fx = (dx / d) * diff * k;
+      const fy = (dy / d) * diff * k;
+      a._fx += fx; a._fy += fy;
+      b._fx -= fx; b._fy -= fy;
+    }
+
+    // integrate
+    const damping = 0.82;
+    for (const n of nodes) {
+      if (n.fixed) { n.vx = 0; n.vy = 0; continue; }
+      n.vx = (n.vx + n._fx) * damping;
+      n.vy = (n.vy + n._fy) * damping;
+      // clamp velocity
+      const vmax = 10;
+      if (n.vx >  vmax) n.vx =  vmax;
+      if (n.vx < -vmax) n.vx = -vmax;
+      if (n.vy >  vmax) n.vy =  vmax;
+      if (n.vy < -vmax) n.vy = -vmax;
+      n.x += n.vx;
+      n.y += n.vy;
+      // soft boundary
+      const pad = 40;
+      if (n.x < pad) n.vx += (pad - n.x) * 0.02;
+      if (n.y < pad) n.vy += (pad - n.y) * 0.02;
+      if (n.x > w - pad) n.vx -= (n.x - (w - pad)) * 0.02;
+      if (n.y > h - pad) n.vy -= (n.y - (h - pad)) * 0.02;
+    }
+    state.tickCount++;
+  }
+
+  // ---- coordinate transforms ---------------------------------------------
+  function worldToScreen(x, y) {
+    return { x: x * state.transform.k + state.transform.x, y: y * state.transform.k + state.transform.y };
+  }
+  function screenToWorld(x, y) {
+    return { x: (x - state.transform.x) / state.transform.k, y: (y - state.transform.y) / state.transform.k };
+  }
+  function hitTestNode(sx, sy) {
+    // reverse iterate so drawn-on-top wins
+    for (let i = state.nodes.length - 1; i >= 0; i--) {
+      const n = state.nodes[i];
+      const p = worldToScreen(n.x, n.y);
+      const r = nodeRadius(n) * state.transform.k + 4;
+      const dx = sx - p.x, dy = sy - p.y;
+      if (dx * dx + dy * dy <= r * r) return n;
+    }
+    return null;
+  }
+
+  // ---- rendering ----------------------------------------------------------
+  function render() {
+    if (!ctx || !canvas) return;
+    const w = canvas.clientWidth, h = canvas.clientHeight;
+    if (state.running) tick(w, h);
+
+    ctx.clearRect(0, 0, w, h);
+
+    const t = state.transform;
+    const darkBg = isDark();
+    ctx.save();
+    ctx.translate(t.x, t.y);
+    ctx.scale(t.k, t.k);
+
+    // ------ edges ----------------------------------------------------------
+    const hl = state.hover || state.selected;
+    const hlId = hl ? hl.id : null;
+    const searchHits = state.searchTerm ? computeSearchHits() : null;
+
+    for (const e of state.edges) {
+      if (!e._a || !e._b) continue;
+      if (state.disabledTypes.has(e.type)) continue;
+      const a = e._a, b = e._b;
+      const dim = hlId && a.id !== hlId && b.id !== hlId;
+      const col = RELATION_COLOURS[e.type] || "#5a6473";
+      const weight = e.weight ?? 0.5;
+      let alpha = dim ? 0.07 : (0.25 + weight * 0.55);
+      if (searchHits && !searchHits.has(a.id) && !searchHits.has(b.id)) alpha *= 0.25;
+
+      // directional glow: brighter near target to suggest signal flow
+      const grad = ctx.createLinearGradient(a.x, a.y, b.x, b.y);
+      grad.addColorStop(0, hexAlpha(col, alpha * 0.5));
+      grad.addColorStop(1, hexAlpha(col, alpha));
+      ctx.strokeStyle = grad;
+      ctx.lineWidth = (e.kind === "hebbian" ? 0.7 : 1.1) + weight * 1.6;
+      ctx.beginPath();
+      // slight curve so parallel edges don't overlap
+      const mx = (a.x + b.x) / 2, my = (a.y + b.y) / 2;
+      const nx = -(b.y - a.y), ny = b.x - a.x;
+      const len = Math.sqrt(nx * nx + ny * ny) || 1;
+      const bend = (e.kind === "hebbian" ? 6 : 12) * ((e._bend ?? 1));
+      const cpx = mx + (nx / len) * bend, cpy = my + (ny / len) * bend;
+      ctx.moveTo(a.x, a.y);
+      ctx.quadraticCurveTo(cpx, cpy, b.x, b.y);
+      ctx.stroke();
+
+      // Arrow head for directed edges (not hebbian)
+      if (e.kind !== "hebbian" && !dim) {
+        const br = nodeRadius(b);
+        const ang = Math.atan2(b.y - cpy, b.x - cpx);
+        const ax = b.x - Math.cos(ang) * (br + 2);
+        const ay = b.y - Math.sin(ang) * (br + 2);
+        ctx.fillStyle = hexAlpha(col, alpha + 0.15);
+        ctx.beginPath();
+        ctx.moveTo(ax, ay);
+        ctx.lineTo(ax - Math.cos(ang - 0.42) * 6, ay - Math.sin(ang - 0.42) * 6);
+        ctx.lineTo(ax - Math.cos(ang + 0.42) * 6, ay - Math.sin(ang + 0.42) * 6);
+        ctx.closePath();
+        ctx.fill();
+      }
+    }
+
+    // ------ pulses (travelling action-potentials) --------------------------
+    const now = performance.now();
+    state.pulses = state.pulses.filter(p => {
+      const a = state.byId.get(p.fromId), b = state.byId.get(p.toId);
+      if (!a || !b) return false;
+      p.t += p.speed;
+      if (p.t > 1) return false;
+      const x = a.x + (b.x - a.x) * p.t;
+      const y = a.y + (b.y - a.y) * p.t;
+      ctx.save();
+      ctx.fillStyle = hexAlpha(p.color, 0.9);
+      ctx.shadowColor = p.color;
+      ctx.shadowBlur = 14;
+      ctx.beginPath();
+      ctx.arc(x, y, 3.5, 0, Math.PI * 2);
+      ctx.fill();
+      ctx.restore();
+      return true;
+    });
+
+    // ------ nodes ----------------------------------------------------------
+    for (const n of state.nodes) {
+      const r = nodeRadius(n);
+      const cat = CATEGORY_COLOURS[n.category] || "#7aa2f7";
+      const isHover = state.hover === n;
+      const isSel   = state.selected === n;
+      const isDim   = hlId && n.id !== hlId && !isConnected(n, hl);
+      const isHit   = searchHits ? searchHits.has(n.id) : true;
+      const pulse   = isHover || isSel
+        ? 1.0 + 0.15 * Math.sin(now / 260)
+        : isHit ? 1 : 0.6;
+      const effR = r * pulse;
+
+      // outer glow
+      if (!isDim) {
+        const glow = ctx.createRadialGradient(n.x, n.y, 0, n.x, n.y, effR * 3.2);
+        glow.addColorStop(0, hexAlpha(cat, 0.45 * (isHit ? 1 : 0.5)));
+        glow.addColorStop(1, hexAlpha(cat, 0));
+        ctx.fillStyle = glow;
+        ctx.beginPath();
+        ctx.arc(n.x, n.y, effR * 3.2, 0, Math.PI * 2);
+        ctx.fill();
+      }
+
+      // core
+      ctx.beginPath();
+      ctx.arc(n.x, n.y, effR, 0, Math.PI * 2);
+      const core = ctx.createRadialGradient(n.x - effR*0.35, n.y - effR*0.35, 0, n.x, n.y, effR);
+      const baseAlpha = isDim ? 0.35 : (isHit ? 1 : 0.6);
+      core.addColorStop(0, hexAlpha(lighten(cat, 0.35), baseAlpha));
+      core.addColorStop(1, hexAlpha(cat, baseAlpha));
+      ctx.fillStyle = core;
+      ctx.fill();
+
+      // ring for pinned / archived
+      if (n.pinned || n.archived) {
+        ctx.lineWidth = 1.5;
+        ctx.strokeStyle = n.archived ? "#f7768e" : "#e0af68";
+        ctx.beginPath();
+        ctx.arc(n.x, n.y, effR + 2.5, 0, Math.PI * 2);
+        ctx.stroke();
+      }
+
+      // label for hover / selected / zoomed-in
+      if (isHover || isSel || t.k > 1.8) {
+        ctx.font = `600 ${Math.max(10, 11 / t.k)}px ${getComputedStyle(document.body).fontFamily || "sans-serif"}`;
+        ctx.fillStyle = darkBg ? "#e6e9ef" : "#181c22";
+        ctx.textBaseline = "middle";
+        const label = (n.label || "").slice(0, 48);
+        const metrics = ctx.measureText(label);
+        const pad = 4 / t.k;
+        ctx.fillStyle = darkBg ? "rgba(11,13,16,0.85)" : "rgba(255,255,255,0.9)";
+        ctx.fillRect(n.x + effR + pad, n.y - (8 / t.k) - pad, metrics.width + pad * 2, 14 / t.k + pad * 2);
+        ctx.fillStyle = darkBg ? "#e6e9ef" : "#181c22";
+        ctx.fillText(label, n.x + effR + pad * 2, n.y);
+      }
+    }
+
+    ctx.restore();
+
+    // HUD
+    const hud = $("syn-hud");
+    if (hud) hud.textContent = `zoom ${t.k.toFixed(2)} · ${state.nodes.length}n / ${state.edges.length - countDisabled()}e` +
+      (hl ? ` · ⟲ ${hl.label.slice(0, 40)}` : "");
+
+    rafId = requestAnimationFrame(render);
+  }
+
+  function countDisabled() {
+    let n = 0;
+    for (const e of state.edges) if (state.disabledTypes.has(e.type)) n++;
+    return n;
+  }
+
+  function computeSearchHits() {
+    const q = state.searchTerm.toLowerCase();
+    const s = new Set();
+    for (const n of state.nodes) {
+      if ((n.content || "").toLowerCase().includes(q) || (n.tags || []).some(t => t.toLowerCase().includes(q))) s.add(n.id);
+    }
+    return s;
+  }
+
+  function isConnected(n, hub) {
+    if (!n || !hub) return false;
+    for (const e of state.edges) {
+      if ((e.a === hub.id && e.b === n.id) || (e.b === hub.id && e.a === n.id)) return true;
+    }
+    return false;
+  }
+
+  // ---- colour helpers -----------------------------------------------------
+  function hexAlpha(hex, a) {
+    const h = hex.replace("#", "");
+    const r = parseInt(h.substring(0, 2), 16);
+    const g = parseInt(h.substring(2, 4), 16);
+    const b = parseInt(h.substring(4, 6), 16);
+    return `rgba(${r},${g},${b},${a})`;
+  }
+  function lighten(hex, amount) {
+    const h = hex.replace("#", "");
+    let r = parseInt(h.substring(0, 2), 16);
+    let g = parseInt(h.substring(2, 4), 16);
+    let b = parseInt(h.substring(4, 6), 16);
+    r = Math.min(255, Math.round(r + (255 - r) * amount));
+    g = Math.min(255, Math.round(g + (255 - g) * amount));
+    b = Math.min(255, Math.round(b + (255 - b) * amount));
+    return `#${[r,g,b].map(x => x.toString(16).padStart(2,"0")).join("")}`;
+  }
+
+  // ---- interactions -------------------------------------------------------
+  function onPointerDown(e) {
+    canvas.setPointerCapture(e.pointerId);
+    const rect = canvas.getBoundingClientRect();
+    const sx = e.clientX - rect.left, sy = e.clientY - rect.top;
+    const node = hitTestNode(sx, sy);
+    state.lastPointer = { sx, sy, node, moved: false, pointerId: e.pointerId };
+    if (node) {
+      state.draggingNode = node;
+      node.fixed = true;
+    } else {
+      state.panning = { sx, sy, x: state.transform.x, y: state.transform.y };
+    }
+  }
+
+  function onPointerMove(e) {
+    const rect = canvas.getBoundingClientRect();
+    const sx = e.clientX - rect.left, sy = e.clientY - rect.top;
+
+    if (state.lastPointer) {
+      const dx = sx - state.lastPointer.sx, dy = sy - state.lastPointer.sy;
+      if (dx * dx + dy * dy > 16) state.lastPointer.moved = true;
+    }
+
+    if (state.draggingNode) {
+      const w = screenToWorld(sx, sy);
+      state.draggingNode.x = w.x; state.draggingNode.y = w.y;
+      state.draggingNode.vx = 0;  state.draggingNode.vy = 0;
+      return;
+    }
+    if (state.panning) {
+      state.transform.x = state.panning.x + (sx - state.panning.sx);
+      state.transform.y = state.panning.y + (sy - state.panning.sy);
+      return;
+    }
+    const hit = hitTestNode(sx, sy);
+    if (hit !== state.hover) {
+      state.hover = hit;
+      canvas.style.cursor = hit ? "pointer" : "grab";
+    }
+  }
+
+  function onPointerUp(e) {
+    if (state.lastPointer && !state.lastPointer.moved && state.lastPointer.node) {
+      selectNode(state.lastPointer.node);
+      triggerPulses(state.lastPointer.node);
+    } else if (state.lastPointer && !state.lastPointer.moved && !state.lastPointer.node) {
+      // click on empty → clear selection
+      state.selected = null;
+      $("syn-details").classList.remove("open");
+    }
+    if (state.draggingNode && state.lastPointer && !state.lastPointer.moved) {
+      state.draggingNode.fixed = false;      // tap-on-node without drag: release
+    }
+    state.draggingNode = null;
+    state.panning = null;
+    state.lastPointer = null;
+    canvas.releasePointerCapture?.(e.pointerId);
+  }
+
+  function onWheel(e) {
+    e.preventDefault();
+    const rect = canvas.getBoundingClientRect();
+    const sx = e.clientX - rect.left, sy = e.clientY - rect.top;
+    const before = screenToWorld(sx, sy);
+    const factor = Math.pow(1.0015, -e.deltaY);
+    state.transform.k = Math.max(0.2, Math.min(5, state.transform.k * factor));
+    const after = screenToWorld(sx, sy);
+    state.transform.x += (after.x - before.x) * state.transform.k;
+    state.transform.y += (after.y - before.y) * state.transform.k;
+  }
+
+  // Touch pinch-zoom
+  let pinchState = null;
+  function onTouchStart(e) {
+    if (e.touches.length === 2) {
+      pinchState = {
+        d: dist2(e.touches[0], e.touches[1]),
+        k: state.transform.k,
+      };
+      e.preventDefault();
+    }
+  }
+  function onTouchMove(e) {
+    if (e.touches.length === 2 && pinchState) {
+      const d = dist2(e.touches[0], e.touches[1]);
+      state.transform.k = Math.max(0.2, Math.min(5, pinchState.k * (d / pinchState.d)));
+      e.preventDefault();
+    }
+  }
+  function onTouchEnd() { pinchState = null; }
+  function dist2(a, b) { const dx = a.clientX - b.clientX, dy = a.clientY - b.clientY; return Math.sqrt(dx*dx + dy*dy); }
+
+  function triggerPulses(node) {
+    const out = state.edges.filter(e => e.a === node.id && !state.disabledTypes.has(e.type));
+    const inc = state.edges.filter(e => e.b === node.id && !state.disabledTypes.has(e.type));
+    for (const e of out) state.pulses.push({ fromId: node.id, toId: e.b, t: 0, color: RELATION_COLOURS[e.type] || "#7aa2f7", speed: 0.02 + 0.02 * (e.weight ?? 0.5) });
+    for (const e of inc) state.pulses.push({ fromId: e.a, toId: node.id, t: 0, color: RELATION_COLOURS[e.type] || "#7aa2f7", speed: 0.02 + 0.02 * (e.weight ?? 0.5) });
+  }
+
+  function globalPulse() {
+    const count = Math.min(20, state.nodes.length);
+    for (let i = 0; i < count; i++) {
+      const n = state.nodes[(Math.random() * state.nodes.length) | 0];
+      if (n) triggerPulses(n);
+    }
+  }
+
+  async function selectNode(node) {
+    state.selected = node;
+    const pane = $("syn-details");
+    pane.classList.add("open");
+    $("syn-det-title").textContent = (node.label || node.id).slice(0, 160);
+    const meta = $("syn-det-meta");
+    meta.innerHTML = "";
+    const tags = [
+      `<span style="color:${CATEGORY_COLOURS[node.category] || "#7aa2f7"}">${node.category}</span>`,
+      `<span>${node.stage}</span>`,
+      `<span>zugriffe: ${node.access}</span>`,
+      `<span>nützlich: ${node.useful}</span>`,
+      node.pinned   ? `<span style="color:#e0af68">📌 pinned</span>` : null,
+      node.archived ? `<span style="color:#f7768e">archiviert</span>` : null,
+    ].filter(Boolean);
+    meta.innerHTML = tags.join("");
+    $("syn-det-body").textContent = node.content || "";
+
+    try {
+      const r = await fetch(`/memory/${encodeURIComponent(node.id)}`);
+      if (!r.ok) throw new Error(`HTTP ${r.status}`);
+      const { why, history } = await r.json();
+      renderDetailEdges($("syn-det-causes"),       (why?.causes        ?? []), "caused_by");
+      renderDetailEdges($("syn-det-consequences"), (why?.consequences  ?? []), "led_to");
+      $("syn-det-causes-wrap").style.display        = (why?.causes?.length        ? "block" : "none");
+      $("syn-det-consequences-wrap").style.display  = (why?.consequences?.length  ? "block" : "none");
+
+      const ev = history?.recent_events ?? [];
+      $("syn-det-history-wrap").style.display = ev.length ? "block" : "none";
+      $("syn-det-history").innerHTML = ev.slice(0, 12).map(e =>
+        `<div>${(e.created_at || "").slice(5,16).replace("T"," ")} <span style="color:var(--accent)">${e.event_type}</span> <span style="color:var(--text-faint)">(${e.source || ""})</span></div>`
+      ).join("");
+    } catch (err) {
+      console.warn("memory detail fetch failed:", err);
+    }
+  }
+
+  function renderDetailEdges(el, rows, fallbackType) {
+    el.innerHTML = rows.slice(0, 10).map(e => {
+      const type = e.type || fallbackType;
+      const preview = String(e.other_content ?? "").slice(0, 120);
+      const col = RELATION_COLOURS[type] || "#5a6473";
+      return `<div class="edge-row" data-target="${e.other_id ?? ""}" style="border-left:2px solid ${col};padding-left:6px">
+                <span class="etype" style="color:${col}">${RELATION_LABELS[type] || type}</span>
+                <span style="color:var(--text-faint)"> · w=${(e.weight ?? 0).toFixed(2)}</span><br>
+                ${escapeHtml(preview)}
+              </div>`;
+    }).join("");
+    el.querySelectorAll(".edge-row").forEach(row => {
+      row.addEventListener("click", () => {
+        const tid = row.dataset.target;
+        const target = state.byId.get(tid);
+        if (target) { selectNode(target); centerOn(target); triggerPulses(target); }
+      });
+    });
+  }
+
+  function centerOn(node) {
+    const w = canvas.clientWidth, h = canvas.clientHeight;
+    state.transform.x = w / 2 - node.x * state.transform.k;
+    state.transform.y = h / 2 - node.y * state.transform.k;
+  }
+
+  // ---- legend -------------------------------------------------------------
+  function renderLegend(typeCounts) {
+    const el = $("syn-legend");
+    const types = Object.keys(typeCounts).sort((a, b) => typeCounts[b] - typeCounts[a]);
+    if (types.length === 0) { el.innerHTML = `<div style="color:var(--text-faint)">keine kanten im aktuellen filter</div>`; return; }
+    el.innerHTML = types.map(t => {
+      const off = state.disabledTypes.has(t) ? "off" : "";
+      const col = RELATION_COLOURS[t] || "#5a6473";
+      return `<div class="row ${off}" data-type="${t}">
+        <span class="dash" style="background:${col}"></span>
+        <span>${RELATION_LABELS[t] || t}</span>
+        <span class="ct">${typeCounts[t]}</span>
+      </div>`;
+    }).join("");
+    el.querySelectorAll(".row").forEach(row => {
+      row.addEventListener("click", () => {
+        const t = row.dataset.type;
+        if (state.disabledTypes.has(t)) state.disabledTypes.delete(t);
+        else state.disabledTypes.add(t);
+        row.classList.toggle("off");
+      });
+    });
+  }
+
+  // ---- fetch + wire -------------------------------------------------------
+  async function load() {
+    const hebb = $("syn-hebbian").checked ? 1 : 0;
+    const cat  = $("syn-category").value;
+    const lim  = $("syn-limit").value;
+    const minW = $("syn-min-weight").value;
+    const q = new URLSearchParams({ limit: lim, min_weight: minW, hebbian: String(hebb) });
+    if (cat) q.set("category", cat);
+    try {
+      const r = await fetch(`/relations-graph?${q}`);
+      if (!r.ok) throw new Error(`HTTP ${r.status}`);
+      const data = await r.json();
+      ingest(data);
+    } catch (err) {
+      console.error("relations-graph fetch failed", err);
+      $("syn-legend").innerHTML = `<div style="color:var(--bad)">fehler: ${err.message || err}</div>`;
+    }
+  }
+
+  function ingest(data) {
+    // keep positions of nodes that persisted
+    const oldById = new Map(state.nodes.map(n => [n.id, n]));
+    state.nodes = (data.nodes || []).map(n => {
+      const old = oldById.get(n.id);
+      return { ...n, x: old?.x, y: old?.y, vx: 0, vy: 0, fixed: false };
+    });
+    state.byId = new Map(state.nodes.map(n => [n.id, n]));
+
+    // attach resolved _a/_b references + disambiguate parallel edges via _bend
+    const pairCount = new Map();
+    state.edges = (data.edges || []).map(e => {
+      const a = state.byId.get(e.a), b = state.byId.get(e.b);
+      const key = a && b ? [a.id, b.id].sort().join("|") : "";
+      const c = pairCount.get(key) || 0;
+      pairCount.set(key, c + 1);
+      return { ...e, _a: a, _b: b, _bend: (c % 2 === 0 ? 1 : -1) * (1 + Math.floor(c / 2) * 0.8) };
+    }).filter(e => e._a && e._b);
+
+    $("syn-node-count").textContent = state.nodes.length;
+    $("syn-edge-count").textContent = state.edges.length;
+    renderLegend(data.stats?.type_counts || {});
+
+    if (!state.initialLoadDone || state.nodes.every(n => n.x == null)) {
+      const rect = stage.getBoundingClientRect();
+      initLayout({ w: rect.width, h: rect.height });
+      state.initialLoadDone = true;
+    }
+    state.running = true;
+  }
+
+  function recenterAll() {
+    const w = canvas.clientWidth, h = canvas.clientHeight;
+    if (state.nodes.length === 0) return;
+    let minX = Infinity, minY = Infinity, maxX = -Infinity, maxY = -Infinity;
+    for (const n of state.nodes) {
+      if (n.x < minX) minX = n.x;
+      if (n.y < minY) minY = n.y;
+      if (n.x > maxX) maxX = n.x;
+      if (n.y > maxY) maxY = n.y;
+    }
+    const pad = 60;
+    const bw = (maxX - minX) + pad * 2, bh = (maxY - minY) + pad * 2;
+    const k = Math.min(w / bw, h / bh, 2);
+    state.transform.k = k;
+    state.transform.x = (w - (minX + maxX) * k) / 2;
+    state.transform.y = (h - (minY + maxY) * k) / 2;
+  }
+
+  function escapeHtml(s) {
+    return String(s).replace(/[&<>"']/g, c => ({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
+  }
+
+  function attach() {
+    canvas = $("syn-canvas");
+    stage  = $("syn-stage");
+    if (!canvas || !stage) return;
+    ctx = canvas.getContext("2d");
+    resizeCanvas();
+
+    canvas.addEventListener("pointerdown", onPointerDown);
+    canvas.addEventListener("pointermove", onPointerMove);
+    canvas.addEventListener("pointerup",   onPointerUp);
+    canvas.addEventListener("pointercancel", onPointerUp);
+    canvas.addEventListener("wheel", onWheel, { passive: false });
+    canvas.addEventListener("touchstart", onTouchStart, { passive: false });
+    canvas.addEventListener("touchmove",  onTouchMove,  { passive: false });
+    canvas.addEventListener("touchend",   onTouchEnd);
+
+    $("syn-reload").addEventListener("click", load);
+    $("syn-recenter").addEventListener("click", recenterAll);
+    $("syn-pulse").addEventListener("click", globalPulse);
+    $("syn-hebbian").addEventListener("change", load);
+    $("syn-category").addEventListener("change", load);
+    $("syn-limit").addEventListener("change", load);
+    $("syn-min-weight").addEventListener("change", load);
+    $("syn-search").addEventListener("input", (e) => { state.searchTerm = e.target.value.trim(); });
+    $("syn-details-close").addEventListener("click", () => {
+      state.selected = null;
+      $("syn-details").classList.remove("open");
+    });
+
+    window.addEventListener("keydown", (e) => {
+      if (!document.getElementById("panel-synapses").classList.contains("active")) return;
+      if (e.key === "r" || e.key === "R") {
+        const rect = stage.getBoundingClientRect();
+        initLayout({ w: rect.width, h: rect.height });
+      } else if (e.key === "Escape") {
+        state.selected = null;
+        $("syn-details").classList.remove("open");
+      } else if (e.key === "+" || e.key === "=") {
+        state.transform.k = Math.min(5, state.transform.k * 1.2);
+      } else if (e.key === "-" || e.key === "_") {
+        state.transform.k = Math.max(0.2, state.transform.k / 1.2);
+      }
+    });
+
+    const ro = new ResizeObserver(() => resizeCanvas());
+    ro.observe(stage);
+
+    rafId = requestAnimationFrame(render);
+  }
+
+  function activate() {
+    if (!canvas) attach();
+    else resizeCanvas();
+    if (!state.initialLoadDone) load();
+  }
+
+  return { activate };
+})();
+
+// tab switching — append synapses activation
+const origTabSwitch = document.querySelector(".tab[data-tab='synapses']");
+if (origTabSwitch) {
+  origTabSwitch.addEventListener("click", () => { setTimeout(() => SYN.activate(), 30); });
+}
 
 initTheme();
 load();

@@ -1,4 +1,5 @@
 import { z } from "zod";
+import { randomUUID } from "node:crypto";
 import type { MemoryService } from "../services/supabase.js";
 import { AffectService } from "../services/affect.js";
 
@@ -34,6 +35,13 @@ export const recallSchema = z.object({
     .default(false)
     .describe(
       "Disable affective biasing (dev/eval mode). Normally recall is modulated by agent_affect — high frustration widens search, high satisfaction narrows it."
+    ),
+  cite: z
+    .boolean()
+    .optional()
+    .default(false)
+    .describe(
+      "Set true when the retrieved memories will actually inform the response. Emits one `used_in_response` event per top-5 hit with a shared trace_id — the CoactivationAgent then Hebbian-links them pairwise. Opt-in to keep signal quality: purely exploratory recalls should leave this off."
     ),
 });
 
@@ -88,9 +96,12 @@ export async function recall(
 
   // Rehearsal (testing effect) + Hebbian co-activation of the top results.
   const topIds = results.map((r) => r.id);
+  const citedIds = topIds.slice(0, Math.min(5, topIds.length));
+  const citeTrace = input.cite && citedIds.length >= 2 ? randomUUID() : null;
   await Promise.all([
     service.touch(topIds),
-    service.coactivate(topIds.slice(0, Math.min(5, topIds.length))),
+    service.coactivate(citedIds),
+    citeTrace ? service.emitUsedInResponse(citedIds, citeTrace) : Promise.resolve(),
   ]);
 
   // Spreading activation: surface neighbors that weren't in the direct hits.
@@ -140,5 +151,9 @@ export async function recall(
     text += `\n\nAssociated (spreading activation):\n\n${assoc}`;
   }
 
-  return { content: [{ type: "text" as const, text: text + biasNote }] };
+  const citeNote = citeTrace
+    ? `\n\n[cite] emitted used_in_response for ${citedIds.length} memories (trace=${citeTrace.slice(0, 8)}) — CoactivationAgent will pairwise link after 30s debounce.`
+    : "";
+
+  return { content: [{ type: "text" as const, text: text + biasNote + citeNote }] };
 }

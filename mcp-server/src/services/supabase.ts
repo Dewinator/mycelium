@@ -201,6 +201,27 @@ export class MemoryService {
     if (error) console.error("coactivate_memories failed:", error.message);
   }
 
+  /**
+   * Emit one `used_in_response` event per id, all sharing a trace_id.
+   * Consumed by the CoactivationAgent (Migration 047 event-bus). Non-fatal
+   * on error — this is telemetry, not a correctness dependency.
+   */
+  async emitUsedInResponse(ids: string[], traceId: string): Promise<void> {
+    if (ids.length === 0) return;
+    await Promise.all(ids.map((id) =>
+      this.db.rpc("log_memory_event", {
+        p_memory_id:  id,
+        p_event_type: "used_in_response",
+        p_source:     "mcp:recall:cite",
+        p_context:    {},
+        p_trace_id:   traceId,
+        p_created_by: null,
+      }).then(({ error }) => {
+        if (error) console.error(`emitUsedInResponse(${id.slice(0,8)}) failed:`, error.message ?? error);
+      })
+    ));
+  }
+
   /** Spreading activation — return associated neighbors of the seed memories. */
   async spread(seedIds: string[], maxNeighbors: number = 5): Promise<SpreadResult[]> {
     if (seedIds.length === 0) return [];

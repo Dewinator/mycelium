@@ -62,6 +62,19 @@ import {
 import { absorbSchema, absorb } from "./tools/absorb.js";
 import { digestSchema, digest } from "./tools/digest.js";
 import { findToolSchema, findTool } from "./tools/find_tool.js";
+import { RelationsService } from "./services/relations.js";
+import {
+  chainSchema, chain,
+  whySchema, why,
+  historySchema, history,
+  neighborsSchema, neighbors,
+  supersedeSchema, supersede,
+} from "./tools/relations.js";
+import { patternsSchema, patterns } from "./tools/patterns.js";
+import { markUsedInResponseSchema, markUsedInResponse } from "./tools/cite.js";
+import { AgentEventBus } from "./agents/event-bus.js";
+import { CoactivationAgent } from "./agents/coactivation-agent.js";
+import { ConscienceAgent } from "./agents/conscience-agent.js";
 import { ProjectService } from "./services/projects.js";
 import {
   createProjectSchema, createProject,
@@ -188,6 +201,7 @@ const guardService = new GuardService(
   parseInt(process.env.GUARD_TIMEOUT_MS ?? "8000", 10)
 );
 const neurochemistryService = new NeurochemistryService(SUPABASE_URL, SUPABASE_KEY);
+const relationsService      = new RelationsService(SUPABASE_URL, SUPABASE_KEY);
 const federationService = new FederationService(
   SUPABASE_URL,
   SUPABASE_KEY,
@@ -237,25 +251,47 @@ const server = new McpServer({
 // handlers — only the registration (what the model sees in its schema) is
 // scoped. Full server is untouched for Codex/Claude instances.
 //
-//   full (default) — all 90 tools
+//   full (default) — all 90+ tools
 //   core           — 6 tools covering the complete agent workflow
+//   core-plus      — core + engram-inspired memory-graph reasoning tools
+//                    (chain / why / memory_history / memory_neighbors /
+//                    memory_patterns / mark_used_in_response).
+//                    Target: mid-size capable models (Claude, GPT-4-class)
+//                    running inside OpenClaw — big enough to use relation
+//                    tools, small enough to not want the full federation /
+//                    genome / tinder surface.
 //
 // Additional profiles can be added as the Small-Model-Middleware roadmap
 // (see issues #N1–#N9) materialises.
 // -------------------------------------------------------------------------
 const TOOL_PROFILE = (process.env.OPENCLAW_TOOL_PROFILE ?? "full").toLowerCase();
 
+const CORE_TOOLS = [
+  "prime_context",
+  "recall",
+  "remember",
+  "absorb",
+  "digest",
+  "update_affect",
+];
+
+const CORE_PLUS_TOOLS = [
+  ...CORE_TOOLS,
+  // Migration 046-049 — memory-graph reasoning
+  "chain",
+  "why",
+  "memory_history",
+  "memory_neighbors",
+  "supersede_memory",
+  "memory_patterns",
+  "mark_used_in_response",
+];
+
 const TOOL_PROFILES: Record<string, Set<string>> = {
-  full: new Set<string>(),   // empty = everything
-  all:  new Set<string>(),   // alias
-  core: new Set<string>([
-    "prime_context",
-    "recall",
-    "remember",
-    "absorb",
-    "digest",
-    "update_affect",
-  ]),
+  full:        new Set<string>(),   // empty = everything
+  all:         new Set<string>(),   // alias
+  core:        new Set<string>(CORE_TOOLS),
+  "core-plus": new Set<string>(CORE_PLUS_TOOLS),
 };
 
 const _allowedTools = TOOL_PROFILES[TOOL_PROFILE];
@@ -312,7 +348,7 @@ server.tool(
 
 server.tool(
   "recall",
-  "Search memories using semantic similarity and keyword matching. Returns the most relevant memories for a query. Biased by the agent's current affective state (high frustration widens search, high satisfaction narrows it) — pass ignore_affect=true to disable.",
+  "Search memories using semantic similarity and keyword matching. Returns the most relevant memories for a query. Biased by the agent's current affective state (high frustration widens search, high satisfaction narrows it) — pass ignore_affect=true to disable. Pass cite=true when the retrieved memories will actually inform the response — that emits `used_in_response` events so the CoactivationAgent Hebbian-links them pairwise.",
   recallSchema.shape,
   withErrorHandling((input) => recall(memoryService, affectService, recallSchema.parse(input)))
 );
@@ -993,6 +1029,60 @@ server.tool(
   withErrorHandling((input) => linkToProject(projectService, linkToProjectSchema.parse(input)))
 );
 
+// --- memory relations graph (Migrations 046-048) ---------------------------
+// Typed memory-to-memory edges (13 labels) + canonical event log +
+// bitemporal validity. chain/why/history let the agent reason about WHY
+// a given memory exists and what it led to, beyond the undirected
+// Hebbian association in memory_links.
+server.tool(
+  "chain",
+  "Create a typed edge between two memories. 13 labels: caused_by, led_to, supersedes, contradicts, related, overrides, originated_in, learned_from, depends_on, exemplifies, fixed_by, repeated_mistake, validated_by. Idempotent — re-chaining strengthens the edge.",
+  chainSchema.shape,
+  withErrorHandling((input) => chain(relationsService, chainSchema.parse(input)))
+);
+
+server.tool(
+  "why",
+  "Explain a memory's place in the graph: causes (edges that feed INTO it — caused_by / learned_from / originated_in / depends_on / fixed_by / validated_by) and consequences (edges that flow OUT — led_to / supersedes / overrides / exemplifies / contradicts / related / repeated_mistake). Use when the agent needs to justify or trace a remembered fact.",
+  whySchema.shape,
+  withErrorHandling((input) => why(relationsService, whySchema.parse(input)))
+);
+
+server.tool(
+  "memory_history",
+  "Return the full event history for a single memory from the canonical memory_events log — what happened, when, and from which source (created, accessed, used_in_response, promoted, superseded, guard_hit, …). Use when debugging how a memory evolved or was used.",
+  historySchema.shape,
+  withErrorHandling((input) => history(relationsService, historySchema.parse(input)))
+);
+
+server.tool(
+  "memory_neighbors",
+  "Breadth-first walk over the typed relations graph from one memory, up to `depth` hops (1..5). Returns reachable memories with their min-hop distance. Undirected traversal; optional relation-type filter.",
+  neighborsSchema.shape,
+  withErrorHandling((input) => neighbors(relationsService, neighborsSchema.parse(input)))
+);
+
+server.tool(
+  "mark_used_in_response",
+  "Signal that these memory_ids appeared TOGETHER in one response — emits a `used_in_response` event per id with a shared trace_id. The CoactivationAgent then Hebbian-links them pairwise (after 30s debounce). Weaker sibling of mark_useful: use this for retrieval-context signal, mark_useful for direct citation. Pass a consistent trace_id across related calls to accumulate coactivation in one batch.",
+  markUsedInResponseSchema.shape,
+  withErrorHandling((input) => markUsedInResponse(relationsService, markUsedInResponseSchema.parse(input)))
+);
+
+server.tool(
+  "memory_patterns",
+  "Find recurring tag co-occurrences across live memories: returns (tag_a, tag_b) pairs with support (how often they appear together) and lift (how much more often than random). Use for dashboard diagnostics and as a seed for lesson-synthesis clusters.",
+  patternsSchema.shape,
+  withErrorHandling((input) => patterns(relationsService, patternsSchema.parse(input)))
+);
+
+server.tool(
+  "supersede_memory",
+  "Mark one memory as superseded by another — archives the old, sets its bitemporal valid_until, records the supersedes edge, and logs a 'superseded' event. Use when you realise a stored fact is outdated and a new memory already holds the correct version.",
+  supersedeSchema.shape,
+  withErrorHandling((input) => supersede(relationsService, supersedeSchema.parse(input)))
+);
+
 // --- tool discovery (Schritt 3) ---------------------------------------------
 // Small-model agents run with minimal profile + find_tool for JIT lookup.
 // scripts/index-tools.mjs populates the registry once; find_tool does
@@ -1034,6 +1124,40 @@ async function main() {
       "agent registry unavailable (non-fatal):",
       err instanceof Error ? err.message : String(err)
     );
+  }
+
+  // Agent event-bus (Migration 047) — opt-in via OPENCLAW_AGENT_BUS=1
+  // so existing instances keep their previous behaviour. When enabled,
+  // the CoactivationAgent subscribes to `used_in_response` events and
+  // Hebbian-links memories that appeared in the same trace.
+  if ((process.env.OPENCLAW_AGENT_BUS ?? "0") === "1") {
+    try {
+      const bus = new AgentEventBus(SUPABASE_URL, SUPABASE_KEY, {
+        tickMs:    parseInt(process.env.OPENCLAW_AGENT_BUS_TICK_MS ?? "5000", 10),
+        batchSize: parseInt(process.env.OPENCLAW_AGENT_BUS_BATCH   ?? "100",  10),
+      });
+      bus.register(new CoactivationAgent(SUPABASE_URL, SUPABASE_KEY));
+
+      // Conscience: opt-in (routes through the OpenClaw gateway, so only enable
+      // on hosts where `openclaw` CLI is installed and `main` agent is ready).
+      if ((process.env.OPENCLAW_AGENT_CONSCIENCE ?? "0") === "1") {
+        bus.register(new ConscienceAgent(SUPABASE_URL, SUPABASE_KEY, {
+          agentId:       process.env.OPENCLAW_AGENT_CONSCIENCE_AGENT ?? "main",
+          topK:          parseInt(process.env.OPENCLAW_AGENT_CONSCIENCE_TOP_K    ?? "3", 10),
+          timeoutSec:    parseInt(process.env.OPENCLAW_AGENT_CONSCIENCE_TIMEOUT  ?? "30", 10),
+          minConfidence: parseFloat(process.env.OPENCLAW_AGENT_CONSCIENCE_MIN_CONF ?? "0.6"),
+          thinking:      (process.env.OPENCLAW_AGENT_CONSCIENCE_THINKING as "low") ?? "low",
+        }));
+        console.error("[event-bus] conscience agent registered (OPENCLAW_AGENT_CONSCIENCE=1)");
+      }
+
+      bus.start();
+      process.on("SIGTERM", () => bus.stop());
+      process.on("SIGINT",  () => bus.stop());
+    } catch (err) {
+      console.error("[event-bus] failed to start (non-fatal):",
+        err instanceof Error ? err.message : String(err));
+    }
   }
 
   const transport = new StdioServerTransport();

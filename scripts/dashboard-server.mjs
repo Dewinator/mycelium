@@ -1014,6 +1014,174 @@ async function handleNarrate(req, res) {
   }
 }
 
+// --- /relations-graph — nodes + edges für das synapsen-panel ---------------
+async function handleRelationsGraph(req, res) {
+  try {
+    const url = new URL(req.url, "http://x");
+    const limit        = Math.min(parseInt(url.searchParams.get("limit")        || "400", 10) || 400, 2000);
+    const types        = url.searchParams.get("types");                        // "caused_by,led_to,..."
+    const includeHebb  = url.searchParams.get("hebbian")  !== "0";
+    const minWeight    = parseFloat(url.searchParams.get("min_weight") || "0");
+    const minHebbWeight= parseFloat(url.searchParams.get("min_hebb")   || "0");
+    const category     = url.searchParams.get("category");                     // people|projects|topics|decisions
+    const focusId      = url.searchParams.get("focus");                        // optional center
+    const depth        = Math.min(parseInt(url.searchParams.get("depth") || "2", 10) || 2, 4);
+
+    // --- 1) typed relations --------------------------------------------------
+    const relsUrl = new URL("/memory_relations", UPSTREAM);
+    relsUrl.searchParams.set("select", "a_id,b_id,type,weight,evidence_count,reason");
+    relsUrl.searchParams.set("order",  "last_reinforced_at.desc");
+    relsUrl.searchParams.set("limit",  String(limit));
+    if (types)      relsUrl.searchParams.set("type",   `in.(${types})`);
+    if (minWeight)  relsUrl.searchParams.set("weight", `gte.${minWeight}`);
+
+    const relsResp = await fetch(relsUrl, {
+      headers: { Authorization: `Bearer ${SERVICE_JWT}`, apikey: SERVICE_JWT, Accept: "application/json" }
+    });
+    if (!relsResp.ok) throw new Error(`memory_relations HTTP ${relsResp.status}`);
+    const rels = await relsResp.json();
+
+    const edges = rels.map(r => ({
+      a: r.a_id, b: r.b_id, type: r.type,
+      weight: r.weight, evidence: r.evidence_count,
+      reason: r.reason, kind: "typed",
+    }));
+
+    // --- 2) optional Hebbian (undirected) -----------------------------------
+    if (includeHebb) {
+      const hebbUrl = new URL("/memory_links", UPSTREAM);
+      hebbUrl.searchParams.set("select", "a,b,weight,coactivation_count");
+      hebbUrl.searchParams.set("weight", `gte.${minHebbWeight}`);
+      hebbUrl.searchParams.set("order",  "weight.desc");
+      hebbUrl.searchParams.set("limit",  "400");
+      const hebbResp = await fetch(hebbUrl, {
+        headers: { Authorization: `Bearer ${SERVICE_JWT}`, apikey: SERVICE_JWT, Accept: "application/json" }
+      });
+      if (hebbResp.ok) {
+        const hebb = await hebbResp.json();
+        for (const h of hebb) edges.push({
+          a: h.a, b: h.b, type: "hebbian",
+          weight: h.weight, evidence: h.coactivation_count ?? 0, kind: "hebbian",
+        });
+      }
+    }
+
+    // --- 3) sammle alle beteiligten Memory-IDs + (optional) focus-BFS --------
+    const wantIds = new Set();
+    for (const e of edges) { wantIds.add(e.a); wantIds.add(e.b); }
+
+    if (focusId && wantIds.has(focusId)) {
+      // keep only edges reachable within `depth` hops from focusId
+      const adj = new Map();
+      for (const e of edges) {
+        if (!adj.has(e.a)) adj.set(e.a, []);
+        if (!adj.has(e.b)) adj.set(e.b, []);
+        adj.get(e.a).push(e.b);
+        adj.get(e.b).push(e.a);
+      }
+      const keep = new Set([focusId]);
+      let frontier = [focusId];
+      for (let d = 0; d < depth; d++) {
+        const next = [];
+        for (const n of frontier) {
+          for (const m of adj.get(n) || []) {
+            if (!keep.has(m)) { keep.add(m); next.push(m); }
+          }
+        }
+        frontier = next;
+        if (frontier.length === 0) break;
+      }
+      for (let i = edges.length - 1; i >= 0; i--) {
+        if (!keep.has(edges[i].a) || !keep.has(edges[i].b)) edges.splice(i, 1);
+      }
+      wantIds.clear();
+      for (const id of keep) wantIds.add(id);
+    }
+
+    // --- 4) node-Metadaten holen --------------------------------------------
+    let nodes = [];
+    if (wantIds.size > 0) {
+      const idList = [...wantIds].slice(0, 1200);
+      const memUrl = new URL("/memories", UPSTREAM);
+      memUrl.searchParams.set(
+        "select",
+        "id,content,category,tags,stage,strength,access_count,useful_count,pinned,created_at,valid_until"
+      );
+      memUrl.searchParams.set("id", `in.(${idList.join(",")})`);
+      if (category) memUrl.searchParams.set("category", `eq.${category}`);
+      memUrl.searchParams.set("limit", String(idList.length));
+      const memResp = await fetch(memUrl, {
+        headers: { Authorization: `Bearer ${SERVICE_JWT}`, apikey: SERVICE_JWT, Accept: "application/json" }
+      });
+      if (!memResp.ok) throw new Error(`memories HTTP ${memResp.status}`);
+      const rows = await memResp.json();
+      nodes = rows.map(m => ({
+        id: m.id,
+        label: (m.content || "").slice(0, 80),
+        content: m.content || "",
+        category: m.category || "general",
+        tags: m.tags || [],
+        stage: m.stage || "episodic",
+        strength: m.strength ?? 0.5,
+        access: m.access_count ?? 0,
+        useful: m.useful_count ?? 0,
+        pinned: !!m.pinned,
+        archived: !!m.valid_until,
+        created_at: m.created_at,
+      }));
+
+      // If we filtered by category, drop edges that reference missing nodes.
+      if (category) {
+        const ok = new Set(nodes.map(n => n.id));
+        for (let i = edges.length - 1; i >= 0; i--) {
+          if (!ok.has(edges[i].a) || !ok.has(edges[i].b)) edges.splice(i, 1);
+        }
+      }
+    }
+
+    // --- 5) type-Zählwerk für Legende ---------------------------------------
+    const typeCounts = {};
+    for (const e of edges) typeCounts[e.type] = (typeCounts[e.type] || 0) + 1;
+
+    res.writeHead(200, { "Content-Type": "application/json", "Cache-Control": "no-store" });
+    res.end(JSON.stringify({
+      nodes, edges,
+      stats: {
+        node_count: nodes.length,
+        edge_count: edges.length,
+        type_counts: typeCounts,
+        limited: edges.length >= limit,
+      },
+      generated_at: new Date().toISOString(),
+    }));
+  } catch (e) {
+    res.writeHead(502, { "Content-Type": "application/json" });
+    res.end(JSON.stringify({ error: "relations-graph failed", detail: String(e?.message || e) }));
+  }
+}
+
+// --- /memory/:id — single memory lookup for side-panel details ------------
+async function handleMemoryById(req, res) {
+  try {
+    const m = req.url.match(/^\/memory\/([0-9a-f-]{36})/i);
+    if (!m) { res.writeHead(400); res.end(JSON.stringify({ error: "invalid id" })); return; }
+    const id = m[1];
+    const [memResp, whyJson, histJson] = await Promise.all([
+      fetch(`${UPSTREAM}/memories?id=eq.${id}&select=id,content,category,tags,stage,strength,access_count,useful_count,pinned,created_at,valid_until`, {
+        headers: { Authorization: `Bearer ${SERVICE_JWT}`, apikey: SERVICE_JWT, Accept: "application/json" }
+      }).then(r => r.json()),
+      callRpc("memory_why", { p_memory_id: id }).catch(() => null),
+      callRpc("memory_history", { p_memory_id: id, p_limit: 20 }).catch(() => null),
+    ]);
+    const mem = Array.isArray(memResp) ? memResp[0] : null;
+    res.writeHead(200, { "Content-Type": "application/json", "Cache-Control": "no-store" });
+    res.end(JSON.stringify({ memory: mem, why: whyJson, history: histJson }));
+  } catch (e) {
+    res.writeHead(502, { "Content-Type": "application/json" });
+    res.end(JSON.stringify({ error: "memory fetch failed", detail: String(e?.message || e) }));
+  }
+}
+
 const server = http.createServer((req, res) => {
   // Tiny access log.
   const t = new Date().toISOString();
@@ -1047,6 +1215,8 @@ const server = http.createServer((req, res) => {
   if (req.url === "/narrate" || req.url.startsWith("/narrate?")) return handleNarrate(req, res);
   if (req.url === "/federation/status")       return handleFederationStatus(req, res);
   if (req.url.startsWith("/neurochemistry"))   return handleNeurochemistry(req, res);
+  if (req.url.startsWith("/relations-graph"))  return handleRelationsGraph(req, res);
+  if (req.url.startsWith("/memory/"))          return handleMemoryById(req, res);
   if (req.method !== "GET" && req.method !== "HEAD") {
     res.writeHead(405); res.end("method not allowed"); return;
   }
