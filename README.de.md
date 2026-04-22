@@ -12,6 +12,27 @@ Die meisten Agent-Frameworks geben LLMs *Werkzeuge*. **mycelium** gibt ihnen *ei
 
 **mycelium ist eine eigenständige kognitive Schicht.** Es spricht das Model Context Protocol (MCP) und funktioniert mit jedem MCP-fähigen Client — Claude Code, Cursor, Cline, Codex, openClaw oder jedem anderen. Es gibt kein vorgeschriebenes Agent-Framework.
 
+## Die Kernidee
+
+> **Das lokale Modell ist das Ziel. Das Cloud-LLM ist bestenfalls ein temporärer Lehrer.**
+
+Wenn du heute mit Claude oder GPT etwas Schwieriges löst, verdunstet das Wissen in dem Moment, in dem die Session endet. Morgen bezahlst du für denselben Einblick erneut.
+
+mycelium dreht das um. Jedes Mal, wenn du mit einem großen Cloud-Modell arbeitest, **landet das Ergebnis — die Entscheidung, der Code, die Lektion — in deinem lokalen mycelium**. Beim nächsten Mal kann dein lokales 7B-Modell direkt darauf zugreifen. Das Cloud-Modell hat es dir einmal beigebracht. Du behältst das Ergebnis.
+
+Zusätzlich kann das lokale Modell:
+- **Frei assoziieren** über alles, was du je gespeichert hast (Vektor- + Graph-Recall, keine feste Kontext-Fenstergröße)
+- **Fühlen** — Affekt, Neurochemie, Salienz verzerren den Recall, so wie Stimmung es beim Menschen tut
+- **Sich mit anderen Experten paaren** im Schwarm (mutual consent, signierte Lineage) — ein Agent ist stark in Statik, ein anderer in Recht, ihr Kind erbt beides
+
+### Warum der Schwarm die Serverfarm schlägt
+
+Eine Serverfarm trainiert ein Modell auf dem Durchschnitt aller Daten. Ein Schwarm lokaler Agents trainiert eine *Population* auf die spezifische gelebte Erfahrung jedes Nutzers — seine Entscheidungen, Fehler, Geschmack, Fachwissen.
+
+Kein Konzern hat diese Diversität. Kein Konzern *kann* sie haben — sie existiert nur verteilt bei den Menschen, die sie gelebt haben. Zusammen schlagen Millionen kleine Rechner mit ehrlicher Erfahrung jeden zentralen Trainingslauf, nicht weil die Hardware sich summiert, sondern weil **die Diversität nicht reproduzierbar ist**.
+
+Das ist die Wette. Cloud-LLMs sind in diesem Bild Werkzeuge, kein Zuhause.
+
 ## Was mycelium anders macht
 
 | | typische Memory-Layer (Mem0, Letta, Zep) | **mycelium** |

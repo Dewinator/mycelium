@@ -12,6 +12,27 @@ Most agent frameworks give LLMs *tools*. **mycelium** gives them *a body*: a dop
 
 **mycelium is a standalone cognitive layer.** It speaks the Model Context Protocol (MCP) and plugs into any MCP-capable client — Claude Code, Cursor, Cline, Codex, openClaw, or anything else that speaks MCP. There is no required agent framework.
 
+## The core idea
+
+> **The local model is the goal. The cloud LLM is, at most, a temporary teacher.**
+
+Today, when you solve something hard with Claude or GPT, that knowledge evaporates the moment the session ends. Tomorrow you pay for the same insight again.
+
+mycelium flips that. Every time you work with a large cloud model, **the outcome — the decision, the code, the lesson — lands in your local mycelium**. Next time, your local 7B model can reach it directly. The cloud model taught it. Once. You keep the result.
+
+On top of that, the local model also:
+- **Associates freely** across everything you've ever stored (vector + graph recall, not a fixed context window)
+- **Feels** — affect, neurochemistry, salience bias the recall the way a human's mood does
+- **Mates with other specialists** across the swarm (mutual human consent, signed lineage) — one agent is strong on structural engineering, another on law, their child inherits both
+
+### Why the swarm beats the server farm
+
+A server farm trains one model on everyone's average data. A swarm of local agents trains a *population* on every user's specific lived experience — their decisions, mistakes, taste, domain expertise.
+
+No corporation has that diversity. No corporation *can* have it — it only exists distributed across the people who lived it. Together, millions of small machines with honest experience beat any centralized training run, not because the hardware adds up, but because **the diversity is irreproducible**.
+
+That is the bet. Cloud LLMs are tools in this picture, not homes.
+
 ## What mycelium does differently
 
 | | typical memory layers (Mem0, Letta, Zep) | **mycelium** |
