@@ -25,25 +25,7 @@ Die meisten Agent-Frameworks geben LLMs *Werkzeuge*. **mycelium** gibt ihnen *ei
 
 ## Architektur
 
-```
-┌─────────────────────┐     MCP Protocol      ┌──────────────────────┐
-│                     │ ◄──────────────────── │                      │
-│   beliebiger        │                        │   mycelium MCP       │
-│   MCP-Client        │ ────────────────────► │   Server (TypeScript)│
-│   (Claude Code,     │   remember / recall    │                      │
-│    Cursor, Cline,   │                        └──────────┬───────────┘
-│    Codex, openClaw) │                                   │
-└─────────────────────┘                        Supabase JS Client
-                                                          │
-                                               ┌──────────▼───────────┐
-                                               │  Supabase (lokal)    │
-                                               │  Docker Compose      │
-                                               │  ┌────────────────┐  │
-                                               │  │ PostgreSQL     │  │
-                                               │  │ + pgvector     │  │
-                                               │  └────────────────┘  │
-                                               └──────────────────────┘
-```
+![mycelium Architektur: beliebiger MCP-Client → mycelium MCP-Server → lokales Supabase mit pgvector](docs/images/00-architecture.svg)
 
 ## Techstack
 

@@ -25,25 +25,7 @@ Most agent frameworks give LLMs *tools*. **mycelium** gives them *a body*: a dop
 
 ## Architecture
 
-```
-┌─────────────────────┐     MCP protocol      ┌──────────────────────┐
-│                     │ ◄──────────────────── │                      │
-│   any MCP client    │                        │   mycelium MCP       │
-│   (Claude Code,     │ ────────────────────► │   server (TypeScript)│
-│    Cursor, Cline,   │   remember / recall    │                      │
-│    Codex, openClaw) │                        └──────────┬───────────┘
-└─────────────────────┘                                   │
-                                               Supabase JS client
-                                                          │
-                                               ┌──────────▼───────────┐
-                                               │  Supabase (local)    │
-                                               │  Docker Compose      │
-                                               │  ┌────────────────┐  │
-                                               │  │ PostgreSQL     │  │
-                                               │  │ + pgvector     │  │
-                                               │  └────────────────┘  │
-                                               └──────────────────────┘
-```
+![mycelium architecture: any MCP client → mycelium MCP server → local Supabase with pgvector](docs/images/00-architecture.svg)
 
 ## Tech stack
 

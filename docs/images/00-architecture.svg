@@ -1,0 +1,41 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 900 240" font-family="-apple-system,BlinkMacSystemFont,'Inter','Segoe UI',system-ui,sans-serif">
+  <defs>
+    <marker id="arr" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="8" markerHeight="8" orient="auto">
+      <path d="M0,0 L10,5 L0,10 z" fill="#7aa2f7"/>
+    </marker>
+  </defs>
+
+  <rect width="900" height="240" fill="#0b0d10"/>
+
+  <!-- box 1: MCP client -->
+  <rect x="30" y="70" width="240" height="100" rx="14" ry="14"
+        fill="#1a1d23" stroke="#7aa2f7" stroke-width="1.5"/>
+  <text x="150" y="115" text-anchor="middle" fill="#c0caf5" font-size="19" font-weight="600">any MCP client</text>
+  <text x="150" y="142" text-anchor="middle" fill="#a9b1d6" font-size="13">Claude Code · Cursor · Cline</text>
+  <text x="150" y="158" text-anchor="middle" fill="#a9b1d6" font-size="13">Codex · openClaw · …</text>
+
+  <!-- arrow 1 -->
+  <line x1="275" y1="120" x2="325" y2="120" stroke="#7aa2f7" stroke-width="2" marker-end="url(#arr)"/>
+  <text x="300" y="105" text-anchor="middle" fill="#7aa2f7" font-size="11" font-style="italic">MCP</text>
+
+  <!-- box 2: mycelium server -->
+  <rect x="330" y="70" width="240" height="100" rx="14" ry="14"
+        fill="#1a1d23" stroke="#9ece6a" stroke-width="1.5"/>
+  <text x="450" y="115" text-anchor="middle" fill="#c0caf5" font-size="19" font-weight="600">mycelium</text>
+  <text x="450" y="142" text-anchor="middle" fill="#a9b1d6" font-size="13">MCP server</text>
+  <text x="450" y="158" text-anchor="middle" fill="#a9b1d6" font-size="13">TypeScript · Node ≥ 20</text>
+
+  <!-- arrow 2 -->
+  <line x1="575" y1="120" x2="625" y2="120" stroke="#7aa2f7" stroke-width="2" marker-end="url(#arr)"/>
+  <text x="600" y="105" text-anchor="middle" fill="#7aa2f7" font-size="11" font-style="italic">SQL</text>
+
+  <!-- box 3: supabase + pgvector -->
+  <rect x="630" y="70" width="240" height="100" rx="14" ry="14"
+        fill="#1a1d23" stroke="#bb9af7" stroke-width="1.5"/>
+  <text x="750" y="115" text-anchor="middle" fill="#c0caf5" font-size="19" font-weight="600">Supabase (local)</text>
+  <text x="750" y="142" text-anchor="middle" fill="#a9b1d6" font-size="13">PostgreSQL + pgvector</text>
+  <text x="750" y="158" text-anchor="middle" fill="#a9b1d6" font-size="13">Docker · 100% yours</text>
+
+  <!-- footer -->
+  <text x="450" y="210" text-anchor="middle" fill="#6b7280" font-size="12" font-style="italic">local-first · no cloud required · real open AI</text>
+</svg>
