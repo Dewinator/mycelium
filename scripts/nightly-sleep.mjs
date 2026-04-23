@@ -34,6 +34,7 @@ const { ExperienceService }  = await import(path.join(DIST, "services/experience
 const { IdentityService }    = await import(path.join(DIST, "services/identity.js"));
 const identityTools          = await import(path.join(DIST, "tools/identity.js"));
 const { consolidateByPatterns } = await import(path.join(__dirname, "consolidate-by-patterns.mjs"));
+const { synthesizeCluster, unloadQwen } = await import(path.join(__dirname, "synthesize-cluster.mjs"));
 
 // Low-level REST fuer sleep_cycles insert/update — reines fetch, keine extra dep
 const SUPABASE_URL = process.env.SUPABASE_URL;
@@ -128,18 +129,59 @@ async function runSws() {
 
 // ---------------------------------------------------------------------------
 // Phase 2 — REM
-//   findClusters         — Muster unter un-reflektierten Episoden finden (log-only;
-//                           Lesson-Text-Synthese bleibt beim wachen digest-Flow).
+//   findClusters         — Muster unter un-reflektierten Episoden finden
+//   synthesize_cluster   — pro Cluster lokales Qwen3-8B via Ollama, JSON-output
+//                           → recordLesson (neu) oder reinforceLesson (match)
 //   dedup_lessons        — verwandte Lessons konsolidieren
 //   promotion_candidates → promote_lesson_to_trait fuer reife Lessons
+//   unloadQwen           — Ollama keep_alive=0: Modell aus RAM fuer andere Tasks
 // ---------------------------------------------------------------------------
+const REM_MIN_CONFIDENCE = Number(process.env.REM_MIN_CONFIDENCE || 0.5);
+
 async function runRem() {
-  const out = { clusters_found: 0, lessons_deduped: 0, traits_promoted: 0, errors: [] };
+  const out = {
+    clusters_found: 0,
+    lessons_synthesized: 0,
+    lessons_reinforced: 0,
+    lessons_skipped_low_conf: 0,
+    lessons_deduped: 0,
+    traits_promoted: 0,
+    errors: [],
+  };
+
+  let clusters = [];
   try {
-    const clusters = await expSvc.findClusters(0.85, 2, 30);
+    clusters = await expSvc.findClusters(0.85, 2, 30);
     out.clusters_found = clusters.length;
     out.cluster_sizes = clusters.slice(0, 10).map((c) => c.member_count ?? (c.member_ids?.length ?? 0));
   } catch (e) { out.errors.push({ step: "find_clusters", msg: String(e?.message ?? e) }); }
+
+  // Cluster → Qwen-Synthese → Lesson (entweder neu oder bestehende reinforced)
+  for (const cluster of clusters) {
+    try {
+      const synth = await synthesizeCluster(cluster, {
+        supabaseUrl: SUPABASE_URL,
+        supabaseKey: SUPABASE_KEY,
+      });
+      if (!synth.lesson || synth.confidence < REM_MIN_CONFIDENCE) {
+        out.lessons_skipped_low_conf += 1;
+        continue;
+      }
+      if (synth.reinforce && cluster.matched_lesson_id) {
+        await expSvc.reinforceLesson(cluster.matched_lesson_id, cluster.member_ids);
+        out.lessons_reinforced += 1;
+      } else {
+        await expSvc.recordLesson(synth.lesson, cluster.member_ids, { confidence: synth.confidence });
+        out.lessons_synthesized += 1;
+      }
+    } catch (e) {
+      out.errors.push({ step: "synthesize_cluster", seed: cluster.seed_id, msg: String(e?.message ?? e) });
+    }
+  }
+
+  // RAM freigeben — Qwen aus Ollama entladen, bevor weitere Phasen laufen
+  try { await unloadQwen(); }
+  catch (e) { out.errors.push({ step: "unload_qwen", msg: String(e?.message ?? e) }); }
 
   try { out.lessons_deduped = await expSvc.dedupLessons(0.92); }
   catch (e) { out.errors.push({ step: "dedup_lessons", msg: String(e?.message ?? e) }); }
@@ -147,7 +189,6 @@ async function runRem() {
   try {
     const candidates = await expSvc.promotionCandidates(4, 0.7);
     for (const c of candidates.slice(0, 10)) {
-      // nur lesson-Text in trait uebernehmen — kein LLM-Rewrite nightly
       const traitText = (c.lesson ?? c.lesson_text ?? "").slice(0, 160);
       if (!traitText) continue;
       try {

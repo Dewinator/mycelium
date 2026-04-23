@@ -3577,17 +3577,58 @@ const SYN = (() => {
   }
 
   // ---- force simulation (velocity Verlet, custom — no d3) -----------------
+  //
+  // Cluster-Padding: Knoten derselben Kategorie werden zu einem gemeinsamen
+  // virtuellen Zentrum gezogen, die Zentren liegen auf einem Kreis um die
+  // Stage-Mitte. Effekt: die semantischen Cluster (general/people/projects
+  // /topics/decisions) trennen sich optisch, statt in einer Wolke zu
+  // verschmelzen. Tuning-Parameter unten zentral.
+  const CLUSTER_CENTER_PULL = 0.012;   // Federkonstante zu Category-Zentrum
+  const STAGE_CENTER_PULL   = 0.0012;  // nur noch ein leichter Gesamt-Anker
+  const BOUNDARY_PAD        = 60;      // Puffer zum Stage-Rand
+  const CLUSTER_RING_RATIO  = 0.28;    // Radius des Category-Rings (von min(w,h))
+
+  function _categoryCentersFor(w, h) {
+    // Stabile Sortierung: die Reihenfolge der CATEGORY_COLOURS-Keys. Nur
+    // Kategorien, die tatsächlich auftauchen, werden platziert.
+    const knownOrder = Object.keys(CATEGORY_COLOURS);
+    const present = new Set();
+    for (const n of state.nodes) present.add(n.category || "general");
+    const cats = knownOrder.filter(c => present.has(c));
+    // Falls exotische Kategorien auftauchen (z.B. "tool"), hinten anhängen.
+    for (const c of present) if (!cats.includes(c)) cats.push(c);
+    const cx = w / 2, cy = h / 2;
+    const R  = Math.min(w, h) * CLUSTER_RING_RATIO;
+    const out = {};
+    const n = Math.max(1, cats.length);
+    cats.forEach((cat, i) => {
+      // -Math.PI/2 so dass die erste Kategorie oben landet (Lesbarkeit).
+      const a = (i / n) * Math.PI * 2 - Math.PI / 2;
+      out[cat] = n === 1
+        ? { x: cx, y: cy }
+        : { x: cx + Math.cos(a) * R, y: cy + Math.sin(a) * R };
+    });
+    return out;
+  }
+
   function initLayout(bounds) {
     const cx = bounds.w / 2, cy = bounds.h / 2;
     const R  = Math.min(bounds.w, bounds.h) * 0.35;
-    const n  = state.nodes.length || 1;
+    // Seed-Position: in die Nähe des eigenen Category-Zentrums, damit der
+    // Force-Solver nicht erst minutenlang umsortieren muss.
+    const centers = _categoryCentersFor(bounds.w, bounds.h);
     state.nodes.forEach((node, i) => {
-      const a = (i / n) * Math.PI * 2;
-      node.x  = node.x ?? (cx + Math.cos(a) * R * (0.6 + Math.random() * 0.4));
-      node.y  = node.y ?? (cy + Math.sin(a) * R * (0.6 + Math.random() * 0.4));
+      const c = centers[node.category || "general"] || { x: cx, y: cy };
+      const jitter = 40 + Math.random() * 60;
+      const a = Math.random() * Math.PI * 2;
+      node.x  = node.x ?? (c.x + Math.cos(a) * jitter);
+      node.y  = node.y ?? (c.y + Math.sin(a) * jitter);
       node.vx = 0; node.vy = 0;
       node.fixed = false;
     });
+    // Der unbenutzte initial-Radius wird beibehalten für den Fall, dass später
+    // wieder ein Fallback-Layout ohne Kategorien gewünscht ist.
+    void R;
   }
 
   function nodeRadius(n) {
@@ -3621,6 +3662,9 @@ const SYN = (() => {
     const reducedRepulsion = nodes.length > 600;
     const repulsionK = reducedRepulsion ? 140 : 260;
 
+    // Category-Zentren einmal pro Tick (billig, stabil über Ticks hinweg).
+    const catCenters = _categoryCentersFor(w, h);
+
     // repulsion between neighbours in 3x3 cells
     for (const n of nodes) {
       let fx = 0, fy = 0;
@@ -3636,15 +3680,24 @@ const SYN = (() => {
             let d2 = dxx * dxx + dyy * dyy;
             if (d2 < 0.01) { dxx = (Math.random() - 0.5); dyy = (Math.random() - 0.5); d2 = 0.5; }
             const d = Math.sqrt(d2);
-            const f = repulsionK / d2;
+            // Leichter Boost für cross-category Repulsion — das ist der
+            // eigentliche "Cluster-Padding"-Effekt.
+            const crossCat = (n.category || "general") !== (o.category || "general");
+            const f = (repulsionK / d2) * (crossCat ? 1.45 : 1.0);
             fx += (dxx / d) * f;
             fy += (dyy / d) * f;
           }
         }
       }
-      // center spring
-      fx += (cx - n.x) * 0.004;
-      fy += (cy - n.y) * 0.004;
+      // Category-Cluster-Anziehung (Haupt-Cluster-Kraft) …
+      const cc = catCenters[n.category || "general"];
+      if (cc) {
+        fx += (cc.x - n.x) * CLUSTER_CENTER_PULL;
+        fy += (cc.y - n.y) * CLUSTER_CENTER_PULL;
+      }
+      // … plus ein schwacher globaler Anker, damit nichts nach außen driftet.
+      fx += (cx - n.x) * STAGE_CENTER_PULL;
+      fy += (cy - n.y) * STAGE_CENTER_PULL;
       n._fx = fx; n._fy = fy;
     }
 
@@ -3678,7 +3731,7 @@ const SYN = (() => {
       n.x += n.vx;
       n.y += n.vy;
       // soft boundary
-      const pad = 40;
+      const pad = BOUNDARY_PAD;
       if (n.x < pad) n.vx += (pad - n.x) * 0.02;
       if (n.y < pad) n.vy += (pad - n.y) * 0.02;
       if (n.x > w - pad) n.vx -= (n.x - (w - pad)) * 0.02;
