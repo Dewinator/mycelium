@@ -1182,6 +1182,127 @@ async function handleMemoryById(req, res) {
   }
 }
 
+// ---------------------------------------------------------------- teacher-mode
+// Liest die vom openClaw-Plugin claude-code-sessions geschriebenen JSON-Files.
+// Schreibt resolution zurück, das Plugin pollt und nimmt sie auf.
+
+import os from "node:os";
+
+const TEACHER_PLANS_DIR =
+  process.env.OPENCLAW_PLANS_DIR ?? path.join(os.homedir(), ".openclaw", "teacher-plans");
+const TEACHER_ESCALATIONS_DIR =
+  process.env.OPENCLAW_ESCALATIONS_DIR ?? path.join(os.homedir(), ".openclaw", "teacher-escalations");
+
+async function _readJsonDir(dir, predicate) {
+  const out = [];
+  let entries;
+  try { entries = await fs.readdir(dir); }
+  catch (e) { if (e.code === "ENOENT") return out; throw e; }
+  for (const e of entries) {
+    if (!e.endsWith(".json") || e.endsWith(".tmp")) continue;
+    try {
+      const raw = await fs.readFile(path.join(dir, e), "utf8");
+      const parsed = JSON.parse(raw);
+      if (!predicate || predicate(parsed)) out.push(parsed);
+    } catch { /* skip malformed */ }
+  }
+  return out;
+}
+
+async function handleTeacherPlans(_req, res) {
+  try {
+    const plans = await _readJsonDir(TEACHER_PLANS_DIR);
+    plans.sort((a, b) => (b.updatedAt ?? 0) - (a.updatedAt ?? 0));
+    res.writeHead(200, { "Content-Type": "application/json; charset=utf-8", "Cache-Control": "no-store" });
+    res.end(JSON.stringify({ plans }));
+  } catch (e) {
+    res.writeHead(500, { "Content-Type": "application/json" });
+    res.end(JSON.stringify({ error: "teacher_plans_failed", detail: String(e?.message || e) }));
+  }
+}
+
+async function handleTeacherPlanById(_req, res, planId) {
+  if (!/^[a-zA-Z0-9._-]+$/.test(planId)) {
+    res.writeHead(400, { "Content-Type": "application/json" });
+    res.end(JSON.stringify({ error: "invalid plan id" })); return;
+  }
+  try {
+    const raw = await fs.readFile(path.join(TEACHER_PLANS_DIR, `${planId}.json`), "utf8");
+    res.writeHead(200, { "Content-Type": "application/json; charset=utf-8", "Cache-Control": "no-store" });
+    res.end(raw);
+  } catch (e) {
+    if (e.code === "ENOENT") {
+      res.writeHead(404, { "Content-Type": "application/json" });
+      res.end(JSON.stringify({ error: "plan not found" }));
+    } else {
+      res.writeHead(500, { "Content-Type": "application/json" });
+      res.end(JSON.stringify({ error: String(e?.message || e) }));
+    }
+  }
+}
+
+async function handleTeacherEscalations(_req, res) {
+  try {
+    const escs = await _readJsonDir(TEACHER_ESCALATIONS_DIR, (d) => !d.resolution);
+    escs.sort((a, b) => (a.raisedAt ?? 0) - (b.raisedAt ?? 0));
+    res.writeHead(200, { "Content-Type": "application/json; charset=utf-8", "Cache-Control": "no-store" });
+    res.end(JSON.stringify({ escalations: escs }));
+  } catch (e) {
+    res.writeHead(500, { "Content-Type": "application/json" });
+    res.end(JSON.stringify({ error: "teacher_escalations_failed", detail: String(e?.message || e) }));
+  }
+}
+
+async function handleTeacherEscalationResolve(req, res, escId) {
+  if (req.method !== "POST") { res.writeHead(405); res.end(); return; }
+  if (!/^[a-zA-Z0-9._-]+$/.test(escId)) {
+    res.writeHead(400, { "Content-Type": "application/json" });
+    res.end(JSON.stringify({ error: "invalid escalation id" })); return;
+  }
+  const chunks = [];
+  for await (const c of req) chunks.push(c);
+  let body = {};
+  try { body = JSON.parse(Buffer.concat(chunks).toString("utf8") || "{}"); } catch {}
+  const resolution = body.resolution;
+  const amendedItems = body.amendedItems ?? null;
+  if (!["continue", "abort", "amend"].includes(resolution)) {
+    res.writeHead(400, { "Content-Type": "application/json" });
+    res.end(JSON.stringify({ error: "resolution must be continue|abort|amend" })); return;
+  }
+  if (resolution === "amend" && (!Array.isArray(amendedItems) || amendedItems.length === 0)) {
+    res.writeHead(400, { "Content-Type": "application/json" });
+    res.end(JSON.stringify({ error: "resolution=amend requires non-empty amendedItems" })); return;
+  }
+  const file = path.join(TEACHER_ESCALATIONS_DIR, `${escId}.json`);
+  let data;
+  try { data = JSON.parse(await fs.readFile(file, "utf8")); }
+  catch (e) {
+    if (e.code === "ENOENT") {
+      res.writeHead(404, { "Content-Type": "application/json" });
+      res.end(JSON.stringify({ error: "escalation not found" })); return;
+    }
+    res.writeHead(500, { "Content-Type": "application/json" });
+    res.end(JSON.stringify({ error: String(e?.message || e) })); return;
+  }
+  if (data.resolution) {
+    res.writeHead(409, { "Content-Type": "application/json" });
+    res.end(JSON.stringify({ error: "already resolved", resolution: data.resolution })); return;
+  }
+  if (!(data.options ?? []).includes(resolution)) {
+    res.writeHead(409, { "Content-Type": "application/json" });
+    res.end(JSON.stringify({ error: `resolution ${resolution} not in options ${data.options?.join(",")}` })); return;
+  }
+  data.resolution = resolution;
+  data.amendedItems = resolution === "amend" ? amendedItems : null;
+  data.resolvedAt = Date.now();
+  // atomic write via tmp+rename
+  const tmp = file + ".tmp";
+  await fs.writeFile(tmp, JSON.stringify(data, null, 2), "utf8");
+  await fs.rename(tmp, file);
+  res.writeHead(200, { "Content-Type": "application/json" });
+  res.end(JSON.stringify(data));
+}
+
 const server = http.createServer((req, res) => {
   // Tiny access log.
   const t = new Date().toISOString();
@@ -1217,6 +1338,16 @@ const server = http.createServer((req, res) => {
   if (req.url.startsWith("/neurochemistry"))   return handleNeurochemistry(req, res);
   if (req.url.startsWith("/relations-graph"))  return handleRelationsGraph(req, res);
   if (req.url.startsWith("/memory/"))          return handleMemoryById(req, res);
+  // Teacher-Mode (claude-code-sessions Plugin):
+  // mycelium liest Files unter ~/.openclaw/teacher-{plans,escalations}/.
+  // Soft-couples mycelium ↔ openClaw via Filesystem; akzeptabel solange
+  // Teacher-Mode openClaw-Plugin ist (siehe DESIGN-goal-driven-shutdown.md).
+  if (req.url === "/teacher/plans" || req.url.startsWith("/teacher/plans?")) return handleTeacherPlans(req, res);
+  let m = req.url.match(/^\/teacher\/plans\/([^\/?]+)$/);
+  if (m) return handleTeacherPlanById(req, res, m[1]);
+  if (req.url === "/teacher/escalations" || req.url.startsWith("/teacher/escalations?")) return handleTeacherEscalations(req, res);
+  m = req.url.match(/^\/teacher\/escalations\/([^\/]+)\/resolve$/);
+  if (m) return handleTeacherEscalationResolve(req, res, m[1]);
   if (req.method !== "GET" && req.method !== "HEAD") {
     res.writeHead(405); res.end("method not allowed"); return;
   }

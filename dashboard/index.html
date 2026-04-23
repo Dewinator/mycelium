@@ -496,6 +496,7 @@
       <button class="tab" data-tab="federation">föderation</button>
       <button class="tab" data-tab="neurochemistry">neurochemie</button>
       <button class="tab" data-tab="synapses">synapsen</button>
+      <button class="tab" data-tab="teacher">teacher</button>
     </nav>
   </aside>
   <div class="backdrop" id="sidebar-backdrop"></div>
@@ -1111,6 +1112,47 @@
       <div class="syn-hint">drag: schwenken · rad/pinch: zoom · node-click: details · drag node: fixieren · R: layout</div>
     </div>
   </div><!-- /panel-synapses -->
+
+  <div class="tab-panel" id="panel-teacher">
+    <section class="card">
+      <h2>offene eskalationen <span class="sub" id="tch-esc-count">(0)</span></h2>
+      <div class="sub" style="margin-bottom:8px">
+        teacher-sessions warten auf eine entscheidung. klick continue / abort / amend.
+        kanal: <code>~/.openclaw/teacher-escalations/</code>.
+      </div>
+      <div id="tch-esc-list">–</div>
+    </section>
+    <section class="card">
+      <h2>aktive plans <span class="sub" id="tch-plan-count">(0)</span></h2>
+      <div class="sub" style="margin-bottom:8px">
+        goal-driven sessions mit checklisten. quelle: <code>~/.openclaw/teacher-plans/</code>.
+      </div>
+      <div id="tch-plan-list">–</div>
+    </section>
+  </div><!-- /panel-teacher -->
+
+  <!-- Teacher Escalation Modal -->
+  <div id="tch-modal" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,0.55);z-index:40;align-items:center;justify-content:center">
+    <div style="background:var(--bg-elev);border:1px solid var(--border);border-radius:var(--radius);padding:20px;max-width:680px;width:92%;box-shadow:var(--shadow)">
+      <h2 id="tch-m-title" style="margin:0 0 10px">eskalation</h2>
+      <div class="sub" id="tch-m-detail" style="margin-bottom:10px"></div>
+      <div style="display:grid;grid-template-columns:max-content 1fr;gap:4px 12px;font-size:13px">
+        <div class="sub">reason</div><div id="tch-m-reason"></div>
+        <div class="sub">plan</div><div id="tch-m-plan"></div>
+        <div class="sub">raisedAt</div><div id="tch-m-raised"></div>
+      </div>
+      <div id="tch-m-amend-wrap" style="display:none;margin-top:10px">
+        <label class="sub">amend-items (JSON-array von ChecklistItem)</label>
+        <textarea id="tch-m-amend" style="width:100%;min-height:120px;font-family:var(--mono,monospace);font-size:11px"></textarea>
+      </div>
+      <div style="margin-top:14px;display:flex;gap:8px;justify-content:flex-end;flex-wrap:wrap">
+        <button class="btn" id="tch-m-close">abbrechen</button>
+        <button class="btn" id="tch-m-amend-btn">amend …</button>
+        <button class="btn" id="tch-m-abort" style="color:var(--err,#f55)">abort</button>
+        <button class="btn" id="tch-m-continue">continue</button>
+      </div>
+    </div>
+  </div>
 
   <!-- Create-project dialog -->
   <div id="project-create-modal" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,0.55);z-index:40;align-items:center;justify-content:center">
@@ -3318,10 +3360,122 @@ document.querySelectorAll(".tab").forEach(btn => {
     document.querySelectorAll(".tab").forEach(b => b.classList.toggle("active", b === btn));
     document.querySelectorAll(".tab-panel").forEach(p => p.classList.toggle("active", p.id === "panel-" + name));
     if (name === "projects") renderProjectsGrid();
+    if (name === "teacher") loadTeacher();
     closeSidebar();
     window.scrollTo({ top: 0, behavior: "instant" });
   });
 });
+
+// --- teacher (claude-code-sessions Plugin) -------------------------------------
+let TCH_POLL_HANDLE = null;
+let TCH_OPEN_ESC = null;
+
+function _escHtml(s){ return String(s ?? "").replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c])); }
+
+async function loadTeacher(){
+  if (TCH_POLL_HANDLE) clearInterval(TCH_POLL_HANDLE);
+  await refreshTeacher();
+  TCH_POLL_HANDLE = setInterval(refreshTeacher, 5000);
+}
+
+async function refreshTeacher(){
+  if (!document.getElementById("panel-teacher").classList.contains("active")) {
+    if (TCH_POLL_HANDLE) { clearInterval(TCH_POLL_HANDLE); TCH_POLL_HANDLE = null; }
+    return;
+  }
+  try {
+    const [pl, esc] = await Promise.all([
+      fetch("/teacher/plans").then(r => r.json()),
+      fetch("/teacher/escalations").then(r => r.json()),
+    ]);
+    renderTeacherPlans(pl.plans || []);
+    renderTeacherEscalations(esc.escalations || []);
+  } catch (e) {
+    console.error("teacher refresh failed:", e);
+  }
+}
+
+function renderTeacherPlans(plans){
+  document.getElementById("tch-plan-count").textContent = `(${plans.length})`;
+  const el = document.getElementById("tch-plan-list");
+  if (!plans.length) { el.innerHTML = '<div class="sub">noch keine plans.</div>'; return; }
+  el.innerHTML = plans.map(p => {
+    const done = (p.items||[]).filter(i=>i.done).length;
+    const total = (p.items||[]).length;
+    const pct = total ? Math.round(done*100/total) : 0;
+    return `<div style="border-top:1px solid var(--border);padding:6px 0;display:flex;align-items:center;gap:12px">
+      <span style="flex:1" title="${_escHtml(p.id)}">${_escHtml((p.goal||"").slice(0,80))}</span>
+      <span class="sub">${_escHtml(p.status)} · ${done}/${total} (${pct}%)</span>
+    </div>`;
+  }).join("");
+}
+
+function renderTeacherEscalations(escs){
+  document.getElementById("tch-esc-count").textContent = `(${escs.length})`;
+  const el = document.getElementById("tch-esc-list");
+  if (!escs.length) { el.innerHTML = '<div class="sub">keine offenen eskalationen.</div>'; return; }
+  el.innerHTML = escs.map(e => {
+    const ago = Math.round((Date.now() - (e.raisedAt||Date.now())) / 60000);
+    return `<div style="border-top:1px solid var(--border);padding:6px 0;display:flex;align-items:center;gap:12px">
+      <span style="flex:1"><strong>${_escHtml(e.reason)}</strong> – ${_escHtml((e.detail||"").slice(0,90))}</span>
+      <span class="sub">${ago}min</span>
+      <button class="btn" data-tch-open="${_escHtml(e.id)}">öffnen</button>
+    </div>`;
+  }).join("");
+  el.querySelectorAll("[data-tch-open]").forEach(b => {
+    b.onclick = () => openTeacherEsc(b.dataset.tchOpen);
+  });
+}
+
+async function openTeacherEsc(escId){
+  const data = await fetch("/teacher/escalations").then(r => r.json());
+  const esc = (data.escalations||[]).find(x => x.id === escId);
+  if (!esc) { alert("eskalation nicht mehr offen"); refreshTeacher(); return; }
+  TCH_OPEN_ESC = esc;
+  document.getElementById("tch-m-title").textContent   = `eskalation ${esc.id}`;
+  document.getElementById("tch-m-detail").textContent  = esc.detail || "";
+  document.getElementById("tch-m-reason").textContent  = esc.reason;
+  document.getElementById("tch-m-plan").textContent    = esc.planId;
+  document.getElementById("tch-m-raised").textContent  = new Date(esc.raisedAt).toLocaleString();
+  document.getElementById("tch-m-amend-wrap").style.display = "none";
+  document.getElementById("tch-m-amend").value = "";
+  document.getElementById("tch-m-amend-btn").style.display = (esc.options||[]).includes("amend") ? "" : "none";
+  document.getElementById("tch-m-continue").style.display  = (esc.options||[]).includes("continue") ? "" : "none";
+  document.getElementById("tch-modal").style.display = "flex";
+}
+
+document.addEventListener("DOMContentLoaded", () => {
+  const closeBtn = document.getElementById("tch-m-close");
+  if (!closeBtn) return;
+  closeBtn.onclick     = () => { document.getElementById("tch-modal").style.display = "none"; TCH_OPEN_ESC = null; };
+  document.getElementById("tch-m-amend-btn").onclick = () => { document.getElementById("tch-m-amend-wrap").style.display = ""; };
+  document.getElementById("tch-m-continue").onclick  = () => resolveTeacherEsc("continue");
+  document.getElementById("tch-m-abort").onclick     = () => resolveTeacherEsc("abort");
+});
+
+async function resolveTeacherEsc(action){
+  if (!TCH_OPEN_ESC) return;
+  const body = { resolution: action };
+  const amendVisible = document.getElementById("tch-m-amend-wrap").style.display !== "none";
+  if (action === "amend" || amendVisible) {
+    const txt = document.getElementById("tch-m-amend").value.trim();
+    if (!txt) { alert("amend braucht JSON-items"); return; }
+    let items;
+    try { items = JSON.parse(txt); } catch (e) { alert("JSON-parse-fehler: " + e.message); return; }
+    if (!Array.isArray(items) || !items.length) { alert("amendedItems muss non-empty array sein"); return; }
+    body.resolution = "amend";
+    body.amendedItems = items;
+  }
+  const r = await fetch(`/teacher/escalations/${encodeURIComponent(TCH_OPEN_ESC.id)}/resolve`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(body),
+  });
+  if (!r.ok) { const err = await r.json().catch(()=>({})); alert("fehler: " + (err.error||r.status)); return; }
+  document.getElementById("tch-modal").style.display = "none";
+  TCH_OPEN_ESC = null;
+  refreshTeacher();
+}
 
 function applyTheme(t) {
   document.documentElement.dataset.theme = t;
