@@ -216,6 +216,12 @@ The issue is explicitly too big for one tick. Suggested order:
    historical anchor table before `compute_affect()` starts overwriting.
 6. Migration: `compute_affect()` as a pure SQL function returning JSONB
    (no side-effects yet, so it can be tested against live data first).
+
+   As an interim: the MCP tool `preview_affect` (done) is a TypeScript
+   reference implementation of the formulas above against live data. No
+   writes — it lets the weights be tuned and the observable streams be
+   sanity-checked before the SQL migration lands. The future SQL function
+   must produce the same values for the same snapshot.
 7. Migration: triggers on `experiences` and `memory_events` that call
    `compute_affect()` and patch `agent_affect`.
 8. MCP-server refactor: stop calling `affect_apply` from `remember` /

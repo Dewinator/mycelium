@@ -90,6 +90,7 @@ import {
   getAffectSchema, getAffect,
   updateAffectSchema, updateAffect,
   resetAffectSchema, resetAffect,
+  previewAffectSchema, previewAffect,
 } from "./tools/affect.js";
 import { BeliefService } from "./services/belief.js";
 import { inferActionSchema, inferAction } from "./tools/belief.js";
@@ -585,6 +586,13 @@ server.tool(
   "Reset the persistent affective state to defaults (all 0.5 except frustration=0). Use sparingly — this wipes regulator history.",
   resetAffectSchema.shape,
   withErrorHandling((input) => resetAffect(affectService, resetAffectSchema.parse(input)))
+);
+
+server.tool(
+  "preview_affect",
+  "Read-only preview of compute_affect(): runs the observables→affect formulas (docs/affect-observables.md) against live data and returns the 6 dimensions + their inputs, WITHOUT writing agent_affect. Reference implementation for the future SQL migration; lets humans tune weights before the trigger-driven version lands.",
+  previewAffectSchema.shape,
+  withErrorHandling((input) => previewAffect(affectService, previewAffectSchema.parse(input)))
 );
 
 // --- causal annotation layer -----------------------------------------------

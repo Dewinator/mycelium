@@ -75,6 +75,48 @@ export async function updateAffect(
 }
 
 // ===========================================================================
+// preview_affect — read-only compute_affect() reference implementation
+// ===========================================================================
+export const previewAffectSchema = z.object({});
+
+export async function previewAffect(
+  service: AffectService,
+  _input: z.infer<typeof previewAffectSchema>,
+) {
+  const preview = await service.previewCompute();
+  const c = preview.computed;
+  const bar = (v: number) => "█".repeat(Math.round(v * 10)).padEnd(10, "·");
+  const signBar = (v: number) => {
+    const n = Math.round(v * 5);
+    return n >= 0 ? "·····".padStart(5, "·") + "█".repeat(n).padEnd(5, "·")
+                  : "·".repeat(5) + "█".repeat(-n).padStart(5, "·").padEnd(5, "·");
+  };
+  const lines = [
+    `compute_affect() preview — per ${preview.spec}`,
+    `  valence      [${signBar(c.valence)}]  ${c.valence.toFixed(2).padStart(5)}   (72h recency-weighted outcome)`,
+    `  arousal      [${bar(c.arousal)}]  ${c.arousal.toFixed(2)}   (event rate + tool diversity + novel stimuli)`,
+    `  curiosity    [${bar(c.curiosity)}]  ${c.curiosity.toFixed(2)}   (empty/low-conf recalls + unreflected ratio)`,
+    `  satisfaction [${bar(c.satisfaction)}]  ${c.satisfaction.toFixed(2)}   (success rate + pleased ratio + useful delta)`,
+    `  frustration  [${bar(c.frustration)}]  ${c.frustration.toFixed(2)}   (retry rate + zero-hit ratio + open conflicts)`,
+    c.confidence == null
+      ? `  confidence   [·····.....]   n/a    (no skill_outcomes activity in 48h)`
+      : `  confidence   [${bar(c.confidence)}]  ${c.confidence.toFixed(2)}   (weighted skill success rate)`,
+    "",
+    "inputs:",
+    `  experiences:  24h=${preview.inputs.experiences_24h_total} (✓${preview.inputs.successes_24h} ✗${preview.inputs.failures_24h})  72h=${preview.inputs.experiences_72h_total}  48h unreflected=${preview.inputs.experiences_48h_unreflected}`,
+    `  events:       15min=${preview.inputs.events_last_15min}  recalled24h=${preview.inputs.recalled_24h} (hits=0: ${preview.inputs.recalled_24h_hits_0}, low-conf: ${preview.inputs.recalled_24h_low_conf})`,
+    `                agent_error24h=${preview.inputs.agent_error_24h}  agent_completed24h=${preview.inputs.agent_completed_24h}  contradiction48h=${preview.inputs.contradiction_detected_48h}`,
+    `                mark_useful 0-6h=${preview.inputs.mark_useful_6h}  6-12h=${preview.inputs.mark_useful_6_to_12h}`,
+    `  tool_div 60m: ${preview.inputs.tool_diversity_60min}   novel stimuli 6h: ${preview.inputs.novel_stimuli_6h}   skill rows 48h: ${preview.inputs.skill_rows_48h}`,
+    "",
+    ...preview.notes.map(n => `• ${n}`),
+  ];
+  return {
+    content: [{ type: "text" as const, text: lines.join("\n") }],
+  };
+}
+
+// ===========================================================================
 // reset_affect (Notbremse — für Dev/Tests)
 // ===========================================================================
 export const resetAffectSchema = z.object({});
