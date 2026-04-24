@@ -1,4 +1,5 @@
 import { spawn } from "node:child_process";
+import { randomUUID } from "node:crypto";
 import { PostgrestClient } from "@supabase/postgrest-js";
 import type { Agent, AgentEventBus, BusEvent } from "./event-bus.js";
 
@@ -125,13 +126,20 @@ export class ConscienceAgent implements Agent {
       return;
     }
 
-    // 4) log warning event + chain relation
+    // 4) log warning event + chain relation.
+    //    Two events share one trace_id so a future "contradiction_resolved"
+    //    event can correlate back. `conscience_warning` is the human-readable
+    //    surface; `contradiction_detected` is the observable counted by the
+    //    frustration term of compute_affect() — see docs/affect-observables.md.
     const reason = (verdict.reason ?? "").slice(0, 500);
-    await bus.emit(mem.id, "conscience_warning", this.name, {
+    const traceId = randomUUID();
+    const payload = {
       contradicts_id: verdict.contradicts_id,
       confidence:     verdict.confidence,
       reason,
-    });
+    };
+    await bus.emit(mem.id, "conscience_warning",    this.name, payload, traceId);
+    await bus.emit(mem.id, "contradiction_detected", this.name, payload, traceId);
     const { error: chainErr } = await this.db.rpc("chain_memories", {
       p_a_id:   mem.id,
       p_b_id:   verdict.contradicts_id,

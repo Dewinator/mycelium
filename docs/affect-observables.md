@@ -205,16 +205,23 @@ The issue is explicitly too big for one tick. Suggested order:
 2. **`recalled` event emission** — MCP tools emit `recalled` memory_events
    with `{hits, score, query_length}` so the future triggers have input
    data from day one. Additive; doesn't replace `affect_apply`. (done)
-3. Snapshot-migration: freeze the current `agent_affect` row into a
+3. **`mark_useful` / `agent_completed` / `agent_error` emission** — MCP
+   plumbing so satisfaction (`useful_delta`) and frustration (`retry_rate`)
+   have their input data. Additive. (done)
+4. **`contradiction_detected` emission** — ConscienceAgent emits this
+   alongside `conscience_warning` (shared `trace_id`) so frustration's
+   `open_conflicts` term has a data source and a future
+   `contradiction_resolved` event can correlate back. Additive. (done)
+5. Snapshot-migration: freeze the current `agent_affect` row into a
    historical anchor table before `compute_affect()` starts overwriting.
-4. Migration: `compute_affect()` as a pure SQL function returning JSONB
+6. Migration: `compute_affect()` as a pure SQL function returning JSONB
    (no side-effects yet, so it can be tested against live data first).
-5. Migration: triggers on `experiences` and `memory_events` that call
+7. Migration: triggers on `experiences` and `memory_events` that call
    `compute_affect()` and patch `agent_affect`.
-6. MCP-server refactor: stop calling `affect_apply` from `remember` /
+8. MCP-server refactor: stop calling `affect_apply` from `remember` /
    `recall` / `absorb` / `digest`; keep the `memory_events` log as the
    authoritative input.
-7. CLAUDE.md — link this doc under the Roadmap. (done, PR #15)
-8. Post-observation tuning pass (after ~2 weeks of live data).
+9. CLAUDE.md — link this doc under the Roadmap. (done, PR #15)
+10. Post-observation tuning pass (after ~2 weeks of live data).
 
 Each step should be a separate PR so the diff stays reviewable.
