@@ -163,6 +163,26 @@ function fmtErr(err: unknown): string {
   return e.message || e.details || e.hint || e.code || JSON.stringify(err);
 }
 
+/**
+ * Map an experience outcome to the `memory_events.event_type` emitted after a
+ * successful `record_experience`. Feeds `frustration.retry_rate` in
+ * `compute_affect()` — see docs/affect-observables.md §frustration.
+ *
+ * - 'failure'            → 'agent_error'
+ * - 'success' | 'partial' → 'agent_completed'
+ * - 'unknown' | anything → null (no event emitted)
+ *
+ * Exported as a pure function so the mapping is unit-testable without a DB.
+ */
+export type OutcomeEventType = "agent_error" | "agent_completed";
+export function outcomeToEventType(
+  outcome: string | null | undefined,
+): OutcomeEventType | null {
+  if (outcome === "failure") return "agent_error";
+  if (outcome === "success" || outcome === "partial") return "agent_completed";
+  return null;
+}
+
 export class ExperienceService {
   private db: PostgrestClient;
   private embeddings: EmbeddingProvider;
@@ -270,10 +290,7 @@ export class ExperienceService {
     // 'failure' → agent_error. Fed into frustration.retry_rate.
     // See docs/affect-observables.md. Non-fatal.
     const outcome = input.outcome ?? "unknown";
-    const outcomeEventType =
-      outcome === "failure"                     ? "agent_error"
-      : outcome === "success" || outcome === "partial" ? "agent_completed"
-      :                                            null;
+    const outcomeEventType = outcomeToEventType(outcome);
     if (outcomeEventType) {
       try {
         const { error: evErr } = await this.db.rpc("log_memory_event", {
