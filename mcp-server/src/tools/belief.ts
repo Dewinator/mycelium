@@ -48,6 +48,9 @@ export async function inferAction(
     0.7
   );
   const topScore = hits[0]?.effective_score ?? 0;
+  // Observability: feed the `recalled` stream that compute_affect() will
+  // consume (docs/affect-observables.md).
+  void memory.emitRecalled(hits.length, topScore, input.task_description.length, "mcp:infer_action");
 
   // ---- Step 1b: fetch current serotonin (modulates ask_teacher_cost) ---
   let serotonin: number | undefined;

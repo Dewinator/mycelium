@@ -202,6 +202,31 @@ export class MemoryService {
   }
 
   /**
+   * Emit one `recalled` event per recall call with hit count and top score
+   * in the context payload. Consumed by the compute_affect() triggers
+   * (see docs/affect-observables.md): `hits=0` feeds empty_recalls, and
+   * `score<0.4` feeds low_conf_recalls.
+   *
+   * Non-fatal on error — this is telemetry, not a correctness dependency.
+   */
+  async emitRecalled(
+    hits: number,
+    topScore: number,
+    queryLength: number,
+    source: string
+  ): Promise<void> {
+    const { error } = await this.db.rpc("log_memory_event", {
+      p_memory_id:  null,
+      p_event_type: "recalled",
+      p_source:     source,
+      p_context:    { hits, score: topScore, query_length: queryLength },
+      p_trace_id:   null,
+      p_created_by: null,
+    });
+    if (error) console.error(`emitRecalled(${source}) failed:`, fmtErr(error));
+  }
+
+  /**
    * Emit one `used_in_response` event per id, all sharing a trace_id.
    * Consumed by the CoactivationAgent (Migration 047 event-bus). Non-fatal
    * on error — this is telemetry, not a correctness dependency.

@@ -87,6 +87,7 @@ class FakeService implements Partial<MemoryService> {
   async touch(_ids: string[]): Promise<void> {}
   async coactivate(_ids: string[]): Promise<void> {}
   async spread(_ids: string[]): Promise<never[]> { return []; }
+  async emitRecalled(_h: number, _s: number, _q: number, _src: string): Promise<void> {}
 
   async get(id: string): Promise<Memory | null> {
     return this.opts.getResult === undefined ? makeMemory({ id }) : this.opts.getResult;

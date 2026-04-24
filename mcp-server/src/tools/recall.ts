@@ -78,11 +78,17 @@ export async function recall(
     input.vector_weight
   );
 
+  // ---- Observability: emit a `recalled` memory_event ----------------------
+  // Forward-compatible with the trigger-based compute_affect() described in
+  // docs/affect-observables.md — empty_recalls / low_conf_recalls read from
+  // memory_events, not from the affect.apply path below.
+  const topScore = results[0]?.effective_score ?? 0;
+  void service.emitRecalled(results.length, topScore, input.query.length, "mcp:recall");
+
   // ---- Auto-update affect from recall outcome -----------------------------
   // Empty recalls nudge curiosity up / confidence down; rich recalls confirm
   // confidence. Touches (single weak hit) don't move state.
   if (!input.ignore_affect) {
-    const topScore = results[0]?.effective_score ?? 0;
     if (results.length === 0) {
       void affect.apply("recall_empty", 0.5);
     } else if (results.length >= 5 && topScore >= 0.6) {
