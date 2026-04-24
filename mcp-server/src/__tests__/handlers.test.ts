@@ -65,6 +65,7 @@ class FakeService implements Partial<MemoryService> {
   updated: UpdateMemoryInput[] = [];
   deleted: string[] = [];
   searched: string[] = [];
+  recalledEvents: Array<{ hits: number; topScore: number; queryLength: number; source: string }> = [];
 
   constructor(
     private opts: {
@@ -87,7 +88,9 @@ class FakeService implements Partial<MemoryService> {
   async touch(_ids: string[]): Promise<void> {}
   async coactivate(_ids: string[]): Promise<void> {}
   async spread(_ids: string[]): Promise<never[]> { return []; }
-  async emitRecalled(_h: number, _s: number, _q: number, _src: string): Promise<void> {}
+  async emitRecalled(hits: number, topScore: number, queryLength: number, source: string): Promise<void> {
+    this.recalledEvents.push({ hits, topScore, queryLength, source });
+  }
 
   async get(id: string): Promise<Memory | null> {
     return this.opts.getResult === undefined ? makeMemory({ id }) : this.opts.getResult;
@@ -179,6 +182,79 @@ test("recall formats results with rank, score and id", async () => {
   assert.match(res.content[0].text, /1\. \[people\//);
   assert.match(res.content[0].text, /0\.873/);
   assert.match(res.content[0].text, /alice/);
+});
+
+test("recall emits recalled memory_event with hits=0 on empty result", async () => {
+  const svc = new FakeService({ searchResults: [] });
+  await recall(svc as unknown as MemoryService, fakeAffect, {
+    query: "no matches for this",
+    limit: 10,
+    vector_weight: 0.7,
+    spread: false, with_experiences: false,
+    ignore_affect: true,
+    cite: false,
+  });
+  assert.equal(svc.recalledEvents.length, 1);
+  const ev = svc.recalledEvents[0];
+  assert.equal(ev.hits, 0);
+  assert.equal(ev.topScore, 0);
+  assert.equal(ev.queryLength, "no matches for this".length);
+  assert.equal(ev.source, "mcp:recall");
+});
+
+test("recall emits recalled memory_event with hit count and top score", async () => {
+  const svc = new FakeService({
+    searchResults: [
+      {
+        id: UUID,
+        content: "hit one",
+        category: "topics",
+        tags: [],
+        metadata: {},
+        stage: "episodic",
+        strength: 1.0,
+        importance: 0.5,
+        access_count: 0,
+        pinned: false,
+        relevance: 0.9,
+        strength_now: 1.0,
+        salience: 1.0,
+        effective_score: 0.812,
+        created_at: "2026-01-01T00:00:00Z",
+      },
+      {
+        id: "22222222-2222-3333-4444-555555555555",
+        content: "hit two",
+        category: "topics",
+        tags: [],
+        metadata: {},
+        stage: "episodic",
+        strength: 1.0,
+        importance: 0.5,
+        access_count: 0,
+        pinned: false,
+        relevance: 0.7,
+        strength_now: 1.0,
+        salience: 1.0,
+        effective_score: 0.533,
+        created_at: "2026-01-01T00:00:00Z",
+      },
+    ],
+  });
+  await recall(svc as unknown as MemoryService, fakeAffect, {
+    query: "two hits",
+    limit: 10,
+    vector_weight: 0.7,
+    spread: false, with_experiences: false,
+    ignore_affect: true,
+    cite: false,
+  });
+  assert.equal(svc.recalledEvents.length, 1);
+  const ev = svc.recalledEvents[0];
+  assert.equal(ev.hits, 2);
+  assert.equal(ev.topScore, 0.812);
+  assert.equal(ev.queryLength, "two hits".length);
+  assert.equal(ev.source, "mcp:recall");
 });
 
 test("forget reports not-found when missing", async () => {
