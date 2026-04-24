@@ -69,6 +69,7 @@ class FakeService implements Partial<MemoryService> {
   recalledEvents: Array<{ hits: number; topScore: number; queryLength: number; source: string }> = [];
   markedUsefulIds: string[] = [];
   markUsefulEvents: Array<{ memoryId: string | null; source: string }> = [];
+  usedInResponseCalls: Array<{ ids: string[]; traceId: string }> = [];
 
   constructor(
     private opts: {
@@ -93,6 +94,9 @@ class FakeService implements Partial<MemoryService> {
   async spread(_ids: string[]): Promise<never[]> { return []; }
   async emitRecalled(hits: number, topScore: number, queryLength: number, source: string): Promise<void> {
     this.recalledEvents.push({ hits, topScore, queryLength, source });
+  }
+  async emitUsedInResponse(ids: string[], traceId: string): Promise<void> {
+    this.usedInResponseCalls.push({ ids: [...ids], traceId });
   }
 
   // Mirrors MemoryService.markUseful in supabase.ts: real impl calls the
@@ -271,6 +275,102 @@ test("recall emits recalled memory_event with hit count and top score", async ()
   assert.equal(ev.topScore, 0.812);
   assert.equal(ev.queryLength, "two hits".length);
   assert.equal(ev.source, "mcp:recall");
+});
+
+// -- used_in_response emission from recall(cite=true) ------------------------
+// When cite=true and at least 2 results are retrieved, recall emits one
+// used_in_response memory_event per top-5 hit, all sharing a single trace_id.
+// The event_type feeds compute_affect()'s arousal term (event_rate over 15 min
+// — docs/affect-observables.md §arousal) and drives CoactivationAgent
+// Hebbian-linking. The `citedIds.length >= 2` gate is non-obvious;
+// the tests below pin the conditional.
+
+function makeHit(id: string, score: number) {
+  return {
+    id,
+    content: `content ${id.slice(0, 4)}`,
+    category: "topics" as const,
+    tags: [] as string[],
+    metadata: {},
+    stage: "episodic" as const,
+    strength: 1.0,
+    importance: 0.5,
+    access_count: 0,
+    pinned: false,
+    relevance: 0.9,
+    strength_now: 1.0,
+    salience: 1.0,
+    effective_score: score,
+    created_at: "2026-01-01T00:00:00Z",
+  };
+}
+
+test("recall(cite=true) with ≥2 hits emits used_in_response with shared trace_id", async () => {
+  const id2 = "22222222-2222-3333-4444-555555555555";
+  const svc = new FakeService({
+    searchResults: [makeHit(UUID, 0.9), makeHit(id2, 0.7)],
+  });
+  await recall(svc as unknown as MemoryService, fakeAffect, {
+    query: "two hits cited",
+    limit: 10,
+    vector_weight: 0.7,
+    spread: false, with_experiences: false,
+    ignore_affect: true,
+    cite: true,
+  });
+  assert.equal(svc.usedInResponseCalls.length, 1);
+  const call = svc.usedInResponseCalls[0];
+  assert.deepEqual(call.ids, [UUID, id2]);
+  assert.match(call.traceId, /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/);
+});
+
+test("recall(cite=true) with 1 hit does NOT emit used_in_response (gate: ≥2)", async () => {
+  const svc = new FakeService({
+    searchResults: [makeHit(UUID, 0.9)],
+  });
+  await recall(svc as unknown as MemoryService, fakeAffect, {
+    query: "single hit cited",
+    limit: 10,
+    vector_weight: 0.7,
+    spread: false, with_experiences: false,
+    ignore_affect: true,
+    cite: true,
+  });
+  assert.equal(svc.usedInResponseCalls.length, 0);
+});
+
+test("recall(cite=false) never emits used_in_response even with many hits", async () => {
+  const id2 = "22222222-2222-3333-4444-555555555555";
+  const svc = new FakeService({
+    searchResults: [makeHit(UUID, 0.9), makeHit(id2, 0.7)],
+  });
+  await recall(svc as unknown as MemoryService, fakeAffect, {
+    query: "not cited",
+    limit: 10,
+    vector_weight: 0.7,
+    spread: false, with_experiences: false,
+    ignore_affect: true,
+    cite: false,
+  });
+  assert.equal(svc.usedInResponseCalls.length, 0);
+});
+
+test("recall(cite=true) caps used_in_response to first 5 hits", async () => {
+  const hits = Array.from({ length: 7 }, (_, i) =>
+    makeHit(`${(i + 1).toString().repeat(8)}-2222-3333-4444-555555555555`, 0.9 - i * 0.05),
+  );
+  const svc = new FakeService({ searchResults: hits });
+  await recall(svc as unknown as MemoryService, fakeAffect, {
+    query: "seven hits cited",
+    limit: 10,
+    vector_weight: 0.7,
+    spread: false, with_experiences: false,
+    ignore_affect: true,
+    cite: true,
+  });
+  assert.equal(svc.usedInResponseCalls.length, 1);
+  assert.equal(svc.usedInResponseCalls[0].ids.length, 5);
+  assert.deepEqual(svc.usedInResponseCalls[0].ids, hits.slice(0, 5).map((h) => h.id));
 });
 
 test("forget reports not-found when missing", async () => {
