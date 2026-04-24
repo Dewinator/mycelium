@@ -106,6 +106,58 @@ export class RelationsService {
       p_reason: reason,
     });
     if (error) throw new Error(`supersede_memory failed: ${fmtErr(error)}`);
-    return (data as Record<string, unknown>) ?? { ok: false };
+    const result = (data as Record<string, unknown>) ?? { ok: false };
+    if (result.ok !== false) {
+      await this.maybeEmitContradictionResolved(oldId, newId);
+    }
+    return result;
+  }
+
+  /**
+   * If conscience-agent previously flagged (oldId, newId) as a contradiction,
+   * emit a matching `contradiction_resolved` event with the same trace_id.
+   * This closes the open-conflict loop read by compute_affect()'s frustration
+   * term — see docs/affect-observables.md §frustration.
+   *
+   * Non-fatal on error: supersede itself has already succeeded; the event is
+   * telemetry for the affect pipeline, not a correctness dependency.
+   */
+  private async maybeEmitContradictionResolved(
+    oldId: string,
+    newId: string,
+  ): Promise<void> {
+    const { data, error } = await this.db
+      .from("memory_events")
+      .select("trace_id, memory_id, context")
+      .eq("event_type", "contradiction_detected")
+      .in("memory_id", [oldId, newId])
+      .order("created_at", { ascending: false })
+      .limit(20);
+    if (error) {
+      console.error(`[supersede] contradiction lookup failed: ${fmtErr(error)}`);
+      return;
+    }
+    const rows = (data ?? []) as Array<{
+      trace_id: string | null;
+      memory_id: string;
+      context: { contradicts_id?: string } | null;
+    }>;
+    const match = rows.find((e) => {
+      const other = e.context?.contradicts_id;
+      return (e.memory_id === oldId && other === newId) ||
+             (e.memory_id === newId && other === oldId);
+    });
+    if (!match) return;
+    const { error: logErr } = await this.db.rpc("log_memory_event", {
+      p_memory_id:  oldId,
+      p_event_type: "contradiction_resolved",
+      p_source:     "mcp:supersede_memory",
+      p_context:    { resolution: "superseded", superseder_id: newId },
+      p_trace_id:   match.trace_id,
+      p_created_by: null,
+    });
+    if (logErr) {
+      console.error(`[supersede] emit contradiction_resolved failed: ${fmtErr(logErr)}`);
+    }
   }
 }

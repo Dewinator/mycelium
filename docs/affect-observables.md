@@ -34,8 +34,12 @@ exists. No new observable tables.
 
 `memory_events.event_type` is the key signal: `recalled`, `used_in_response`,
 `agent_error`, `agent_completed`, `mark_useful`, `contradiction_detected`,
-`positive_feedback`, `negative_feedback`. `context` carries per-event
-payload (e.g. recall hit count, similarity score).
+`contradiction_resolved`, `positive_feedback`, `negative_feedback`. `context`
+carries per-event payload (e.g. recall hit count, similarity score).
+
+A `contradiction_resolved` event shares the `trace_id` of the originating
+`contradiction_detected`, so the frustration term can close the loop with a
+cheap trace-id join instead of walking the memory-relations graph.
 
 ## Formulas
 
@@ -212,6 +216,11 @@ The issue is explicitly too big for one tick. Suggested order:
    alongside `conscience_warning` (shared `trace_id`) so frustration's
    `open_conflicts` term has a data source and a future
    `contradiction_resolved` event can correlate back. Additive. (done)
+4b. **`contradiction_resolved` emission** — `supersede_memory` checks for a
+   prior `contradiction_detected` event between (old, new) and emits the
+   matching resolution with the same `trace_id`. Lets the frustration term
+   count *open* conflicts only, without walking the relations graph.
+   Additive. (done)
 5. Snapshot-migration: freeze the current `agent_affect` row into a
    historical anchor table before `compute_affect()` starts overwriting.
 6. Migration: `compute_affect()` as a pure SQL function returning JSONB
