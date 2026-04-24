@@ -5,6 +5,7 @@ import { recall } from "../tools/recall.js";
 import { forget } from "../tools/forget.js";
 import { update } from "../tools/update.js";
 import { list } from "../tools/list.js";
+import { markUseful } from "../tools/cognitive.js";
 import type { MemoryService } from "../services/supabase.js";
 import type { AffectService, AffectEvent, AffectState } from "../services/affect.js";
 import type { ProjectService } from "../services/projects.js";
@@ -66,6 +67,8 @@ class FakeService implements Partial<MemoryService> {
   deleted: string[] = [];
   searched: string[] = [];
   recalledEvents: Array<{ hits: number; topScore: number; queryLength: number; source: string }> = [];
+  markedUsefulIds: string[] = [];
+  markUsefulEvents: Array<{ memoryId: string | null; source: string }> = [];
 
   constructor(
     private opts: {
@@ -90,6 +93,19 @@ class FakeService implements Partial<MemoryService> {
   async spread(_ids: string[]): Promise<never[]> { return []; }
   async emitRecalled(hits: number, topScore: number, queryLength: number, source: string): Promise<void> {
     this.recalledEvents.push({ hits, topScore, queryLength, source });
+  }
+
+  // Mirrors MemoryService.markUseful in supabase.ts: real impl calls the
+  // `mark_memory_useful` RPC and then `emitMarkUseful(id, "mcp:mark_useful")`.
+  // Reproducing that internal emit here lets the tool-level test guard the
+  // full mark_useful → memory_event payload shape compute_affect() will read.
+  async markUseful(id: string): Promise<void> {
+    this.markedUsefulIds.push(id);
+    await this.emitMarkUseful(id, "mcp:mark_useful");
+  }
+
+  async emitMarkUseful(memoryId: string | null, source: string): Promise<void> {
+    this.markUsefulEvents.push({ memoryId, source });
   }
 
   async get(id: string): Promise<Memory | null> {
@@ -310,4 +326,20 @@ test("list renders memories", async () => {
   const res = await list(svc as unknown as MemoryService, { limit: 20 });
   assert.match(res.content[0].text, /first/);
   assert.match(res.content[0].text, /second/);
+});
+
+test("markUseful forwards id to service.markUseful", async () => {
+  const svc = new FakeService();
+  const res = await markUseful(svc as unknown as MemoryService, { id: UUID });
+  assert.match(res.content[0].text, /Marked useful/);
+  assert.deepEqual(svc.markedUsefulIds, [UUID]);
+});
+
+test("markUseful emits mark_useful memory_event with source=mcp:mark_useful", async () => {
+  const svc = new FakeService();
+  await markUseful(svc as unknown as MemoryService, { id: UUID });
+  assert.equal(svc.markUsefulEvents.length, 1);
+  const ev = svc.markUsefulEvents[0];
+  assert.equal(ev.memoryId, UUID);
+  assert.equal(ev.source, "mcp:mark_useful");
 });
