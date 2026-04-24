@@ -154,6 +154,25 @@ export class MemoryService {
   async markUseful(id: string): Promise<void> {
     const { error } = await this.db.rpc("mark_memory_useful", { memory_id: id });
     if (error) throw new Error(`mark_memory_useful failed: ${fmtErr(error)}`);
+    await this.emitMarkUseful(id, "mcp:mark_useful");
+  }
+
+  /**
+   * Emit one `mark_useful` event per explicit strong-learning signal.
+   * Consumed by the compute_affect() triggers (see docs/affect-observables.md):
+   * feeds the `useful_delta` term of `satisfaction`. Non-fatal — this is
+   * telemetry, not a correctness dependency.
+   */
+  async emitMarkUseful(memoryId: string | null, source: string): Promise<void> {
+    const { error } = await this.db.rpc("log_memory_event", {
+      p_memory_id:  memoryId,
+      p_event_type: "mark_useful",
+      p_source:     source,
+      p_context:    {},
+      p_trace_id:   null,
+      p_created_by: null,
+    });
+    if (error) console.error(`emitMarkUseful(${source}) failed:`, fmtErr(error));
   }
 
   async dedup(threshold = 0.93): Promise<number> {

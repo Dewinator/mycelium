@@ -266,6 +266,35 @@ export class ExperienceService {
       }
     }
 
+    // (d) outcome signal for compute_affect() — 'success'/'partial' → agent_completed,
+    // 'failure' → agent_error. Fed into frustration.retry_rate.
+    // See docs/affect-observables.md. Non-fatal.
+    const outcome = input.outcome ?? "unknown";
+    const outcomeEventType =
+      outcome === "failure"                     ? "agent_error"
+      : outcome === "success" || outcome === "partial" ? "agent_completed"
+      :                                            null;
+    if (outcomeEventType) {
+      try {
+        const { error: evErr } = await this.db.rpc("log_memory_event", {
+          p_memory_id:  null,
+          p_event_type: outcomeEventType,
+          p_source:     "mcp:record_experience",
+          p_context:    {
+            experience_id: id,
+            outcome,
+            task_type:     input.task_type ?? null,
+            difficulty:    input.difficulty ?? null,
+          },
+          p_trace_id:   null,
+          p_created_by: null,
+        });
+        if (evErr) console.error(`emit ${outcomeEventType} failed (non-fatal):`, fmtErr(evErr));
+      } catch (err) {
+        console.error(`emit ${outcomeEventType} threw (non-fatal):`, err);
+      }
+    }
+
     return { id, cross_links: crossLinks, intentions_touched: intentionsTouched, person_id: personId };
   }
 
@@ -390,6 +419,20 @@ export class ExperienceService {
       p_experience_id: experienceId,
     });
     if (error) throw new Error(`mark_experience_useful failed: ${fmtErr(error)}`);
+
+    // Mirror `MemoryService.emitMarkUseful` — fed into compute_affect() via
+    // memory_events, see docs/affect-observables.md. memory_id is null because
+    // the subject is an experience, not a memory; the experience id goes into
+    // context so downstream consumers can still correlate. Non-fatal.
+    const { error: evErr } = await this.db.rpc("log_memory_event", {
+      p_memory_id:  null,
+      p_event_type: "mark_useful",
+      p_source:     "mcp:mark_experience_useful",
+      p_context:    { experience_id: experienceId },
+      p_trace_id:   null,
+      p_created_by: null,
+    });
+    if (evErr) console.error(`emit mark_useful(experience) failed:`, fmtErr(evErr));
   }
 
   /** Find existing lessons whose embedding is close to the query text. */
