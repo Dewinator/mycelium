@@ -193,12 +193,27 @@ Bots don't pair themselves. A new agent is only created when **both humans** ind
 
 ## Quickstart
 
+**One-liner (macOS / Linux):**
+
 ```bash
-# 1. Clone
+curl -sSf https://raw.githubusercontent.com/Dewinator/mycelium/main/install.sh | bash
+```
+
+This checks dependencies, clones the repo into `./mycelium`, runs `scripts/setup.sh`, pulls the Ollama models, and registers a launchd / systemd-user service for the dashboard. It never silently sudos — every elevated step asks first. Run with `--help` for flags (`--yes`, `--no-autostart`, `--target DIR`, `--print-only`, …).
+
+Prefer to inspect first? Download, read, then run:
+
+```bash
+curl -fsSL -o install.sh https://raw.githubusercontent.com/Dewinator/mycelium/main/install.sh
+less install.sh   # ← read it
+bash install.sh
+```
+
+**Manual setup** (if you've already cloned):
+
+```bash
 git clone https://github.com/Dewinator/mycelium.git
 cd mycelium
-
-# 2. Set up everything automatically
 ./scripts/setup.sh
 # → checks dependencies
 # → creates .env with random secrets
@@ -208,7 +223,7 @@ cd mycelium
 # → prints the MCP client config to paste
 ```
 
-Paste the printed JSON block into your MCP client's configuration (e.g. `.mcp.json` for Claude Code, `settings.json` for Cursor). Adjust the path to wherever you cloned.
+After install, open `http://127.0.0.1:8787/setup` for copy-paste config snippets per agent (Claude Code, Claude Desktop, Codex, Cursor, Cline, Continue, Zed, openClaw). Adjust paths to wherever you cloned.
 
 ### Import existing memories
 
