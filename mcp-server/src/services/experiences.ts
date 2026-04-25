@@ -211,6 +211,42 @@ export function buildMarkUsefulFromExperienceContext(
   return { experience_id: experienceId };
 }
 
+/**
+ * JSONB payload for `agent_completed` / `agent_error` memory_events emitted
+ * after `ExperienceService.record()`. Feeds compute_affect()'s frustration
+ * dimension (docs/affect-observables.md §frustration: retry_rate counts
+ * agent_error vs. agent_completed events).
+ *
+ * The current SQL formula only counts these events, but the payload keys are
+ * the natural inputs for future tuning passes (e.g. weighting retries by
+ * task_type or difficulty), and `experience_id` joins the event back to its
+ * episode for introspection tools. Pinning the wire shape now keeps both
+ * surfaces stable without a compile-time signal otherwise.
+ *
+ * Snake_case is required because compute_affect() reads JSONB via
+ * `(context->>'task_type')` etc. — see the analogous `buildRecalledContext`.
+ */
+export interface OutcomeEventContext {
+  experience_id: string;
+  outcome: string;
+  task_type: string | null;
+  difficulty: number | null;
+}
+
+export function buildOutcomeEventContext(
+  experienceId: string,
+  outcome: string,
+  taskType: string | null | undefined,
+  difficulty: number | null | undefined,
+): OutcomeEventContext {
+  return {
+    experience_id: experienceId,
+    outcome,
+    task_type:  taskType  ?? null,
+    difficulty: difficulty ?? null,
+  };
+}
+
 export class ExperienceService {
   private db: PostgrestClient;
   private embeddings: EmbeddingProvider;
@@ -325,12 +361,12 @@ export class ExperienceService {
           p_memory_id:  null,
           p_event_type: outcomeEventType,
           p_source:     "mcp:record_experience",
-          p_context:    {
-            experience_id: id,
+          p_context:    buildOutcomeEventContext(
+            id,
             outcome,
-            task_type:     input.task_type ?? null,
-            difficulty:    input.difficulty ?? null,
-          },
+            input.task_type,
+            input.difficulty,
+          ),
           p_trace_id:   null,
           p_created_by: null,
         });
