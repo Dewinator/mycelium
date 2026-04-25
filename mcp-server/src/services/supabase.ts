@@ -37,6 +37,32 @@ function fmtErr(err: unknown): string {
   return e.message || e.details || e.hint || e.code || JSON.stringify(err);
 }
 
+/**
+ * JSONB payload for `recalled` memory_events.
+ *
+ * The compute_affect() SQL formulas (docs/affect-observables.md §curiosity
+ * and §frustration) read these keys directly via JSON pointer:
+ *   (context->>'hits')::int   — empty_recalls / zero_hit_ratio
+ *   (context->>'score')::float — low_conf_recalls
+ *
+ * Renaming or dropping a key here silently breaks the SQL trigger without
+ * any TypeScript signal. The unit test in `affect-event-payloads.test.ts`
+ * pins the key set + types so the contract stays in lockstep with the spec.
+ */
+export interface RecalledContext {
+  hits: number;
+  score: number;
+  query_length: number;
+}
+
+export function buildRecalledContext(
+  hits: number,
+  topScore: number,
+  queryLength: number,
+): RecalledContext {
+  return { hits, score: topScore, query_length: queryLength };
+}
+
 export class MemoryService {
   private db: PostgrestClient;
   private embeddings: EmbeddingProvider;
@@ -238,7 +264,7 @@ export class MemoryService {
       p_memory_id:  null,
       p_event_type: "recalled",
       p_source:     source,
-      p_context:    { hits, score: topScore, query_length: queryLength },
+      p_context:    buildRecalledContext(hits, topScore, queryLength),
       p_trace_id:   null,
       p_created_by: null,
     });
