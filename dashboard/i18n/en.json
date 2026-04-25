@@ -1,0 +1,29 @@
+{
+  "brand.subtitle": "real open AI",
+
+  "nav.memory": "memory",
+  "nav.projects": "projects",
+  "nav.soul": "soul",
+  "nav.regulator": "regulator",
+  "nav.learning": "learning",
+  "nav.motivation": "motivation",
+  "nav.identity": "identity",
+  "nav.sleep": "sleep",
+  "nav.population": "population",
+  "nav.tinder": "tinder",
+  "nav.guard": "guard",
+  "nav.emergence": "emergence",
+  "nav.federation": "federation",
+  "nav.neurochemistry": "neurochemistry",
+  "nav.synapses": "synapses",
+  "nav.teacher": "teacher",
+
+  "header.burger.aria": "menu",
+  "header.status.connecting": "connecting…",
+  "header.refresh": "refresh",
+  "header.theme": "light / dark",
+
+  "lang.toggle.aria": "Switch language",
+  "lang.de": "DE",
+  "lang.en": "EN"
+}

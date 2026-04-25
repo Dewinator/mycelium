@@ -499,36 +499,37 @@
   <aside class="sidebar" id="sidebar">
     <div class="brand">
       <h1>mycelium</h1>
-      <div class="sub">real open AI</div>
+      <div class="sub" data-i18n="brand.subtitle">real open AI</div>
     </div>
     <nav class="tabs">
-      <button class="tab active" data-tab="memory">gedächtnis</button>
-      <button class="tab" data-tab="projects">projekte</button>
-      <button class="tab" data-tab="soul">seele</button>
-      <button class="tab" data-tab="regulator">regulator</button>
-      <button class="tab" data-tab="learning">lernen</button>
-      <button class="tab" data-tab="motivation">motivation</button>
-      <button class="tab" data-tab="identity">identität</button>
-      <button class="tab" data-tab="sleep">schlaf</button>
-      <button class="tab" data-tab="population">population</button>
-      <button class="tab" data-tab="tinder">tinder</button>
-      <button class="tab" data-tab="guard">guard</button>
-      <button class="tab" data-tab="emergence">emergenz</button>
-      <button class="tab" data-tab="federation">föderation</button>
-      <button class="tab" data-tab="neurochemistry">neurochemie</button>
-      <button class="tab" data-tab="synapses">synapsen</button>
-      <button class="tab" data-tab="teacher">teacher</button>
+      <button class="tab active" data-tab="memory" data-i18n="nav.memory">gedächtnis</button>
+      <button class="tab" data-tab="projects" data-i18n="nav.projects">projekte</button>
+      <button class="tab" data-tab="soul" data-i18n="nav.soul">seele</button>
+      <button class="tab" data-tab="regulator" data-i18n="nav.regulator">regulator</button>
+      <button class="tab" data-tab="learning" data-i18n="nav.learning">lernen</button>
+      <button class="tab" data-tab="motivation" data-i18n="nav.motivation">motivation</button>
+      <button class="tab" data-tab="identity" data-i18n="nav.identity">identität</button>
+      <button class="tab" data-tab="sleep" data-i18n="nav.sleep">schlaf</button>
+      <button class="tab" data-tab="population" data-i18n="nav.population">population</button>
+      <button class="tab" data-tab="tinder" data-i18n="nav.tinder">tinder</button>
+      <button class="tab" data-tab="guard" data-i18n="nav.guard">guard</button>
+      <button class="tab" data-tab="emergence" data-i18n="nav.emergence">emergenz</button>
+      <button class="tab" data-tab="federation" data-i18n="nav.federation">föderation</button>
+      <button class="tab" data-tab="neurochemistry" data-i18n="nav.neurochemistry">neurochemie</button>
+      <button class="tab" data-tab="synapses" data-i18n="nav.synapses">synapsen</button>
+      <button class="tab" data-tab="teacher" data-i18n="nav.teacher">teacher</button>
     </nav>
   </aside>
   <div class="backdrop" id="sidebar-backdrop"></div>
 
   <main class="main">
   <header class="top">
-    <button class="burger" id="burger" aria-label="menü">☰</button>
-    <div class="status-line"><span class="status-dot" id="status"></span> <span id="status-text">verbinde…</span> &middot; <span id="generated">—</span></div>
+    <button class="burger" id="burger" data-i18n-attr="aria-label:header.burger.aria" aria-label="menü">☰</button>
+    <div class="status-line"><span class="status-dot" id="status"></span> <span id="status-text" data-i18n="header.status.connecting">verbinde…</span> &middot; <span id="generated">—</span></div>
     <div class="controls">
-      <button class="btn" id="refresh">aktualisieren</button>
-      <button class="btn" id="theme">light / dark</button>
+      <button class="btn" id="lang-toggle" data-i18n-attr="aria-label:lang.toggle.aria" aria-label="Sprache wechseln" title="DE / EN">DE | EN</button>
+      <button class="btn" id="refresh" data-i18n="header.refresh">aktualisieren</button>
+      <button class="btn" id="theme" data-i18n="header.theme">light / dark</button>
     </div>
   </header>
 
@@ -1222,6 +1223,33 @@
     quelle: <code>POST /api/rpc/dashboard_stats</code> &middot; proxy: <code>scripts/dashboard-server.mjs</code>
   </footer>
   </main>
+
+<script type="module">
+  // Bootstrap i18n before the main dashboard script runs.
+  // Exposes window.myceliumI18n for the legacy non-module script to consume
+  // when it builds DOM dynamically (planned in follow-up phases).
+  import { initI18n, setLocale, getLocale, t, applyToDom, AVAILABLE_LOCALES } from "/i18n/i18n.js";
+
+  await initI18n();
+
+  window.myceliumI18n = { t, setLocale, getLocale, applyToDom, AVAILABLE_LOCALES };
+
+  const updateToggle = () => {
+    const btn = document.getElementById("lang-toggle");
+    if (btn) btn.textContent = getLocale().toUpperCase();
+  };
+  updateToggle();
+
+  const toggle = document.getElementById("lang-toggle");
+  if (toggle) {
+    toggle.addEventListener("click", async () => {
+      const idx = AVAILABLE_LOCALES.indexOf(getLocale());
+      const next = AVAILABLE_LOCALES[(idx + 1) % AVAILABLE_LOCALES.length];
+      await setLocale(next);
+      updateToggle();
+    });
+  }
+</script>
 
 <script>
 const ENDPOINT = "/api";
