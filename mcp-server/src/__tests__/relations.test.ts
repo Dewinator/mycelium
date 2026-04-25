@@ -1,6 +1,7 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
 import {
+  buildContradictionResolvedContext,
   findResolutionMatch,
   type ContradictionDetectedRow,
 } from "../services/relations.js";
@@ -110,4 +111,72 @@ test("findResolutionMatch tolerates null trace_id on a matching row", () => {
   const match = findResolutionMatch(rows, OLD_ID, NEW_ID);
   assert.ok(match);
   assert.equal(match!.trace_id, null);
+});
+
+// ---------------------------------------------------------------------------
+// buildContradictionResolvedContext — JSONB payload contract for the
+// `contradiction_resolved` memory_event emitted by supersede_memory.
+//
+// Why these tests matter: the frustration term of compute_affect()
+// (docs/affect-observables.md §frustration) closes the open-conflict loop
+// via shared trace_id, but the JSONB body is still load-bearing for
+// downstream consumers that need to know *how* a contradiction was
+// resolved (resolution kind + the superseding memory id). Pinning the
+// literal here guards the keys against silent drift across renames or
+// refactors. Same defensive pattern as the prior ticks for
+// buildRecalledContext / buildContradictionDetectedContext /
+// buildOutcomeEventContext / buildMarkUsefulFromExperienceContext.
+// ---------------------------------------------------------------------------
+
+const SUPERSEDER_ID = "44444444-4444-4444-4444-444444444444";
+
+test("buildContradictionResolvedContext returns exactly the documented key set", () => {
+  // Catches a future maintainer adding/dropping keys without a test update.
+  const ctx = buildContradictionResolvedContext(SUPERSEDER_ID);
+  assert.deepEqual(Object.keys(ctx).sort(), ["resolution", "superseder_id"]);
+});
+
+test("buildContradictionResolvedContext maps supersederId arg → 'superseder_id' key (snake_case)", () => {
+  // The DB-side columns and downstream tooling are snake_case; the helper
+  // bridges the camelCase TS arg → snake_case JSONB key. Renaming the key
+  // would break audit-trail consumers that already query for it.
+  const ctx = buildContradictionResolvedContext(SUPERSEDER_ID);
+  assert.equal(ctx.superseder_id, SUPERSEDER_ID);
+  assert.ok(!("supersederId" in ctx));
+});
+
+test("buildContradictionResolvedContext pins resolution literal to 'superseded'", () => {
+  // `resolution` is currently the only branch supersede_memory takes; if a
+  // future change adds e.g. 'merged' or 'deprecated' it must update this
+  // test deliberately rather than silently broaden the consumer contract.
+  const ctx = buildContradictionResolvedContext(SUPERSEDER_ID);
+  assert.equal(ctx.resolution, "superseded");
+});
+
+test("buildContradictionResolvedContext passes supersederId through unchanged (no normalisation)", () => {
+  // The helper must not lowercase, trim, or coerce the id — supersede_memory
+  // already validates the UUIDs upstream and downstream consumers join on
+  // exact equality.
+  const oddly = "  Mixed-CASE-ID  ";
+  const ctx = buildContradictionResolvedContext(oddly);
+  assert.equal(ctx.superseder_id, oddly);
+});
+
+test("buildContradictionResolvedContext preserves empty-string id (no implicit fallback)", () => {
+  // Defensive: if a caller ever passes "" the helper must not silently
+  // substitute null/undefined — that would mask a real upstream bug.
+  const ctx = buildContradictionResolvedContext("");
+  assert.equal(ctx.superseder_id, "");
+});
+
+test("buildContradictionResolvedContext is pure (no aliasing across calls)", () => {
+  // Mirrors the buildRecalledContext / buildContradictionDetectedContext
+  // purity guards. log_memory_event JSON-serializes the payload, so
+  // accidental shared-state would not surface in production but would
+  // bite future call-sites that mutate the returned object.
+  const a = buildContradictionResolvedContext("id-a");
+  const b = buildContradictionResolvedContext("id-b");
+  assert.notEqual(a, b);
+  assert.equal(a.superseder_id, "id-a");
+  assert.equal(b.superseder_id, "id-b");
 });
