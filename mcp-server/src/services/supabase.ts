@@ -55,6 +55,26 @@ function fmtErr(err: unknown): string {
 export const MARK_USEFUL_EVENT_TYPE = "mark_useful" as const;
 
 /**
+ * Wire literal for the `recalled` memory_event type.
+ *
+ * compute_affect() (docs/affect-observables.md) reads memory_events filtered
+ * by `event_type='recalled'` to compute three of the six affect dimensions:
+ *
+ *   §curiosity   — empty_recalls    (event_type='recalled' AND hits=0)
+ *                  low_conf_recalls (event_type='recalled' AND score<0.4)
+ *   §frustration — zero_hit_ratio   (event_type='recalled' AND hits=0)
+ *
+ * That makes this the most heavily-read literal in the whole spec. It is
+ * emitted from a single producer (`MemoryService.emitRecalled` below),
+ * which is in turn called from `tools/recall.ts` and `tools/belief.ts`.
+ *
+ * Centralising the literal here means a rename is a single deliberate edit
+ * that also fails `affect-recalled-event-type.test.ts` until the spec doc +
+ * SQL are updated to match — same defensive pattern as MARK_USEFUL_EVENT_TYPE.
+ */
+export const RECALLED_EVENT_TYPE = "recalled" as const;
+
+/**
  * JSONB payload for `recalled` memory_events.
  *
  * The compute_affect() SQL formulas (docs/affect-observables.md §curiosity
@@ -279,7 +299,7 @@ export class MemoryService {
   ): Promise<void> {
     const { error } = await this.db.rpc("log_memory_event", {
       p_memory_id:  null,
-      p_event_type: "recalled",
+      p_event_type: RECALLED_EVENT_TYPE,
       p_source:     source,
       p_context:    buildRecalledContext(hits, topScore, queryLength),
       p_trace_id:   null,
