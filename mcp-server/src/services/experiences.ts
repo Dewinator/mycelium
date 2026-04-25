@@ -183,6 +183,34 @@ export function outcomeToEventType(
   return null;
 }
 
+/**
+ * JSONB payload for `mark_useful` memory_events emitted from
+ * `ExperienceService.markUseful` (subject is an experience, not a memory).
+ *
+ * Mirrors `MemoryService.emitMarkUseful` but carries `experience_id` in the
+ * context so downstream consumers can correlate the event back to the
+ * episode (the row's `p_memory_id` is null on this path).
+ *
+ * Consumed by `compute_affect()` triggers (docs/affect-observables.md
+ * §satisfaction): `useful_delta` counts `mark_useful` events regardless of
+ * source, so this emission must reach `memory_events` from the experience
+ * path too — otherwise satisfaction undercounts whenever the user marks an
+ * episode useful instead of a memory.
+ *
+ * Renaming or dropping `experience_id` here silently breaks introspection
+ * tools (e.g. `memory_history`) that join the event back to its experience.
+ * The unit tests in `experiences.test.ts` pin the key set + types.
+ */
+export interface MarkUsefulFromExperienceContext {
+  experience_id: string;
+}
+
+export function buildMarkUsefulFromExperienceContext(
+  experienceId: string,
+): MarkUsefulFromExperienceContext {
+  return { experience_id: experienceId };
+}
+
 export class ExperienceService {
   private db: PostgrestClient;
   private embeddings: EmbeddingProvider;
@@ -445,7 +473,7 @@ export class ExperienceService {
       p_memory_id:  null,
       p_event_type: "mark_useful",
       p_source:     "mcp:mark_experience_useful",
-      p_context:    { experience_id: experienceId },
+      p_context:    buildMarkUsefulFromExperienceContext(experienceId),
       p_trace_id:   null,
       p_created_by: null,
     });
