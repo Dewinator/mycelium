@@ -174,12 +174,23 @@ async function runRem() {
         out.lessons_skipped_low_conf += 1;
         continue;
       }
+      // After record/reinforce, push the lesson's salience up via the
+      // universal salience layer (Migration 053). This is what makes a
+      // freshly-synthesised insight rise into "heard recently / mattered
+      // recently" without waiting for it to be cited downstream — REM-sleep
+      // IS the citation event in cognitive terms.
+      let lessonId = null;
       if (synth.reinforce && cluster.matched_lesson_id) {
         await expSvc.reinforceLesson(cluster.matched_lesson_id, cluster.member_ids);
+        lessonId = cluster.matched_lesson_id;
         out.lessons_reinforced += 1;
       } else {
-        await expSvc.recordLesson(synth.lesson, cluster.member_ids, { confidence: synth.confidence });
+        lessonId = await expSvc.recordLesson(synth.lesson, cluster.member_ids, { confidence: synth.confidence });
         out.lessons_synthesized += 1;
+      }
+      if (lessonId) {
+        try { await restPost("/rpc/bump_salience", { p_kind: "lesson", p_id: lessonId, p_delta: 0.10 }); }
+        catch (e) { out.errors.push({ step: "bump_salience_lesson", msg: String(e?.message ?? e) }); }
       }
     } catch (e) {
       out.errors.push({ step: "synthesize_cluster", seed: cluster.seed_id, msg: String(e?.message ?? e) });

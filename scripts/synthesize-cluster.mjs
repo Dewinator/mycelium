@@ -24,17 +24,32 @@ const OLLAMA_URL  = process.env.OLLAMA_URL || "http://localhost:11434";
 const KEEP_ALIVE  = process.env.REM_KEEP_ALIVE || "2m";
 const NUM_CTX     = Number(process.env.REM_NUM_CTX || 16384);
 
-const SYSTEM_PROMPT = `Du bist der REM-Synthesizer eines persistenten Gedächtnisses.
+// /think aktiviert den Reasoning-Pfad in Qwen3 (und in allen R1-Distills).
+// Das Modell schreibt erst <think>…</think> mit interner Schlussfolgerung,
+// dann das eigentliche JSON. Wir strippen den Think-Block vor JSON.parse.
+// Beobachtung Audit 2026-04-24 ("Qualität-mittelmäßig, beschreibend statt
+// handlungsleitend"): die Lessons brauchen Abstraktion, nicht Summary —
+// Reasoning ist genau das Werkzeug dafür.
+const SYSTEM_PROMPT = `/think
+
+Du bist der REM-Synthesizer eines persistenten Gedächtnisses.
 
 Eingabe: 3–10 Episoden (Experiences), die sich semantisch ähneln (Vektor-Cluster).
 Aufgabe: Erkenne das verbindende Muster und formuliere EINE abstrakte Lesson,
-die in kommenden Entscheidungen als Regel dient. Erste Person, 1–2 Sätze.
+die in kommenden Entscheidungen als Regel dient.
+
+Schreibe HANDLUNGSLEITEND, nicht beschreibend.
+  ❌ "Ich habe X gemacht und es hat geklappt."
+  ✅ "Wenn X-Bedingung vorliegt, dann Y-Aktion — weil Z."
+
+Erste Person, 1–2 Sätze, Regel-Form.
 
 Wenn eine bereits existierende Lesson am Cluster hängt ("matched_lesson") und
 deine Synthese semantisch dasselbe ausdrückt → setze reinforce=true und nimm
 den bestehenden Lesson-Text unverändert.
 
-Antworte AUSSCHLIESSLICH als valides JSON:
+Denke zuerst sichtbar in <think>...</think>, dann antworte mit GENAU EINEM
+JSON-Objekt — kein Fließtext drum herum:
 {
   "lesson":        "<1–2 Sätze, erste Person, Regel-Form>",
   "pattern_name":  "<kurzer kebab-case slug>",
@@ -76,6 +91,27 @@ function buildUserPrompt(cluster, members) {
   return lines.join("\n");
 }
 
+/**
+ * Strip Qwen3 / R1-Distill <think>…</think> reasoning blocks from a response,
+ * then locate the JSON object that follows. Robust to:
+ *   - multiple <think> blocks
+ *   - prose before/after the JSON
+ *   - models that occasionally emit ``` json fences
+ */
+function extractJSON(raw) {
+  if (!raw) throw new Error("empty model response");
+  // 1) Drop think blocks (greedy multi-line).
+  let s = raw.replace(/<think>[\s\S]*?<\/think>/g, "").trim();
+  // 2) Strip code fences if present.
+  s = s.replace(/```(?:json)?\s*/g, "").replace(/```/g, "").trim();
+  // 3) Locate the outermost {…}: first { to last }.
+  const i = s.indexOf("{");
+  const j = s.lastIndexOf("}");
+  if (i < 0 || j < 0 || j <= i) throw new Error(`no JSON object found in: ${raw.slice(0, 200)}`);
+  const body = s.slice(i, j + 1);
+  return JSON.parse(body);
+}
+
 async function callQwen({ systemPrompt, userPrompt, keepAlive = KEEP_ALIVE }) {
   const r = await fetch(`${OLLAMA_URL}/api/chat`, {
     method: "POST",
@@ -88,15 +124,32 @@ async function callQwen({ systemPrompt, userPrompt, keepAlive = KEEP_ALIVE }) {
       ],
       stream:      false,
       keep_alive:  keepAlive,
-      format:      "json",
+      // Ollama 0.20+ separates reasoning into `message.thinking` and the
+      // final answer into `message.content`. Setting think:true activates
+      // Qwen3's reasoning pathway cleanly — no <think> tag parsing
+      // needed (extractJSON below stays as a defensive fallback for
+      // older Ollama versions or models that embed think blocks
+      // anyway). Bewusst KEIN format:"json" — würde mit Reasoning
+      // kollidieren.
+      think:       true,
       options:     { temperature: 0.3, num_ctx: NUM_CTX },
     }),
   });
   if (!r.ok) throw new Error(`Ollama HTTP ${r.status}: ${(await r.text()).slice(0, 300)}`);
   const j = await r.json();
   const raw = j?.message?.content ?? "";
-  try { return JSON.parse(raw); }
-  catch (e) { throw new Error(`Qwen response not JSON: ${raw.slice(0, 200)}`); }
+  const thinking = j?.message?.thinking ?? "";
+  try {
+    const parsed = extractJSON(raw);
+    // Surface a thinking-length signal so nightly-sleep can log whether the
+    // reasoning pathway actually fired. Empty thinking ≠ failure (older
+    // Ollama / non-reasoning models simply don't return the field).
+    if (thinking && parsed && typeof parsed === "object") {
+      parsed._thinking_chars = thinking.length;
+    }
+    return parsed;
+  }
+  catch (e) { throw new Error(`Qwen response parse failed: ${e.message ?? e}\nraw: ${raw.slice(0, 300)}`); }
 }
 
 /** Explicitly unload the model from Ollama (free RAM for other workloads). */
