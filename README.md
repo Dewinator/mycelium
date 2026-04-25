@@ -128,7 +128,7 @@ The local dashboard (port 8787) makes the cognitive state visible. Illustrations
 
 ### Synapses — associative memory as a graph
 
-![Synapse graph: memories as nodes, typed relations (colored) and Hebbian co-activation (grey)](docs/images/01-synapses.svg)
+![Synapse graph: memories as nodes, typed relations (colored) and Hebbian co-activation (grey)](docs/images/01-synapses.png)
 
 Memories don't live in isolation. The CoactivationAgent creates Hebbian edges (grey) from co-recalled groups; the ConscienceAgent flags contradictions (red). Typed edges (`caused_by`, `led_to`, `related`, …) emerge from nightly consolidation over tag patterns.
 
