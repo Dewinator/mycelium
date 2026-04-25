@@ -101,17 +101,22 @@ async function serveStatic(req, res) {
   if (!filePath.startsWith(DASH_DIR)) {
     res.writeHead(403); res.end("forbidden"); return;
   }
-  try {
-    const data = await fs.readFile(filePath);
-    res.writeHead(200, {
-      "Content-Type": MIME[path.extname(filePath)] || "application/octet-stream",
-      "Cache-Control": "no-cache",
-    });
-    res.end(data);
-  } catch {
-    res.writeHead(404, { "Content-Type": "text/plain" });
-    res.end("not found");
+  // If the path has no extension (e.g. /setup), try the .html sibling.
+  // This keeps URLs clean (/setup) without the legacy file dance.
+  const candidates = path.extname(filePath) ? [filePath] : [filePath, `${filePath}.html`];
+  for (const candidate of candidates) {
+    try {
+      const data = await fs.readFile(candidate);
+      res.writeHead(200, {
+        "Content-Type": MIME[path.extname(candidate)] || "application/octet-stream",
+        "Cache-Control": "no-cache",
+      });
+      res.end(data);
+      return;
+    } catch { /* try next candidate */ }
   }
+  res.writeHead(404, { "Content-Type": "text/plain" });
+  res.end("not found");
 }
 
 // --- proxy /api/* → PostgREST, injecting the service_role JWT ---

@@ -25,5 +25,23 @@
 
   "lang.toggle.aria": "Switch language",
   "lang.de": "DE",
-  "lang.en": "EN"
+  "lang.en": "EN",
+
+  "setup.title": "Connect mycelium to your AI agent",
+  "setup.what.line1": "<strong>MCP</strong> (Model Context Protocol) is an open standard that lets AI agents talk to external tools and knowledge sources.",
+  "setup.what.line2": "mycelium is one such MCP tool — a local long-term memory. Connect it once and you stop starting every chat from scratch.",
+  "setup.what.line3": "Below you'll find the steps for each common agent. Pick yours, paste the snippet into the right file, then restart the agent.",
+  "setup.what.placeholder": "Replace",
+  "setup.what.placeholder.suffix": "with the absolute path to your mycelium checkout (the directory containing <code>mcp-server/dist/index.js</code>).",
+  "setup.clients.heading": "Clients",
+  "setup.loading": "Loading client list…",
+  "setup.back": "← back to dashboard",
+  "setup.client.path": "Configuration file",
+  "setup.client.snippet": "Snippet to paste",
+  "setup.client.copy": "copy",
+  "setup.client.copied": "copied!",
+  "setup.client.verify": "How to verify it works",
+  "setup.client.docs": "Official docs",
+
+  "header.setup": "setup"
 }
