@@ -144,7 +144,7 @@ export class RelationsService {
       p_memory_id:  oldId,
       p_event_type: "contradiction_resolved",
       p_source:     "mcp:supersede_memory",
-      p_context:    { resolution: "superseded", superseder_id: newId },
+      p_context:    buildContradictionResolvedContext(newId),
       p_trace_id:   match.trace_id,
       p_created_by: null,
     });
@@ -158,6 +158,26 @@ export interface ContradictionDetectedRow {
   trace_id: string | null;
   memory_id: string;
   context: { contradicts_id?: string } | null;
+}
+
+/**
+ * JSONB context payload for `contradiction_resolved` memory_events.
+ *
+ * The frustration term of compute_affect() (docs/affect-observables.md
+ * §frustration) closes the open-conflict loop by trace_id, not by reading
+ * this payload — but the keys are still load-bearing for downstream
+ * consumers (e.g. dashboard surface, future audit-trail tooling) that need
+ * to know *how* the contradiction was resolved. Pulling the literal out of
+ * relations.ts:supersede() and pinning it with unit tests guards against
+ * silent drift across renames or refactors. Mirrors the same defensive
+ * pattern as `buildContradictionDetectedContext` and `buildRecalledContext`.
+ *
+ * Pure: no side-effects, no aliasing — every call returns a fresh object.
+ */
+export function buildContradictionResolvedContext(
+  supersederId: string,
+): { resolution: "superseded"; superseder_id: string } {
+  return { resolution: "superseded", superseder_id: supersederId };
 }
 
 /**
