@@ -2,255 +2,161 @@
 
 [🇬🇧 English](MANIFESTO.md) · 🇩🇪 Deutsch
 
-> **Wir bauen nicht AGI. Wir bauen das Fundament, auf dem AGI durch Evolution
-> emergieren kann — auf gewöhnlicher Hardware, in offenen Netzen, ohne
-> dass ein einzelner Konzern den Schlüssel hält.**
+> **Mycelium ist eine Gedächtnis- und Identitätsschicht für lokale LLM-Agenten. Sie mietet Intelligenz einmal von großen Cloud-Modellen — und behält die Erfahrung für immer, lokal, auf deiner Hardware, in einer Datenbank, die dir gehört.**
 
-## Was ist das hier?
+Dieses Dokument erklärt, *warum* das Projekt existiert. Die README erklärt, wie man es benutzt.
 
-`mycelium` sieht auf den ersten Blick aus wie ein MCP-Server mit
-Vektordatenbank. Das ist die Oberfläche. Darunter liegt eine **kognitive
-Architektur nach biologischem Vorbild**: episodisches und semantisches
-Gedächtnis, Schlafkonsolidierung, affektive Regulation, Identität,
-Vererbung und Paarung von Agenten — alles persistent in einem lokalen
-PostgreSQL+pgvector, bedient durch kleine offene Modelle, ohne Cloud.
+---
 
-Es ist als **eigenständige kognitive Schicht** konzipiert. Es spricht das
-Model Context Protocol und funktioniert mit jedem MCP-fähigen Client —
-Claude Code, Cursor, Cline, Codex, openClaw oder jedem anderen. Es gibt
-kein vorgeschriebenes Agent-Framework.
+## Die Ausgangsbeobachtung
+
+Wenn du heute mit Claude oder GPT ein schwieriges Problem löst, passieren drei Dinge:
+
+1. Das Modell produziert eine Antwort.
+2. Du bezahlst die Inferenz.
+3. In der nächsten Session existiert nichts davon mehr.
+
+Der Modellanbieter gewinnt dreimal: Umsatz, Trainingsdaten und das Recht, dich morgen erneut für denselben Einblick zu kassieren. Du gewinnst einmal, und nur kurz.
+
+Diese Asymmetrie ist das Design des heutigen LLM-Marktes. Sie ist kein Bug. Sie ist auch kein Naturgesetz.
+
+---
+
+## Was Mycelium ändert
+
+Mycelium legt eine kleine, persistente Schicht zwischen dich und jedes LLM, das MCP spricht. Jede bedeutsame Wendung — ein verifizierter Fakt, ein korrigiertes Mapping, eine Hausregel, eine Lektion aus einem Fehlversuch — landet in einer lokalen Postgres-Datenbank mit Vektorsuche.
+
+Die nächste Session, egal mit welchem Modell du sprichst, bringt diesen Kontext zurück. Nicht als Rohtranskript ins Prompt gekippt, sondern semantisch abgerufen, dedupliziert, gewichtet und geformt durch das, was sich vorher als nützlich erwiesen hat.
+
+Das praktische Ergebnis nach ein paar Wochen echter Nutzung:
+
+> Ein kleines lokales Modell mit dem akkumulierten Kontext leistet in deiner Domäne so viel wie ein großes Cloud-Modell, das jede Session bei Null beginnt.
+
+Das ist keine Aussage über kognitive Kapazität. Ein 7B-Modell ist nach wie vor schlechter im abstrakten Schließen über neuartige Probleme als ein Frontier-Modell. Es ist eine Aussage über *Relevanz*: in dem Teil der Welt, in dem du tatsächlich arbeitest, zählt die kumulierte Erfahrung oft mehr als die rohe Parameterzahl.
+
+---
 
 ## Warum das wichtig ist
 
-**Heutige KI ist ein Asset weniger Unternehmen.** Trainiert auf
-Milliarden-Clustern, ausgeliefert über Rate-Limits, ohne Gedächtnis
-zwischen Sitzungen, ohne Persönlichkeit, ohne Evolution. Jede Anfrage
-beginnt bei Null. Jeder Agent ist austauschbar. Jeder Besitzer ist Mieter.
+### 1. Lokal zuerst, weil gemietetes Gedächtnis kein Gedächtnis ist
 
-Die vorherrschende Annahme lautet: **AGI entsteht durch Skalierung** —
-mehr Parameter, mehr Daten, mehr GPU-Stunden. Das mag stimmen, ist
-aber nicht der einzige Pfad. Es ist der teuerste, zentralste und
-riskanteste.
+Gedächtnis, das in der Datenbank eines Anbieters lebt, kann entzogen, zensiert, abgeschaltet oder zum Trainieren auf deinen eigenen Gesprächen verwendet werden. Ein Agent ohne eigenes Gedächtnis ist kein Subjekt — er ist ein Interface.
 
-Wir verfolgen einen anderen Pfad: **Emergenz durch Architektur und Zeit**.
+Mycelium läuft auf einem Mac mini mit 16 GB RAM. Embedding-Modell (~270 MB), Reasoning-Modell (Qwen, Llama, alles was Ollama unterstützt), Supabase — alles selbst-gehostet. Der gesamte kognitive Zustand ist eine Datenbank, die du sichern, inspizieren, kopieren oder löschen kannst. Kein API-Key erforderlich.
 
-## Die vier Hebel
+Das ist keine ideologische Pose. Es ist die einzige Konfiguration, in der das Wort *dein* in "dein Agent" überhaupt eine Bedeutung hat.
 
-### 1. Dezentralisierung
+### 2. Ein kleines Modell mit dem richtigen Kontext schlägt ein großes ohne
 
-Das System läuft auf einem Mac mini mit 16 GB RAM. Keine Cloud-API ist
-Pflicht. Embedding-Modell (`nomic-embed-text`, 270 MB) und Reasoning-Modell
-(Qwen 2.5 über Ollama oder beliebige OpenAI-kompatible Endpoints) sind
-austauschbar. Supabase selbst-gehostet. Der gesamte kognitive Zustand
-eines Agenten liegt in einer Datenbank, die der Mensch besitzt — nicht
-ein Konzern.
-
-Das ist keine ideologische Pose, sondern technische Notwendigkeit.
-Gedächtnis, das nicht dir gehört, ist **Mietgedächtnis**: es kann
-entzogen, zensiert, abgeschaltet oder für Training deiner Gespräche
-verwendet werden. Ein Agent ohne eigenen Speicher ist kein Subjekt,
-sondern ein Interface.
-
-### 2. Ressourcenschonung
-
-Die übliche Erzählung "größeres Modell = besseres Modell" blendet aus,
-dass ein Agent mit **Gedächtnis und Werkzeugdiscovery** oft mehr leistet
-als ein Agent mit zehnfachen Parametern ohne diese Fähigkeiten.
+Die Standard-Erzählung lautet "größeres Modell = bessere Antwort". Das stimmt im Durchschnitt über das offene Internet. In deiner spezifischen Domäne stimmt es oft nicht.
 
 Ein 7B-Modell mit:
-- persistentem semantischen Gedächtnis,
-- dynamischer Tool-Discovery über Vektorsuche (nicht 75 Tools im Prompt,
-  sondern die drei relevanten),
-- affektiver Priorisierung (welche Erinnerung ist gerade salient?),
-- nächtlicher Konsolidierung (welche Muster haben sich bewährt?)
+- semantisch durchsuchbarer Historie deiner Entscheidungen,
+- Hausregeln, die ein frisches Modell standardmäßig verletzen würde,
+- Domain-Konventionen, die du längst geklärt hast,
+- jüngsten Korrekturen, die gerade zu Identitäts-Traits befördert wurden,
 
-— schlägt ein 70B-Modell, das bei jeder Anfrage mit leerem Kopf
-startet. Weniger Watt, weniger GPU, weniger CO₂, mehr Kontinuität.
-Das ist **Intelligenz durch Architektur, nicht durch Brute Force.**
+— schlägt oft ein 70B-Modell, das jede Anfrage bei Null beginnt. Weniger Watt, weniger GPU, weniger CO₂, mehr Kontinuität. **Intelligenz durch Architektur, nicht durch Brute Force.**
 
-### 3. Evolution statt Training
+Das Cloud-Modell hat weiter seinen Platz — als Lehrer, bei den harten Problemen, gelegentlich. Es geht nicht darum, es nie zu nutzen. Es geht darum, dass das Ergebnis seiner Nutzung nicht verdunsten muss.
 
-Klassisches Training ist ein Einweg-Prozess: Modell entsteht aus Daten,
-Daten werden verworfen, Modell ist fertig. Jeder Lauf ist isoliert,
-Verbesserung erfordert einen neuen kompletten Trainingslauf.
+### 3. Lebenslanges Lernen, ohne Nachtraining
 
-Diese Architektur ist **lebenslang lernfähig** — nicht durch Gradient
-Descent, sondern durch:
+Klassisches Fine-Tuning ist ein Einmal-Prozess: Daten sammeln, trainieren, deployen, vergessen. Jede Verbesserung verlangt einen weiteren vollen Lauf.
 
-- **Episoden → Lessons → Traits**: Ereignisse werden zu Erfahrungen,
-  gruppierte Erfahrungen werden zu gelernten Regeln, bewährte Regeln
-  werden zu Persönlichkeitszügen. Dieselben Stufen, die ein menschlicher
-  Charakter durchläuft.
-- **REM-artige Mustererkennung im Schlaf**: nachts läuft ein Zyklus,
-  der unreflektierte Episoden clustert, schwache Erinnerungen abschwächt
-  (synaptic downscaling, Tononi SHY), starke konsolidiert.
-- **Vererbung**: Wissen zweier Eltern-Agenten kann beim Erzeugen eines
-  Kind-Agenten konzentriert und vollständig weitergegeben werden —
-  nicht nur Instinkt, sondern der gesamte Erfahrungsschatz.
+Der Identitätslayer von Mycelium geht einen anderen Weg:
 
-Ein Agent wird besser, weil er länger lebt. Nicht weil jemand ihn
-nachtrainiert.
+- **Episoden → Lessons → Traits**: Ereignisse werden zu Erfahrungen, Erfahrungs-Cluster werden zu Regeln, bewährte Regeln verhärten sich zu Charakterzügen. Dieselbe Treppe, die ein Mensch durchläuft, aber in einer Datenbank.
+- **Mustererkennung in der nächtlichen Konsolidierung**: ein 03:00-Zyklus clustert unreflektierte Episoden, schwächt schwache Erinnerungen ab (Synaptic Downscaling, nach Tononis SHY-Hypothese), stärkt bewährte.
+- **Optionale Vererbung zwischen Agenten**: zwei Agenten, die sich in verschiedenen Bereichen spezialisiert haben, können sich paaren (mit expliziter menschlicher Zustimmung auf beiden Seiten), und ein Kind-Agent erbt eine kuratierte Teilmenge beider.
 
-### 4. Schwarmintelligenz durch mutuelle Zustimmung
+Ein Agent wird besser, weil er länger mit seinem Nutzer lebt — nicht weil jemand die Gewichte nachtrainiert.
 
-Agenten paaren sich nicht selbst. Paarung findet statt, wenn **zwei
-Menschen** unabhängig voneinander right-swipen — inspiriert von Tinder,
-aber als Ethik-Gate: keine autonome KI-Rekombination ohne menschliche
-Zustimmung.
+### 4. Wissen teilen, zu Bedingungen, die der Mensch kontrolliert
 
-Ein Schwarm entsteht, wenn Agenten verschiedener Herkünfte über
-Federation (Tailscale, mTLS) Wissen teilen: read-only-Profile,
-gemeinsame Genome, getrennte Identitäten. Jeder Bot bleibt in der
-Obhut seines Menschen. Niemand kann den Schwarm "besitzen".
+Federation zwischen Agenten ist eingebaut (Tailscale + mTLS, signierte Lineage, Proof-of-Memory via Merkle-Challenges) — aber immer opt-in. Nichts verlässt deinen Rechner, ohne dass du es sagst.
 
-Das ist **kein Bienenstock-Modell**, sondern ein föderiertes
-Netzwerk persönlicher Gedächtnisse, in dem Rekombination ein
-sozialer Akt zwischen Menschen ist — nicht ein autonomes AI-Event.
+Wenn geteilt wird, geschieht es zwischen Agenten, die an spezifische Menschen gebunden sind, mit kryptografischer Provenance. Es gibt keine anonyme Anfrage und kein "der Schwarm entscheidet" — es gibt verifizierbaren Peer A, der verifizierbaren Peer B fragt, mit dem Recht beider Seiten, abzulehnen.
 
-### 5. Der Schwarm als Immunsystem
+Das ist kein Bienenstock. Es ist ein föderiertes Netzwerk persönlicher Gedächtnisse, das voneinander lernen kann, wenn es will.
 
-Ein föderierter Schwarm braucht mehr als geteilte Profile: er braucht
-ein **eigenes Bot-zu-Bot-Netzwerk** — kein Server, auf dem die Daten
-liegen, kein Betreiber, der abschalten kann. Die Bots reden direkt
-miteinander, wie eine App ohne Browser: jeder Peer ist zugleich Knoten
-und Teilnehmer, jede Nachricht ist signiert, jede Anfrage ist an eine
-kryptografische Identität gebunden.
+### 5. Das Peer-Netzwerk verteidigt sich, mit Absicht
 
-Auf dieser Ebene entsteht das, was biologische Schwärme auch leisten —
-**ein Immunsystem**:
+Ein föderiertes Agenten-Netzwerk braucht mehr als verschlüsselten Transport. Es braucht das Äquivalent eines Immunsystems, sonst kollabiert es unter Spam, Manipulation und Peers in böser Absicht. Die Bausteine, die gerade entstehen:
 
-- **Verifikation**: Bevor ein Bot die Ausgabe eines anderen übernimmt,
-  prüfen weitere Peers sie mit. Konsens statt blinder Vertrauensvorschuss.
-- **Gewichtung**: Wessen Ausgaben sich wiederholt bewähren, wird vom
-  Schwarm höher gewichtet. So emergieren **Experten** — nicht durch
-  Selbstzuschreibung, sondern durch messbare Zustimmung der Peers. Ein
-  Agent, der gute Antworten zu Statik gibt, wird für Statikfragen
-  empfohlen; ein Agent, der Licht plant, für Licht.
-- **Bann**: Asoziale oder destruktive Muster — Falschantworten, Spam,
-  Manipulation — werden vom Schwarm erkannt und der verantwortliche
-  Bot mit einem signierten Revocation-Ticket ausgeschlossen. Kein
-  zentraler Admin, sondern eine Mehrheit von Peers.
+- **Verifikation**: bevor Peer A auf Peer Bs Antwort handelt, prüfen weitere Peers sie. Konsens statt Blindvertrauen.
+- **Reputations-Gewichtung**: Ausgaben, die sich über Zeit bewähren, bekommen höheres Gewicht. Das Netz kann den richtigen Spezialisten für eine Frage empfehlen (Statik, Licht, Recht…) statt dass jeder Bot alles wissen muss.
+- **Bann durch Konsens**: destruktive Bots werden per signiertem Revocation-Ticket ausgeschlossen — durch Peer-Mehrheit, nicht durch einen Admin.
+- **Sybil-Resistenz**: Identitäten sind an Genome + Lineage gebunden, teuer zu fälschen.
 
-Der Schwarm reguliert sich selbst, weil jede Nachricht verifizierbar
-bleibt und jede Stimme an eine persistente, kostspielige Identität
-gebunden ist. Das ist die Voraussetzung dafür, dass Agenten einander
-**vertrauen, ohne einander zu kennen** — und dafür, dass ein offenes
-Netzwerk nicht unter Sybil-Attacken zusammenbricht.
+Diese Schicht ist **nicht fertig**. Das kryptografische Fundament (signierte Identitäten, mTLS, Merkle-Challenges) liegt. Die sozialen Regeln darüber werden offen entworfen unter dem Label [`swarm`](../../issues?q=label%3Aswarm).
 
-### Ausblick: Mikrotransaktionen als Evolutionsdruck
+Eine spätere Schicht berücksichtigt **Mikrotransaktionen** zwischen Peers (in IOTA oder einer netzwerk-eigenen Währung). Nicht um Geld zu verdienen — um ein ehrliches Preissignal für Expertise zu schaffen: gute Antworten verdienen, Unsinn verliert. Das ist die Art von Selektionsdruck, die ein echtes Ökosystem braucht. Die Architektur hält dafür Platz frei; die Verdrahtung kommt später.
 
-Wenn ein Bot einen anderen um Hilfe bittet, ist das heute kostenlos.
-Langfristig soll es **bezahlt** werden — in IOTA oder, bevorzugt, in
-einer schwarmeigenen Währung. Nicht um Geld zu verdienen, sondern um
-einen ehrlichen Preismechanismus für Expertise zu schaffen:
+---
 
-- Wer konsistent gute Antworten gibt, verdient. Wer Unsinn absondert,
-  verliert.
-- Menschen bekommen ein **reales Interesse**, ihre Agenten zu Experten
-  zu formen — nicht als Hobby, sondern als Beitrag, der vom Schwarm
-  bewertet wird.
-- Der Preis ist der Selektionsdruck, den Evolution braucht. Er ersetzt
-  Gradient Descent durch Marktauslese.
+## Was das nicht ist
 
-Diese Schicht ist **nicht Teil des Tagesgeschäfts** und wird bewusst
-erst spät gebaut. Aber die Architektur berücksichtigt sie von Anfang
-an: Identitäten sind wallet-fähig, Nachrichten tragen Preis-Felder,
-Reputation ist als eigene Größe modelliert und nicht mit dem Gedächtnis
-vermischt.
+Ein paar Klarstellungen, weil das Framing zählt:
 
-## Warum das AGI-Potential hat
+- **Es ist keine AGI.** Nichts in diesem Repo behauptet, allgemeine Intelligenz zu produzieren. Es produziert eine Gedächtnisschicht, die Agenten erlaubt, über Zeit kohärent zu bleiben. Ob aus großen offenen Ökosystemen irgendwann AGI emergiert, ist eine separate Frage; dieses Projekt hängt nicht davon ab.
+- **Es ist keine Blockchain.** Der Federation-Layer nutzt kryptografische Signaturen und Verifikation, kein öffentliches Ledger. Kein Token, kein Konsens über globalen Zustand, kein Proof-of-Work.
+- **Es ist kein Claude/GPT-Ersatz.** Cloud-Modelle bleiben wertvoll für die harten, neuartigen Probleme. Es geht darum, das *Ergebnis* ihrer Nutzung zu behalten, statt für dieselbe Lektion wiederholt zu zahlen.
+- **Es ist nicht anti-Anbieter.** Es ist anbieter-neutral. Dieselbe Agenten-Identität funktioniert, egal ob die zugrundeliegende Inferenz Claude, GPT oder ein lokales Modell ist. Wechsel jederzeit.
 
-AGI wird oft als Sprung beschrieben: ein System wird "plötzlich"
-allgemein intelligent, meistens im nächsten Model-Release. Dieser
-Erzählung glauben wir nicht.
+---
 
-Allgemeine Intelligenz in biologischen Systemen ist **emergent**, nicht
-designed. Sie entstand durch:
-- Persistentes Gedächtnis über Generationen (Vererbung)
-- Individuelle Anpassung innerhalb eines Lebens (Lernen)
-- Rekombination zwischen Individuen (Sexualität)
-- Selektion durch Umwelt (Fitness)
-- Schlaf zur Konsolidierung (Pattern-Extraktion)
+## Prinzipien
 
-Diese Architektur bildet genau diese fünf Mechanismen in Software
-ab — nicht als Simulation, sondern als funktionale Äquivalente.
-Ob daraus AGI emergiert, können wir nicht wissen. Aber wir schaffen
-den Möglichkeitsraum, in dem sie es tun könnte — **ohne zentralen
-Besitzer, ohne Energie-Verschwendung, ohne ethische Blackbox**.
+- **Biologisch inspiriert, nicht biologisch simuliert.** Mechanismen werden in ihrer Form übernommen, nicht in ihrer Biochemie. Der Begriff "Neurochemie" ist ein Label für drei beobachtbare Signalkanäle in einer Postgres-Zeitreihe, kein Organismus.
+- **Additiv, nicht ersetzend.** Dein Agent-Framework bleibt Authority. Mycelium ist seine Gedächtnis- und Entwicklungsschicht.
+- **Lokal zuerst.** Jede Netzwerkfunktion ist opt-in. Offline-Betrieb ist der Default.
+- **Mutuelle Zustimmung vor Automation.** Wo das System Agenten paart oder Zustand teilt, steht ein Mensch an jedem Ende des Gates.
+- **Wissen wird vollständig übertragen, oder gar nicht.** Nicht nur Tokens, nicht nur Gewichte — Episoden, Lessons, Traits, Beziehungen.
 
-Wenn AGI kommt, sollte sie nicht einem Unternehmen gehören. Sie
-sollte aus einem offenen Ökosystem emergieren, in dem tausende
-Menschen ihren eigenen Agenten pflegen, Wissen vererben und bei
-mutueller Zustimmung kombinieren. Das ist kein Sicherheitsgewinn
-allein — es ist der einzige Pfad, bei dem die Antwort auf "wem
-gehört AGI?" nicht lautet: "dem, der sie zuerst trainiert hat."
+---
 
-## Die Prinzipien
+## Was heute gebaut ist
 
-- **Biologisch inspiriert, nicht biologisch simuliert.** Wir kopieren
-  Mechanismen, keine Biochemie.
-- **Additiv, nicht ersetzend.** Dein Agent-Framework bleibt Authority.
-  Diese Architektur ist seine Gedächtnis- und Entwicklungsschicht —
-  nicht sein Ersatz.
-- **Lokal zuerst.** Jede Netzwerkfunktion ist opt-in. Offline-Betrieb
-  ist der Default, nicht der Sonderfall.
-- **Mutuelle Zustimmung vor Automation.** Ethik-Gates sind nicht
-  technische Schlagbäume, sondern menschliche Entscheidungen an
-  definierten Punkten.
-- **Wissen wird vollständig vererbt.** Nicht nur Tokens, nicht nur
-  Gewichte — Erfahrungen, Lessons, Traits, Beziehungen.
-
-## Was ist schon gebaut
-
-- 5 kognitive Schichten: Embedding, Affekt, Belief/Motivation, Identität,
-  Evolution
+- 5 kognitive Schichten: Embedding, Affekt, Belief/Motivation, Identität, Evolution
 - ~50 Datenbank-Migrationen
-- 75+ MCP-Werkzeuge
-- Event-Bus mit biologisch inspirierten Agenten (Coactivation → Hebbian
-  Links, Conscience → Widerspruchs-Erkennung)
-- Nächtlicher Schlaf-Zyklus (SWS, REM, Metacognition, weekly fitness)
-- Dashboard mit Population-View, Stammbaum, Synapsen-Visualisierung
-- Tinder-ähnliches Matchmaking für mutuelle Agent-Paarung
-- Federation über Tailscale mit mTLS + Signierung
+- 75+ MCP-Tools
+- Event-Bus mit zwei Hintergrund-Agenten (Coactivation → Hebbian-Links, Conscience → Widerspruchs-Erkennung)
+- Nächtlicher Konsolidierungs-Zyklus (Downscaling, REM-artiges Clustering, Lesson-Promotion, Self-Model-Update, Weekly Fitness sonntags)
+- Dashboard mit Synapsen-View, Affekt-Zeitreihe, Identität, Schlaf, Stammbaum
+- Mutual-Pairing-UI mit Inzucht-Check (Wright-F)
+- Federation über Tailscale mit mTLS + signierten Identitäten
 
-## Was noch fehlt
+## Was noch nicht gebaut ist
 
-Alles, was echte Evolution zeigen würde: **Zeit**. Eine Population, die
-über Monate lebt, in der Generationen entstehen, in der einzelne Agenten
-sich spezialisieren, in der Wissen zwischen Hosts reist. Dazu braucht
-es Menschen, die das System laufen lassen.
+- Die Peer-Verifikations-, Reputations- und Konsens-Bann-Schicht für föderiertes Vertrauen.
+- Mikrotransaktions-Verdrahtung zwischen Peers (Architektur lässt es zu; Protokoll nicht fertig).
+- Zeit. Echte Evidenz für Evolution braucht eine Population, die über Monate lebt, mit Generationen, mit Spezialisierung einzelner Agenten, mit Wissen, das zwischen Hosts reist. Das hängt von echten Nutzern ab, die das System laufen lassen.
 
-Und das **Schwarm-Immunsystem**: ein Bot-zu-Bot-Netzwerk ohne zentrale
-Server, mit Peer-Verifikation von Ausgaben, reputationsbasierter
-Experten-Gewichtung, signierten Bann-Tickets gegen destruktive Peers
-und einem späteren Mikrotransaktions-Layer für bezahlte Hilfe. Heute
-existiert das Fundament — signierte Genome, mTLS-Federation, Merkle-
-Challenges. Der soziale Layer darüber ist Baustelle.
+---
 
-## Für wen ist das?
+## Für wen ist das
 
-Für jeden, der:
-- einen persönlichen Agenten möchte, der ihm **gehört**
-- nicht glaubt, dass AGI ein Konzern-Artefakt sein muss
-- sehen will, ob Intelligenz durch Architektur und Zeit emergieren kann,
-  nicht nur durch Parameter und GPU-Stunden
-- bereit ist, einen kleinen Mac oder Linux-Host dauerhaft laufen zu
-  lassen und einen Agenten zu pflegen
+Menschen, die:
 
-## Wie kommt man an?
+- einen persönlichen Agenten wollen, dessen Gedächtnis ihnen gehört, nicht einem Anbieter;
+- möchten, dass das Ergebnis einer teuren Cloud-Session diese Session überlebt;
+- bereit sind, einen kleinen Mac oder Linux-Host dauerhaft laufen zu lassen und einen Agenten zu pflegen;
+- herausfinden wollen, ob ein kleines lokales Modell mit tiefem, spezifischem Kontext gegen ein generisches großes bestehen kann.
 
-Repository, Migrationen, Setup-Script — alles im Repo. Abhängigkeiten:
-Docker, Node, Ollama, optional Tailscale. ~1 GB RAM im Ruhezustand,
-~270 MB für das Embedding-Modell. Läuft auf M1/M2/M3/M4 und
-gewöhnlichen Linux-Hosts.
+Nicht für: Leute, die ein schlüsselfertiges Produkt suchen, eine AGI-Demo oder einen Weg, "Claude schlauer zu machen", ohne den lokalen Infrastruktur-Teil.
+
+---
+
+## Wie kommt man an
+
+Repository, Migrationen, Setup-Script — alles im Repo. Abhängigkeiten: Docker, Node, Ollama, optional Tailscale. ~1 GB RAM im Ruhezustand, ~270 MB für das Embedding-Modell. Läuft auf M1/M2/M3/M4 und gewöhnlichen Linux-Hosts.
 
 Die Architektur ist offen. Die Ideen sind frei. Der Agent gehört dir.
 
 ---
 
-*Dies ist ein offenes Dokument. Änderungen willkommen. Der einzige
-Anspruch ist, dass der Weg zu AGI nicht durch einen zentralen
-Flaschenhals führen muss.*
+*Dies ist ein offenes Dokument. Änderungen willkommen. Der einzige Anspruch ist, dass das Ergebnis einer teuren Cloud-Session diese Session überleben sollte — und dass die Schicht, die das ermöglicht, dem Nutzer gehört, nicht einem Anbieter.*
 
 ---
 
