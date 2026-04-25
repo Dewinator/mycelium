@@ -49,6 +49,18 @@ export interface SpreadResult {
   link_strength: number;
 }
 
+/** Polymorphic spread result — Migration 054 spread_activation_cross.
+ *  `kind` widens as new Hebbian tables come online (today: memory,
+ *  experience; future: lesson, trait, intention). */
+export interface CrossSpreadResult {
+  kind: "memory" | "experience" | "lesson" | "trait" | "intention";
+  id: string;
+  content: string;
+  category: string;
+  tags: string[];
+  link_strength: number;
+}
+
 export interface CreateMemoryInput {
   content: string;
   category?: string;

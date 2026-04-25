@@ -111,7 +111,13 @@ export async function recall(
   ]);
 
   // Spreading activation: surface neighbors that weren't in the direct hits.
-  const neighbors = effectiveSpread ? await service.spread(topIds.slice(0, 5), 5) : [];
+  // Phase 3: cross-kind spread walks memory_links AND experience_memory_links
+  // so experiences linked to top hits surface as typed neighbors. Seed is
+  // the top hit (single seed = canonical entry into the cross-graph;
+  // multi-seed merge would need separate aggregation later).
+  const crossNeighbors = effectiveSpread && topIds.length > 0
+    ? await service.spreadCross("memory", topIds[0], 5)
+    : [];
 
   // Cross-layer lived-knowledge overlay: pull linked experiences for the
   // top results in parallel. Non-fatal if migration 016 isn't applied.
@@ -147,14 +153,14 @@ export async function recall(
 
   let text = `Found ${results.length} memories:\n\n${formatted}`;
 
-  if (neighbors.length > 0) {
-    const assoc = neighbors
+  if (crossNeighbors.length > 0) {
+    const assoc = crossNeighbors
       .map(
         (n, i) =>
-          `${i + 1}. [${n.category}] link=${n.link_strength.toFixed(2)} ${n.content.slice(0, 120)}\n   id: ${n.id}`
+          `${i + 1}. [${n.kind}/${n.category}] link=${n.link_strength.toFixed(2)} ${(n.content ?? "").slice(0, 120)}\n   id: ${n.id}`
       )
       .join("\n\n");
-    text += `\n\nAssociated (spreading activation):\n\n${assoc}`;
+    text += `\n\nAssociated (spreading activation, cross-kind):\n\n${assoc}`;
   }
 
   const citeNote = citeTrace

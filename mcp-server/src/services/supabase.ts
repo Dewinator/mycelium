@@ -3,6 +3,7 @@ import type {
   Memory,
   MemorySearchResult,
   SpreadResult,
+  CrossSpreadResult,
   CreateMemoryInput,
   UpdateMemoryInput,
 } from "../types/memory.js";
@@ -370,7 +371,9 @@ export class MemoryService {
     ));
   }
 
-  /** Spreading activation — return associated neighbors of the seed memories. */
+  /** Spreading activation — return associated neighbors of the seed memories.
+   *  Memory-only legacy path (kept for callers that don't want cross-kind
+   *  results — most should prefer spreadCross). */
   async spread(seedIds: string[], maxNeighbors: number = 5): Promise<SpreadResult[]> {
     if (seedIds.length === 0) return [];
     const { data, error } = await this.db.rpc("spread_activation", {
@@ -382,6 +385,27 @@ export class MemoryService {
       return [];
     }
     return (data ?? []) as SpreadResult[];
+  }
+
+  /** Polymorphic spreading activation (Migration 054) — walks memory_links
+   *  AND experience_memory_links from a single typed seed and returns
+   *  neighbors as (kind, id, content, …). The kind expands as future
+   *  Hebbian tables ship; signature is forward-compatible. */
+  async spreadCross(
+    seedKind: CrossSpreadResult["kind"],
+    seedId: string,
+    maxNeighbors: number = 5,
+  ): Promise<CrossSpreadResult[]> {
+    const { data, error } = await this.db.rpc("spread_activation_cross", {
+      p_seed_kind:     seedKind,
+      p_seed_id:       seedId,
+      p_max_neighbors: maxNeighbors,
+    });
+    if (error) {
+      console.error("spread_activation_cross failed:", error.message);
+      return [];
+    }
+    return (data ?? []) as CrossSpreadResult[];
   }
 
   async consolidate(minAccessCount = 3, minAgeDays = 1): Promise<number> {
