@@ -40,6 +40,42 @@ function fmtErr(err: unknown): string {
   return e.message || e.details || e.hint || e.code || JSON.stringify(err);
 }
 
+/**
+ * Pure helper that builds the `skill_record` RPC payload — the wire that
+ * eventually populates `skill_outcomes.outcome` for compute_affect()'s
+ * confidence formula (docs/affect-observables.md §confidence reads
+ * `n(outcome='success')` from this column).
+ *
+ * Extracted so the parameter contract — exact key names, empty-string
+ * fallback to `'unknown'`, value passthrough — is unit-testable without a
+ * Supabase client. A silent rename here (e.g. `p_outcome` → `outcome`) or a
+ * normalising transform (`'success'` → `'ok'`) would not break compilation,
+ * would still satisfy the SQL CHECK constraint via the `'unknown'` branch in
+ * `skill_record()`, and would silently zero out the confidence numerator.
+ *
+ * Pure: no side-effects, no aliasing — every call returns a fresh object.
+ * Mirrors the same defensive pattern as `buildRecalledContext` /
+ * `buildContradictionResolvedContext`.
+ */
+export function buildSkillRecordPayload(
+  skills: string[],
+  taskType: string,
+  outcome: string,
+  difficulty: number,
+): {
+  p_skills: string[];
+  p_task_type: string;
+  p_outcome: string;
+  p_difficulty: number;
+} {
+  return {
+    p_skills: skills,
+    p_task_type: taskType || "unknown",
+    p_outcome: outcome || "unknown",
+    p_difficulty: difficulty,
+  };
+}
+
 export class SkillsService {
   private db: PostgrestClient;
 
@@ -60,12 +96,10 @@ export class SkillsService {
   ): Promise<number> {
     if (!skills || skills.length === 0) return 0;
     try {
-      const { data, error } = await this.db.rpc("skill_record", {
-        p_skills: skills,
-        p_task_type: taskType || "unknown",
-        p_outcome: outcome || "unknown",
-        p_difficulty: difficulty,
-      });
+      const { data, error } = await this.db.rpc(
+        "skill_record",
+        buildSkillRecordPayload(skills, taskType, outcome, difficulty),
+      );
       if (error) {
         console.error("skill_record failed (non-fatal):", fmtErr(error));
         return 0;
