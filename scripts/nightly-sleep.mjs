@@ -106,9 +106,13 @@ async function finishCycle(id, status, startedAt, extra = {}) {
 //   consolidate_memories  — episodic → semantic
 //   dedup_memories        — merge near-duplicates
 //   relations_by_patterns — Tag-Ko-Vorkommen → `related`-Edges (Engram)
+//   decay_salience        — drift the universal salience signal toward
+//                            its 0.5 baseline (Migration 053). Without
+//                            this, every bump from the day stacks
+//                            forever and salience saturates near 1.0.
 // ---------------------------------------------------------------------------
 async function runSws() {
-  const out = { forgotten: 0, consolidated: 0, deduped: 0, relations_created: 0, errors: [] };
+  const out = { forgotten: 0, consolidated: 0, deduped: 0, relations_created: 0, salience_decayed: null, errors: [] };
   try { out.forgotten = await memSvc.forgetWeak(0.05, 7); }
   catch (e) { out.errors.push({ step: "forget_weak", msg: String(e?.message ?? e) }); }
   try { out.consolidated = await memSvc.consolidate(3, 1); }
@@ -124,6 +128,9 @@ async function runSws() {
     out.relations_pairs   = rel.pairs_processed;
     if (rel.errors.length) out.errors.push({ step: "relations_by_patterns", count: rel.errors.length, sample: rel.errors.slice(0, 2) });
   } catch (e) { out.errors.push({ step: "relations_by_patterns", msg: String(e?.message ?? e) }); }
+  try {
+    out.salience_decayed = await restPost("/rpc/decay_salience", { p_tau_days: 30.0 });
+  } catch (e) { out.errors.push({ step: "decay_salience", msg: String(e?.message ?? e) }); }
   return out;
 }
 
