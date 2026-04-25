@@ -25,5 +25,23 @@
 
   "lang.toggle.aria": "Sprache wechseln",
   "lang.de": "DE",
-  "lang.en": "EN"
+  "lang.en": "EN",
+
+  "setup.title": "mycelium in deinen KI-Agenten einbinden",
+  "setup.what.line1": "<strong>MCP</strong> (Model Context Protocol) ist ein offener Standard, mit dem KI-Agenten externe Werkzeuge und Wissen ansprechen können.",
+  "setup.what.line2": "mycelium ist so ein MCP-Werkzeug — ein lokales Langzeitgedächtnis. Du verbindest es einmal mit deinem Agenten und musst nicht mehr in jedem Chat von vorn anfangen.",
+  "setup.what.line3": "Unten findest du die Schritte für jeden gängigen Agenten. Such dir deinen aus, kopier den Snippet in die richtige Datei, dann einmal neu starten.",
+  "setup.what.placeholder": "Ersetze",
+  "setup.what.placeholder.suffix": "durch den absoluten Pfad zu deinem mycelium-Checkout (das Verzeichnis mit <code>mcp-server/dist/index.js</code>).",
+  "setup.clients.heading": "Clients",
+  "setup.loading": "Lade Client-Liste…",
+  "setup.back": "← zurück zum Dashboard",
+  "setup.client.path": "Konfigurations-Datei",
+  "setup.client.snippet": "Snippet zum Einfügen",
+  "setup.client.copy": "kopieren",
+  "setup.client.copied": "kopiert!",
+  "setup.client.verify": "So prüfst du, ob es klappt",
+  "setup.client.docs": "Offizielle Doku",
+
+  "header.setup": "einrichtung"
 }

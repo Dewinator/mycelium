@@ -1,0 +1,235 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+  <meta charset="utf-8">
+  <title>mycelium — setup</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <style>
+    :root {
+      --bg: #0a0e1a;
+      --fg: #e6ebf2;
+      --muted: #8a93a3;
+      --card: #121826;
+      --card-border: #1f2738;
+      --accent: #6cf2c8;
+      --accent-dim: rgba(108,242,200,0.18);
+      --code-bg: #0d1320;
+      --warn: #fbca04;
+    }
+    * { box-sizing: border-box; }
+    body {
+      margin: 0;
+      font: 15px/1.5 -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+      background: var(--bg); color: var(--fg);
+    }
+    .container { max-width: 880px; margin: 0 auto; padding: 32px 20px 96px; }
+    header.page-top {
+      display: flex; align-items: baseline; justify-content: space-between;
+      gap: 16px; margin-bottom: 32px;
+    }
+    .brand { display: flex; align-items: baseline; gap: 12px; }
+    .brand h1 { margin: 0; font-size: 24px; letter-spacing: -0.01em; }
+    .brand .sub { color: var(--muted); font-size: 13px; }
+    .controls { display: flex; gap: 8px; }
+    .btn {
+      background: transparent; color: var(--fg); border: 1px solid var(--card-border);
+      padding: 6px 12px; border-radius: 6px; cursor: pointer; font: inherit;
+    }
+    .btn:hover { border-color: var(--accent); color: var(--accent); }
+    h2 {
+      font-size: 18px; margin: 32px 0 12px; letter-spacing: -0.005em;
+    }
+    p { color: var(--fg); }
+    p.muted { color: var(--muted); }
+    .intro-card {
+      background: var(--card); border: 1px solid var(--card-border);
+      border-radius: 10px; padding: 20px 24px;
+    }
+    .intro-card p:last-child { margin-bottom: 0; }
+    .placeholder {
+      background: var(--accent-dim); color: var(--accent);
+      padding: 1px 6px; border-radius: 4px; font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+      font-size: 13px;
+    }
+    details.client {
+      background: var(--card); border: 1px solid var(--card-border);
+      border-radius: 10px; margin-bottom: 12px; overflow: hidden;
+    }
+    details.client[open] { border-color: var(--accent); }
+    details.client > summary {
+      list-style: none; cursor: pointer; padding: 14px 18px;
+      display: flex; align-items: center; gap: 12px;
+      font-weight: 500;
+    }
+    details.client > summary::-webkit-details-marker { display: none; }
+    details.client > summary::after {
+      content: "▸"; margin-left: auto; color: var(--muted); transition: transform 0.15s;
+    }
+    details.client[open] > summary::after { transform: rotate(90deg); }
+    .client-body { padding: 4px 18px 18px; }
+    .field { margin: 14px 0; }
+    .field-label {
+      font-size: 12px; text-transform: uppercase; letter-spacing: 0.06em;
+      color: var(--muted); margin-bottom: 6px;
+    }
+    .path {
+      display: grid; grid-template-columns: 70px 1fr; gap: 8px 12px;
+      font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-size: 13px;
+    }
+    .path .os { color: var(--muted); text-transform: uppercase; }
+    .path .pp { color: var(--fg); word-break: break-all; }
+    .snippet-wrap { position: relative; }
+    pre.snippet {
+      background: var(--code-bg); border: 1px solid var(--card-border);
+      border-radius: 6px; padding: 12px 14px; margin: 0;
+      font: 13px/1.55 ui-monospace, SFMono-Regular, Menlo, monospace;
+      overflow-x: auto; color: var(--fg);
+    }
+    .copy-btn {
+      position: absolute; top: 8px; right: 8px;
+      background: var(--card-border); color: var(--fg); border: 0;
+      padding: 4px 10px; border-radius: 4px; font-size: 12px; cursor: pointer;
+    }
+    .copy-btn:hover { background: var(--accent); color: var(--bg); }
+    .copy-btn.ok { background: var(--accent); color: var(--bg); }
+    .verify {
+      background: var(--code-bg); border-left: 3px solid var(--accent);
+      padding: 10px 14px; color: var(--fg); font-size: 14px; border-radius: 0 6px 6px 0;
+    }
+    .docs-link { color: var(--accent); text-decoration: none; font-size: 13px; }
+    .docs-link:hover { text-decoration: underline; }
+    .back {
+      display: inline-block; margin-top: 28px; color: var(--muted);
+      text-decoration: none; font-size: 13px;
+    }
+    .back:hover { color: var(--accent); }
+    .empty { color: var(--muted); padding: 24px; text-align: center; }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <header class="page-top">
+      <div class="brand">
+        <h1>mycelium</h1>
+        <span class="sub" data-i18n="brand.subtitle">real open AI</span>
+      </div>
+      <div class="controls">
+        <button class="btn" id="lang-toggle" data-i18n-attr="aria-label:lang.toggle.aria">DE | EN</button>
+      </div>
+    </header>
+
+    <h2 data-i18n="setup.title">mycelium in deinen KI-Agenten einbinden</h2>
+
+    <div class="intro-card">
+      <p data-i18n="setup.what.line1">
+        <strong>MCP</strong> (Model Context Protocol) ist ein offener Standard, mit dem KI-Agenten externe Werkzeuge und Wissen ansprechen können.
+      </p>
+      <p data-i18n="setup.what.line2">
+        mycelium ist so ein MCP-Werkzeug — ein lokales Langzeitgedächtnis. Du verbindest es einmal mit deinem Agenten und musst nicht mehr in jedem Chat von vorn anfangen.
+      </p>
+      <p data-i18n="setup.what.line3">
+        Unten findest du die Schritte für jeden gängigen Agenten. Such dir deinen aus, kopier den Snippet in die richtige Datei, dann einmal neu starten.
+      </p>
+      <p class="muted">
+        <span data-i18n="setup.what.placeholder">Ersetze</span>
+        <span class="placeholder">$MYCELIUM_PATH</span>
+        <span data-i18n="setup.what.placeholder.suffix">durch den absoluten Pfad zu deinem mycelium-Checkout (das Verzeichnis mit <code>mcp-server/dist/index.js</code>).</span>
+      </p>
+    </div>
+
+    <h2 data-i18n="setup.clients.heading">Clients</h2>
+    <div id="client-list">
+      <div class="empty" data-i18n="setup.loading">Lade Client-Liste…</div>
+    </div>
+
+    <a href="/" class="back" data-i18n="setup.back">← zurück zum Dashboard</a>
+  </div>
+
+  <script type="module">
+    import { initI18n, setLocale, getLocale, t, applyToDom, AVAILABLE_LOCALES } from "/i18n/i18n.js";
+
+    await initI18n();
+    window.myceliumI18n = { t, setLocale, getLocale, applyToDom, AVAILABLE_LOCALES };
+
+    const updateToggle = () => {
+      const btn = document.getElementById("lang-toggle");
+      if (btn) btn.textContent = getLocale().toUpperCase();
+    };
+    updateToggle();
+    document.getElementById("lang-toggle").addEventListener("click", async () => {
+      const idx = AVAILABLE_LOCALES.indexOf(getLocale());
+      await setLocale(AVAILABLE_LOCALES[(idx + 1) % AVAILABLE_LOCALES.length]);
+      updateToggle();
+      await renderClients();
+    });
+
+    function escapeHtml(s) {
+      return String(s)
+        .replace(/&/g, "&amp;")
+        .replace(/</g, "&lt;")
+        .replace(/>/g, "&gt;")
+        .replace(/"/g, "&quot;")
+        .replace(/'/g, "&#039;");
+    }
+
+    function renderClient(c) {
+      const verifyLabel = t("setup.client.verify");
+      const pathLabel   = t("setup.client.path");
+      const snippetLbl  = t("setup.client.snippet");
+      const copyLbl     = t("setup.client.copy");
+      const docsLbl     = t("setup.client.docs");
+      return `
+        <details class="client" id="client-${escapeHtml(c.id)}">
+          <summary>${escapeHtml(c.name)}</summary>
+          <div class="client-body">
+            <div class="field">
+              <div class="field-label">${pathLabel}</div>
+              <div class="path">
+                <span class="os">macOS</span><span class="pp">${escapeHtml(c.configPath.mac)}</span>
+                <span class="os">Linux</span><span class="pp">${escapeHtml(c.configPath.linux)}</span>
+                <span class="os">Windows</span><span class="pp">${escapeHtml(c.configPath.windows)}</span>
+              </div>
+            </div>
+            <div class="field">
+              <div class="field-label">${snippetLbl}${c.configFormat && c.configFormat !== "n/a" ? ` (${escapeHtml(c.configFormat)})` : ""}</div>
+              <div class="snippet-wrap">
+                <pre class="snippet" id="snip-${escapeHtml(c.id)}">${escapeHtml(c.snippet)}</pre>
+                <button class="copy-btn" data-copy="snip-${escapeHtml(c.id)}">${copyLbl}</button>
+              </div>
+            </div>
+            <div class="field">
+              <div class="field-label">${verifyLabel}</div>
+              <div class="verify">${escapeHtml(c.verifyPrompt)}</div>
+            </div>
+            <a class="docs-link" href="${escapeHtml(c.docsUrl)}" target="_blank" rel="noopener">${docsLbl} →</a>
+          </div>
+        </details>
+      `;
+    }
+
+    async function renderClients() {
+      const res = await fetch("/clients.json", { cache: "no-cache" });
+      const data = await res.json();
+      const host = document.getElementById("client-list");
+      host.innerHTML = data.clients.map(renderClient).join("");
+      host.querySelectorAll(".copy-btn").forEach(btn => {
+        btn.addEventListener("click", async () => {
+          const target = document.getElementById(btn.dataset.copy);
+          if (!target) return;
+          try {
+            await navigator.clipboard.writeText(target.textContent);
+            const prev = btn.textContent;
+            btn.textContent = t("setup.client.copied");
+            btn.classList.add("ok");
+            setTimeout(() => { btn.textContent = prev; btn.classList.remove("ok"); }, 1400);
+          } catch (e) {
+            console.error("clipboard write failed", e);
+          }
+        });
+      });
+    }
+
+    await renderClients();
+  </script>
+</body>
+</html>

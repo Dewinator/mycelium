@@ -1,0 +1,123 @@
+{
+  "$schema_doc": "Single source of truth for MCP-client setup snippets. Each entry: id, name, docsUrl, configFormat (json|toml), configPath{mac,linux,windows}, snippet (template with $MYCELIUM_PATH placeholder), verifyPrompt. New clients = one PR, one entry.",
+  "placeholderHint": "Replace $MYCELIUM_PATH with the absolute path to your mycelium checkout (the directory containing mcp-server/dist/index.js).",
+  "clients": [
+    {
+      "id": "claude-code",
+      "name": "Claude Code",
+      "docsUrl": "https://docs.claude.com/en/docs/claude-code/mcp",
+      "configFormat": "json",
+      "configPath": {
+        "mac": "~/.claude.json (or per-project .mcp.json)",
+        "linux": "~/.claude.json (or per-project .mcp.json)",
+        "windows": "%USERPROFILE%\\.claude.json (or per-project .mcp.json)"
+      },
+      "snippet": "{\n  \"mcpServers\": {\n    \"mycelium\": {\n      \"command\": \"node\",\n      \"args\": [\"$MYCELIUM_PATH/mcp-server/dist/index.js\"]\n    }\n  }\n}",
+      "verifyPrompt": "Frag deinen Agenten: \"Was weißt du über mein letztes Projekt?\" — wenn mycelium eingebunden ist, taucht ein recall-Tool im Trace auf."
+    },
+    {
+      "id": "claude-desktop",
+      "name": "Claude Desktop",
+      "docsUrl": "https://modelcontextprotocol.io/quickstart/user",
+      "configFormat": "json",
+      "configPath": {
+        "mac": "~/Library/Application Support/Claude/claude_desktop_config.json",
+        "linux": "~/.config/Claude/claude_desktop_config.json",
+        "windows": "%APPDATA%\\Claude\\claude_desktop_config.json"
+      },
+      "snippet": "{\n  \"mcpServers\": {\n    \"mycelium\": {\n      \"command\": \"node\",\n      \"args\": [\"$MYCELIUM_PATH/mcp-server/dist/index.js\"]\n    }\n  }\n}",
+      "verifyPrompt": "Starte Claude Desktop neu. Im Chat solltest du oben rechts ein Tools-Symbol sehen, das mycelium-Werkzeuge listet (remember, recall, …)."
+    },
+    {
+      "id": "codex-cli",
+      "name": "Codex CLI",
+      "docsUrl": "https://github.com/openai/codex",
+      "configFormat": "toml",
+      "configPath": {
+        "mac": "~/.codex/config.toml",
+        "linux": "~/.codex/config.toml",
+        "windows": "%USERPROFILE%\\.codex\\config.toml"
+      },
+      "snippet": "[mcp_servers.mycelium]\ncommand = \"node\"\nargs = [\"$MYCELIUM_PATH/mcp-server/dist/index.js\"]",
+      "verifyPrompt": "Im Codex-CLI: /mcp listet aktive Server. mycelium muss dabei sein. Dann z.B. \"recall meine letzten Erkenntnisse\"."
+    },
+    {
+      "id": "cursor",
+      "name": "Cursor",
+      "docsUrl": "https://docs.cursor.com/context/model-context-protocol",
+      "configFormat": "json",
+      "configPath": {
+        "mac": "~/.cursor/mcp.json (global) oder .cursor/mcp.json (pro Projekt)",
+        "linux": "~/.cursor/mcp.json (global) oder .cursor/mcp.json (pro Projekt)",
+        "windows": "%USERPROFILE%\\.cursor\\mcp.json (global) oder .cursor\\mcp.json (pro Projekt)"
+      },
+      "snippet": "{\n  \"mcpServers\": {\n    \"mycelium\": {\n      \"command\": \"node\",\n      \"args\": [\"$MYCELIUM_PATH/mcp-server/dist/index.js\"]\n    }\n  }\n}",
+      "verifyPrompt": "Cursor → Settings → MCP: mycelium muss als grüner Eintrag erscheinen. Dann im Composer: \"recall\" tippen, mycelium-Tool sollte vorgeschlagen werden."
+    },
+    {
+      "id": "cline",
+      "name": "Cline (VS Code Extension)",
+      "docsUrl": "https://github.com/cline/cline/blob/main/docs/mcp/README.md",
+      "configFormat": "json",
+      "configPath": {
+        "mac": "~/Library/Application Support/Code/User/globalStorage/saoudrizwan.claude-dev/settings/cline_mcp_settings.json",
+        "linux": "~/.config/Code/User/globalStorage/saoudrizwan.claude-dev/settings/cline_mcp_settings.json",
+        "windows": "%APPDATA%\\Code\\User\\globalStorage\\saoudrizwan.claude-dev\\settings\\cline_mcp_settings.json"
+      },
+      "snippet": "{\n  \"mcpServers\": {\n    \"mycelium\": {\n      \"command\": \"node\",\n      \"args\": [\"$MYCELIUM_PATH/mcp-server/dist/index.js\"]\n    }\n  }\n}",
+      "verifyPrompt": "Cline-Panel öffnen, MCP-Tab anklicken — mycelium muss mit Tool-Liste erscheinen."
+    },
+    {
+      "id": "continue",
+      "name": "Continue (VS Code / JetBrains)",
+      "docsUrl": "https://docs.continue.dev/customize/deep-dives/mcp",
+      "configFormat": "json",
+      "configPath": {
+        "mac": "~/.continue/config.json",
+        "linux": "~/.continue/config.json",
+        "windows": "%USERPROFILE%\\.continue\\config.json"
+      },
+      "snippet": "{\n  \"experimental\": {\n    \"modelContextProtocolServer\": {\n      \"transport\": {\n        \"type\": \"stdio\",\n        \"command\": \"node\",\n        \"args\": [\"$MYCELIUM_PATH/mcp-server/dist/index.js\"]\n      }\n    }\n  }\n}",
+      "verifyPrompt": "Continue-Panel → Tools/MCP-Sektion zeigt mycelium-Tools. Wenn nicht: Continue-Logs prüfen."
+    },
+    {
+      "id": "zed",
+      "name": "Zed",
+      "docsUrl": "https://zed.dev/docs/assistant/model-context-protocol",
+      "configFormat": "json",
+      "configPath": {
+        "mac": "~/.config/zed/settings.json",
+        "linux": "~/.config/zed/settings.json",
+        "windows": "%APPDATA%\\Zed\\settings.json"
+      },
+      "snippet": "{\n  \"context_servers\": {\n    \"mycelium\": {\n      \"command\": {\n        \"path\": \"node\",\n        \"args\": [\"$MYCELIUM_PATH/mcp-server/dist/index.js\"]\n      }\n    }\n  }\n}",
+      "verifyPrompt": "Zed → Assistant-Panel → Context-Server-Status: mycelium muss dort verbunden sein."
+    },
+    {
+      "id": "openclaw",
+      "name": "openClaw",
+      "docsUrl": "https://github.com/Dewinator/mycelium",
+      "configFormat": "json",
+      "configPath": {
+        "mac": "~/.openclaw/openclaw.json (mcp_servers-Block)",
+        "linux": "~/.openclaw/openclaw.json (mcp_servers-Block)",
+        "windows": "n/a (openClaw ist heute Mac/Linux-fokussiert)"
+      },
+      "snippet": "{\n  \"mcp_servers\": {\n    \"mycelium\": {\n      \"command\": \"node\",\n      \"args\": [\"$MYCELIUM_PATH/mcp-server/dist/index.js\"]\n    }\n  }\n}",
+      "verifyPrompt": "Im openClaw-Gateway: tools/list aufrufen — mycelium-Tools (remember, recall, prime_context, …) müssen erscheinen."
+    },
+    {
+      "id": "codex-web",
+      "name": "Codex (Web)",
+      "docsUrl": "https://chatgpt.com/codex",
+      "configFormat": "n/a",
+      "configPath": {
+        "mac": "in der Codex-Web-Oberfläche unter Settings → Tools → MCP",
+        "linux": "in der Codex-Web-Oberfläche unter Settings → Tools → MCP",
+        "windows": "in der Codex-Web-Oberfläche unter Settings → Tools → MCP"
+      },
+      "snippet": "Web-UI: Settings → Tools → MCP → Add Server\n  Name:    mycelium\n  Command: node $MYCELIUM_PATH/mcp-server/dist/index.js\n\n(Codex-Web kann nur lokale MCP-Server erreichen, wenn dein Codex-Runner lokal läuft.)",
+      "verifyPrompt": "Im Codex-Web nach Hinzufügen einen Test-Prompt: \"Liste deine MCP-Tools\" — mycelium-Tools sollten dabei sein."
+    }
+  ]
+}
