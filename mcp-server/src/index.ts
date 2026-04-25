@@ -74,6 +74,7 @@ import { patternsSchema, patterns } from "./tools/patterns.js";
 import { markUsedInResponseSchema, markUsedInResponse } from "./tools/cite.js";
 import { AgentEventBus } from "./agents/event-bus.js";
 import { CoactivationAgent } from "./agents/coactivation-agent.js";
+import { SalienceReactor } from "./agents/salience-reactor.js";
 import { ConscienceAgent } from "./agents/conscience-agent.js";
 import { ProjectService } from "./services/projects.js";
 import {
@@ -1139,6 +1140,15 @@ async function main() {
         batchSize: parseInt(process.env.OPENCLAW_AGENT_BUS_BATCH   ?? "100",  10),
       });
       bus.register(new CoactivationAgent(SUPABASE_URL, SUPABASE_KEY));
+
+      // Salience-Reactor: turns mark_useful / agent_completed / agent_error
+      // events on experiences into bump_salience() calls (Migration 053).
+      // Unifies the "heard recently / mattered recently" signal across the
+      // non-memory cognitive tables. ON by default with the bus; set
+      // OPENCLAW_AGENT_SALIENCE=0 to disable independently.
+      if ((process.env.OPENCLAW_AGENT_SALIENCE ?? "1") !== "0") {
+        bus.register(new SalienceReactor(SUPABASE_URL, SUPABASE_KEY));
+      }
 
       // Conscience: opt-in (routes through the OpenClaw gateway, so only enable
       // on hosts where `openclaw` CLI is installed and `main` agent is ready).
