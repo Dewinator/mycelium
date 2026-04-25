@@ -137,16 +137,8 @@ export class RelationsService {
       console.error(`[supersede] contradiction lookup failed: ${fmtErr(error)}`);
       return;
     }
-    const rows = (data ?? []) as Array<{
-      trace_id: string | null;
-      memory_id: string;
-      context: { contradicts_id?: string } | null;
-    }>;
-    const match = rows.find((e) => {
-      const other = e.context?.contradicts_id;
-      return (e.memory_id === oldId && other === newId) ||
-             (e.memory_id === newId && other === oldId);
-    });
+    const rows = (data ?? []) as ContradictionDetectedRow[];
+    const match = findResolutionMatch(rows, oldId, newId);
     if (!match) return;
     const { error: logErr } = await this.db.rpc("log_memory_event", {
       p_memory_id:  oldId,
@@ -160,4 +152,32 @@ export class RelationsService {
       console.error(`[supersede] emit contradiction_resolved failed: ${fmtErr(logErr)}`);
     }
   }
+}
+
+export interface ContradictionDetectedRow {
+  trace_id: string | null;
+  memory_id: string;
+  context: { contradicts_id?: string } | null;
+}
+
+/**
+ * Bidirectional lookup for a `contradiction_detected` row that pairs
+ * (oldId, newId). ConscienceAgent stamps the event on one side only —
+ * `memory_id = newMemory.id` with `context.contradicts_id = oldMemory.id`
+ * — so the matcher must tolerate either direction of the pair.
+ *
+ * Exported so __tests__/relations.test.ts can pin the payload shape
+ * compute_affect()'s frustration term depends on without needing a live
+ * PostgrestClient. See docs/affect-observables.md §frustration.
+ */
+export function findResolutionMatch(
+  rows: ContradictionDetectedRow[],
+  oldId: string,
+  newId: string,
+): ContradictionDetectedRow | null {
+  return rows.find((e) => {
+    const other = e.context?.contradicts_id;
+    return (e.memory_id === oldId && other === newId) ||
+           (e.memory_id === newId && other === oldId);
+  }) ?? null;
 }
