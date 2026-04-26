@@ -1,18 +1,22 @@
 # Affect from observables — design doc for `compute_affect()`
 
-Status: design, not yet implemented. Referenced by issue #11.
+Status: implemented. Referenced by issue #11. Migration 062 ships the
+SQL function + triggers (Phase 2); Phase 3 removed the legacy
+`affect.apply` write path from the MCP tools.
 
 ## Why this doc exists
 
-The current `agent_affect` singleton (migration 019) is updated by
+Before migration 062 the `agent_affect` singleton was updated by
 `affect_apply(event, intensity)` calls scattered through `remember`, `recall`,
-`absorb`, `digest`. This makes the mood disc on the soul-tab depend on the
+`absorb`, `digest`. This made the mood disc on the soul-tab depend on the
 LLM honestly setting `valence` / `arousal` in `record_experience` — which in
 practice it underfeeds (neutral most of the time even when activity is rich).
 
 The fix is to **compute affect from observables**. The LLM only reads
-`agent_affect`; it never writes to it authoritatively. Existing
-`update_affect` calls are demoted to pure logging via `memory_events`.
+`agent_affect`; it never writes to it authoritatively. The `update_affect`
+MCP tool and the `affect.apply` call sites in `remember`/`recall`/`absorb`/
+`infer_action` were removed in Phase 3 — `experiences` and `memory_events`
+inserts now drive `compute_affect()` through the triggers from migration 062.
 
 This doc specifies the formulas before any SQL migration is written, so the
 formulas are reviewable independent of implementation choices (trigger vs.
@@ -228,8 +232,10 @@ The issue is explicitly too big for one tick. Suggested order:
 7. Migration: triggers on `experiences` and `memory_events` that call
    `compute_affect()` and patch `agent_affect`.
 8. MCP-server refactor: stop calling `affect_apply` from `remember` /
-   `recall` / `absorb` / `digest`; keep the `memory_events` log as the
-   authoritative input.
+   `recall` / `absorb` / `digest` / `infer_action`; keep the
+   `memory_events` log as the authoritative input. Also removes the
+   `update_affect` MCP tool — no LLM-driven writes to `agent_affect`
+   remain. (done — Phase 3, this PR)
 9. CLAUDE.md — link this doc under the Roadmap. (done, PR #15)
 10. Post-observation tuning pass (after ~2 weeks of live data).
 

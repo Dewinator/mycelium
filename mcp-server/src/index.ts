@@ -89,7 +89,6 @@ import {
 import { AffectService } from "./services/affect.js";
 import {
   getAffectSchema, getAffect,
-  updateAffectSchema, updateAffect,
   resetAffectSchema, resetAffect,
 } from "./tools/affect.js";
 import { BeliefService } from "./services/belief.js";
@@ -314,7 +313,6 @@ const CORE_TOOLS = [
   "remember",
   "absorb",
   "digest",
-  "update_affect",
 ];
 
 const CORE_PLUS_TOOLS = [
@@ -378,14 +376,14 @@ server.tool(
   "remember",
   "Store a new memory with automatic embedding generation. Use for important facts, decisions, people info, or project details.",
   rememberSchema.shape,
-  withErrorHandling((input) => remember(memoryService, affectService, projectService, getAgentLabel(), rememberSchema.parse(input)))
+  withErrorHandling((input) => remember(memoryService, projectService, getAgentLabel(), rememberSchema.parse(input)))
 );
 
 server.tool(
   "absorb",
   "Low-friction learning: pass any text you picked up during conversation — a fact, preference, decision, person detail. The server auto-detects category, extracts tags, scores importance, checks for duplicates, and — when the text carries real emotion — ALSO auto-records a lightweight experience so the soul layer fills up organically without waiting for digest. USE THIS whenever you notice something worth remembering — don't wait to be asked.",
   absorbSchema.shape,
-  withErrorHandling((input) => absorb(memoryService, experienceService, affectService, projectService, getAgentLabel(), absorbSchema.parse(input)))
+  withErrorHandling((input) => absorb(memoryService, experienceService, projectService, getAgentLabel(), absorbSchema.parse(input)))
 );
 
 server.tool(
@@ -602,24 +600,20 @@ server.tool(
 
 server.tool(
   "digest",
-  "END-OF-CONVERSATION soul development. Call this ONCE at the end of every conversation. It automatically: (1) records the experience, (2) stores extracted facts, (3) runs REM-sleep reflection to find patterns, (4) creates or reinforces lessons, (5) promotes mature lessons to soul traits, (6) consolidates memories, (7) updates the agent's affective state from the outcome, (8) tracks skill performance per task_type from tools_used, (9) auto-ingests plausible causal edges to prior experiences. Pass a first-person summary, outcome, optional facts, and especially `tools_used` + `task_type` so the learning loop fills up.",
+  "END-OF-CONVERSATION soul development. Call this ONCE at the end of every conversation. It automatically: (1) records the experience, (2) stores extracted facts, (3) runs REM-sleep reflection to find patterns, (4) creates or reinforces lessons, (5) promotes mature lessons to soul traits, (6) consolidates memories, (7) tracks skill performance per task_type from tools_used, (8) auto-ingests plausible causal edges to prior experiences. Pass a first-person summary, outcome, optional facts, and especially `tools_used` + `task_type` so the learning loop fills up. Affect is no longer pushed from here — it's recomputed from the experience+memory_event triggers (migration 062).",
   digestSchema.shape,
-  withErrorHandling((input) => digest(experienceService, memoryService, affectService, causalService, skillsService, neurochemistryService, getGenomeLabel(), digestSchema.parse(input)))
+  withErrorHandling((input) => digest(experienceService, memoryService, causalService, skillsService, neurochemistryService, getGenomeLabel(), digestSchema.parse(input)))
 );
 
 // --- affective state layer --------------------------------------------------
+// Since migration 062 the agent_affect row is computed from observables
+// (experiences + memory_events) by triggers, not pushed from MCP tools.
+// Only get/reset remain — no `update_affect`.
 server.tool(
   "get_affect",
-  "Return the agent's current persistent affective state (curiosity, frustration, satisfaction, confidence) and the recall bias it currently imposes. Unlike `mood` (which is derived from recent experiences), this is a proper regulator with decay and event-driven updates.",
+  "Return the agent's current persistent affective state (curiosity, frustration, satisfaction, confidence) and the recall bias it currently imposes. The state is recomputed on every experience/memory_event INSERT — see compute_affect() in migration 062.",
   getAffectSchema.shape,
   withErrorHandling((input) => getAffect(affectService, getAffectSchema.parse(input)))
-);
-
-server.tool(
-  "update_affect",
-  "Nudge the persistent affective state. Prefer letting remember/recall/digest update it implicitly — call this only when you have an explicit signal that the automated hooks missed (e.g. the user loudly praised or scolded, a task outcome you didn't run through digest).",
-  updateAffectSchema.shape,
-  withErrorHandling((input) => updateAffect(affectService, updateAffectSchema.parse(input)))
 );
 
 server.tool(
@@ -671,7 +665,7 @@ server.tool(
   "infer_action",
   "Active-Inference decision: given a task description, probe the vector memory, then ask the PyMDP belief sidecar whether to recall (exploit known), research (explore), or ask_teacher (delegate). Minimises Expected Free Energy = pragmatic_value + epistemic_value + action_cost. Use BEFORE starting any non-trivial task to decide whether to lean on memory or escalate. Falls back to a simple rule-of-thumb if the sidecar is down.",
   inferActionSchema.shape,
-  withErrorHandling((input) => inferAction(memoryService, beliefService, affectService, neurochemistryService, getGenomeLabel(), inferActionSchema.parse(input)))
+  withErrorHandling((input) => inferAction(memoryService, beliefService, neurochemistryService, getGenomeLabel(), inferActionSchema.parse(input)))
 );
 
 server.tool(

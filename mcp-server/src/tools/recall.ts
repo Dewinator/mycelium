@@ -104,25 +104,11 @@ export async function recall(
   );
 
   // ---- Observability: emit a `recalled` memory_event ----------------------
-  // Forward-compatible with the trigger-based compute_affect() described in
-  // docs/affect-observables.md — empty_recalls / low_conf_recalls read from
-  // memory_events, not from the affect.apply path below.
+  // The trigger on memory_events fires compute_affect() (migration 062),
+  // which reads empty_recalls / low_conf_recalls / zero_hit_ratio from this
+  // event stream — see docs/affect-observables.md.
   const topScore = results[0]?.effective_score ?? 0;
   void service.emitRecalled(results.length, topScore, input.query.length, "mcp:recall");
-
-  // ---- Auto-update affect from recall outcome -----------------------------
-  // Empty recalls nudge curiosity up / confidence down; rich recalls confirm
-  // confidence. Touches (single weak hit) don't move state. Fire-and-forget
-  // with a tail-catch — see remember.ts.
-  if (!input.ignore_affect) {
-    const tailCatch = (event: string) => (err: unknown) =>
-      console.error(`[recall] affect.apply(${event}) tail-failed:`, err);
-    if (results.length === 0) {
-      affect.apply("recall_empty", 0.5).catch(tailCatch("recall_empty"));
-    } else if (results.length >= 5 && topScore >= 0.6) {
-      affect.apply("recall_rich", 0.3).catch(tailCatch("recall_rich"));
-    }
-  }
 
   if (results.length === 0) {
     return { content: [{ type: "text" as const, text: "No matching memories found." }] };

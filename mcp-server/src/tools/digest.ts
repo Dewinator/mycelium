@@ -1,7 +1,6 @@
 import { z } from "zod";
 import type { ExperienceService } from "../services/experiences.js";
 import type { MemoryService } from "../services/supabase.js";
-import type { AffectService, AffectEvent } from "../services/affect.js";
 import type { NeurochemistryService, NeurochemEvent } from "../services/neurochemistry.js";
 import type { CausalService } from "../services/causal.js";
 import type { SkillsService } from "../services/skills.js";
@@ -70,7 +69,6 @@ export const digestSchema = z.object({
 export async function digest(
   experienceService: ExperienceService,
   memoryService: MemoryService,
-  affectService: AffectService,      // kept for backward compat with existing callers; no longer used here
   causalService: CausalService,
   skillsService: SkillsService,
   neurochem: NeurochemistryService,

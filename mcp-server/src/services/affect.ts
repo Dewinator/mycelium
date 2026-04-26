@@ -3,47 +3,24 @@ import { PostgrestClient } from "@supabase/postgrest-js";
 /**
  * Agent-wide Affective State (Ebene 1b der Cognitive Architecture).
  *
- * Persistent singleton row `agent_affect` in Supabase, maintained via RPCs
- * `affect_get`, `affect_apply(event, intensity)`, `affect_reset`.
+ * Persistent singleton row `agent_affect`. Since migration 062 the row is
+ * computed from observables — `experiences`, `memory_events`,
+ * `skill_outcomes`, `stimuli` — by `compute_affect()`, fired from
+ * AFTER-INSERT triggers on `experiences` and `memory_events`. The MCP
+ * server only READS it (via `get`) and translates state into a recall
+ * bias (`biasFromState`).
  *
  * Semantik:
  *   curiosity     — Explorationsbreite (hoch = recall sucht breiter, Threshold sinkt, Spread wird aggressiver)
  *   frustration   — Wiederholungs-Stress (hoch = erhöht k, senkt Threshold, triggert unter Umständen Teacher)
  *   satisfaction  — Erfolgsniveau (hoch = engere, bestätigende Suche)
  *   confidence    — Selbstvertrauen (niedrig = lieber breit suchen / Teacher fragen)
- *
- * Events ↔ Trigger (werden automatisch von recall/remember/absorb gesetzt):
- *   'success'         — z.B. nach mark_useful
- *   'failure'         — z.B. nach experience outcome='failure' oder user_sentiment='frustrated'
- *   'unknown'         — Task ohne Vorerfahrung
- *   'recall_empty'    — recall liefert keine Treffer
- *   'recall_rich'     — recall liefert viele starke Treffer
- *   'novel_encoding'  — remember/absorb speichert etwas Neues (kein Duplikat)
  */
 
-export type AffectEvent =
-  | "success"
-  | "failure"
-  | "unknown"
-  | "recall_empty"
-  | "recall_rich"
-  | "recall_touch"
-  | "novel_encoding";
-
 /**
- * Bridge mapping: legacy AffectEvent → neurochem-engine event name.
- *
- * Mirrors the CASE statement inside `affect_apply()` (migrations 042 + 062).
- * The receiver (`neurochem_apply()`) only recognises the seven event labels
- * listed in `neurochemUpdateSchema.event` (task_complete, task_failed,
- * novel_stimulus, familiar_task, idle, error, teacher_consulted). Any
- * AffectEvent not present here, or mapped to a non-recognised label,
- * silently falls through and corrupts compute_affect()'s observables.
- *
- * If either side changes, update BOTH and the contract tests in
- * affect-apply-mapping.test.ts will keep them honest. As of migration 062,
- * every legacy AffectEvent has a SQL mapping — there are no documented
- * gaps left.
+ * Wire labels that `neurochem_apply()` accepts. Mirrors
+ * `neurochemUpdateSchema.event`; the contract test
+ * `neurochemistry-schemas.test.ts` keeps both lists in sync.
  */
 export const NEUROCHEM_RECOGNISED_EVENTS = [
   "task_complete",
@@ -55,16 +32,6 @@ export const NEUROCHEM_RECOGNISED_EVENTS = [
   "teacher_consulted",
 ] as const;
 export type NeurochemEvent = (typeof NEUROCHEM_RECOGNISED_EVENTS)[number];
-
-export const AFFECT_TO_NEUROCHEM_EVENT_MAP: Record<AffectEvent, NeurochemEvent> = {
-  success:        "task_complete",
-  failure:        "task_failed",
-  unknown:        "novel_stimulus",
-  recall_empty:   "novel_stimulus",
-  recall_rich:    "familiar_task",
-  recall_touch:   "familiar_task",
-  novel_encoding: "novel_stimulus",
-};
 
 export interface AffectState {
   curiosity: number;
@@ -113,28 +80,6 @@ export class AffectService {
     const { data, error } = await this.db.rpc("affect_get");
     if (error) throw new Error(`affect_get failed: ${fmtErr(error)}`);
     return data as AffectState;
-  }
-
-  /**
-   * Apply an event to the state. Failures are non-fatal — affect is a
-   * behavioural bias, not load-bearing. If the RPC is gone or the DB is
-   * briefly unreachable we prefer to let the caller continue.
-   */
-  async apply(event: AffectEvent, intensity = 0.1): Promise<AffectState | null> {
-    try {
-      const { data, error } = await this.db.rpc("affect_apply", {
-        p_event: event,
-        p_intensity: intensity,
-      });
-      if (error) {
-        console.error(`affect_apply(${event}) failed:`, fmtErr(error));
-        return null;
-      }
-      return data as AffectState;
-    } catch (err) {
-      console.error(`affect_apply(${event}) threw:`, fmtErr(err));
-      return null;
-    }
   }
 
   async reset(): Promise<AffectState> {
