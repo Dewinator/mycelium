@@ -1682,6 +1682,7 @@ function renderSelfModel(m) {
 
 function renderGenomes(rows) {
   const el = $("genomes-table");
+  if (!el) return; // panel deferred (MYCELIUM_FEATURE_POPULATION off)
   if (!Array.isArray(rows) || rows.length === 0) {
     el.innerHTML = `<thead><tr><th></th></tr></thead><tbody><tr><td class="empty">keine genome registriert — migration 024 fehlt?</td></tr></tbody>`;
     return;
@@ -1718,6 +1719,7 @@ function renderGenomes(rows) {
 
 // --- population panel -----------------------------------------------------
 function renderAgents(agentsData, matchesData) {
+  if (!$("agents-table")) return; // panel deferred (MYCELIUM_FEATURE_POPULATION off)
   if (!agentsData || agentsData.error) {
     $("agents-table").innerHTML = `<thead><tr><th></th></tr></thead><tbody><tr><td class="empty">agents-tabelle nicht verfügbar — migration 028 fehlt?</td></tr></tbody>`;
     $("matches-table").innerHTML = "";
@@ -2369,6 +2371,7 @@ function renderNeurochemistry(data) {
 
 function renderFederation(status) {
   const host = document.getElementById("federation-host");
+  if (!host) return; // panel deferred (MYCELIUM_FEATURE_FEDERATION off)
   const trust = document.getElementById("federation-trust");
   const peers = document.getElementById("federation-peers");
   const revs  = document.getElementById("federation-revocations");
@@ -3511,7 +3514,12 @@ async function loadTeacher(){
 }
 
 async function refreshTeacher(){
-  if (!document.getElementById("panel-teacher").classList.contains("active")) {
+  const panel = document.getElementById("panel-teacher");
+  if (!panel) { // panel deferred (MYCELIUM_FEATURE_TEACHER off)
+    if (TCH_POLL_HANDLE) { clearInterval(TCH_POLL_HANDLE); TCH_POLL_HANDLE = null; }
+    return;
+  }
+  if (!panel.classList.contains("active")) {
     if (TCH_POLL_HANDLE) { clearInterval(TCH_POLL_HANDLE); TCH_POLL_HANDLE = null; }
     return;
   }
