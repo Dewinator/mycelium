@@ -265,6 +265,32 @@ async function runRem() {
 }
 
 // ---------------------------------------------------------------------------
+// Phase 2.5 — Emergence Scan (Plan-A: deterministic detectors)
+//   run_emergence_scan(window_days) — SQL-side fan-out across the four
+//   data-driven indicators. ConscienceAgent events are mirrored separately
+//   by the trigger from migration 056. LLM-based judgment (Plan B) would
+//   sit here in the future.
+// ---------------------------------------------------------------------------
+const EMERGENCE_WINDOW_DAYS = Number(process.env.EMERGENCE_WINDOW_DAYS || 7);
+const EMERGENCE_ENABLED = process.env.EMERGENCE_ENABLED !== "0";
+
+async function runEmergenceScan() {
+  const out = { ran: false, errors: [] };
+  if (!EMERGENCE_ENABLED) {
+    out.skipped_reason = "EMERGENCE_ENABLED=0";
+    return out;
+  }
+  try {
+    const summary = await restPost("/rpc/run_emergence_scan", { p_window_days: EMERGENCE_WINDOW_DAYS });
+    Object.assign(out, summary || {});
+    out.ran = true;
+  } catch (e) {
+    out.errors.push({ step: "run_emergence_scan", msg: String(e?.message ?? e) });
+  }
+  return out;
+}
+
+// ---------------------------------------------------------------------------
 // Phase 3 — Metacognition (Default Mode Network analog)
 //   update_self_model
 // ---------------------------------------------------------------------------
@@ -318,6 +344,11 @@ try {
   log("rem done", rem);
   await patchCycle(cycleId, { rem_result: rem });
 
+  log("phase Emergence Scan …");
+  const emerg = await runEmergenceScan();
+  log("emergence done", emerg);
+  await patchCycle(cycleId, { emergence_result: emerg });
+
   log("phase Metacognition …");
   const meta = await runMetacognition();
   log("metacog done", { persisted: meta.persisted, err: meta.errors.length });
@@ -331,6 +362,7 @@ try {
   const allErrors = [
     ...(sws.errors || []),
     ...(rem.errors || []),
+    ...(emerg.errors || []),
     ...(meta.errors || []),
     ...(fit.errors || []),
   ];
