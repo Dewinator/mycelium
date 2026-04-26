@@ -326,6 +326,23 @@ async function runWeeklyFitness() {
 }
 
 // ---------------------------------------------------------------------------
+// Phase 5 — Registry GC (delete stale client-session rows)
+//   sweep_stale_client_sessions(p_max_age_hours)
+// ---------------------------------------------------------------------------
+async function runRegistryGc() {
+  const out = { ran: false, deleted: 0, errors: [] };
+  const hours = parseInt(process.env.SLEEP_CLIENT_SESSION_TTL_HOURS ?? "24", 10);
+  try {
+    const deleted = await restPost("/rpc/sweep_stale_client_sessions", { p_max_age_hours: hours });
+    out.deleted = typeof deleted === "number" ? deleted : (deleted?.[0] ?? 0);
+    out.ran = true;
+  } catch (e) {
+    out.errors.push({ step: "sweep_stale_client_sessions", msg: String(e?.message ?? e) });
+  }
+  return out;
+}
+
+// ---------------------------------------------------------------------------
 // Main
 // ---------------------------------------------------------------------------
 const startedEpoch = Date.now();
@@ -359,12 +376,18 @@ try {
   log("fitness", { ran: fit.ran });
   await patchCycle(cycleId, { fitness_result: fit });
 
+  log("phase Registry GC …");
+  const gc = await runRegistryGc();
+  log("registry gc done", { deleted: gc.deleted, errors: gc.errors.length });
+  await patchCycle(cycleId, { registry_gc_result: gc });
+
   const allErrors = [
     ...(sws.errors || []),
     ...(rem.errors || []),
     ...(emerg.errors || []),
     ...(meta.errors || []),
     ...(fit.errors || []),
+    ...(gc.errors || []),
   ];
   const status = allErrors.length === 0 ? "ok" : "partial";
   await finishCycle(cycleId, status, startedEpoch, {

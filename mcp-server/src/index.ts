@@ -222,32 +222,69 @@ const federationService = new FederationService(
 );
 
 // --- agent registry: diese MCP-Instanz registriert sich als 'agent' ---------
-// Label default = 'main' (der produktive Agent). Weitere Instanzen setzen
-// OPENCLAW_AGENT_LABEL bzw. OPENCLAW_GENOME_LABEL explizit in ihrer MCP-Config.
+// Two modes:
+//   (a) OPENCLAW_getAgentLabel() is set → backend/server kind. Registers
+//       eagerly with that label (LaunchAgents, cron workers, …).
+//   (b) OPENCLAW_getAgentLabel() is unset → client-session kind. Registers
+//       LAZILY in `server.oninitialized`, deriving the label from the MCP
+//       client's `clientInfo.name` (claude-code, openclaw, cursor, codex, …).
+//       Each connected client gets its own row instead of all sharing 'main'.
+import os from "node:os";
 import { homedir as _homedir } from "node:os";
 import { join as _join } from "node:path";
-const AGENT_LABEL     = process.env.OPENCLAW_AGENT_LABEL    ?? "main";
-const GENOME_LABEL    = process.env.OPENCLAW_GENOME_LABEL   ?? AGENT_LABEL;
-const WORKSPACE_PATH  = process.env.OPENCLAW_WORKSPACE_PATH ?? _join(_homedir(), ".openclaw", "workspace");
-const registryService = new RegistryService(SUPABASE_URL, SUPABASE_KEY, {
-  label:         AGENT_LABEL,
-  genomeLabel:   GENOME_LABEL,
-  workspacePath: WORKSPACE_PATH,
-  version:       "0.1.0",
-  gatewayUrl:    process.env.OPENCLAW_GATEWAY_URL ?? undefined,
-  ports: {
-    gateway:    parseInt(process.env.OPENCLAW_GATEWAY_PORT    ?? "18789", 10),
-    belief:     parseInt(process.env.OPENCLAW_BELIEF_PORT     ?? "18790", 10),
-    motivation: parseInt(process.env.OPENCLAW_MOTIVATION_PORT ?? "18792", 10),
-    dashboard:  parseInt(process.env.OPENCLAW_DASHBOARD_PORT  ?? "8787",  10),
-    cockpit:    parseInt(process.env.OPENCLAW_COCKPIT_PORT    ?? "8767",  10),
-  },
-  capabilities: (process.env.OPENCLAW_CAPABILITIES ?? "memory,soul,motivation,belief,sleep").split(","),
-  metadata: {
-    started_at: new Date().toISOString(),
-    registered_by: "mcp-server",
-  },
-});
+import { deriveClientLabel } from "./services/client-identity.js";
+const AGENT_LABEL_ENV = process.env.OPENCLAW_AGENT_LABEL;
+const AGENT_LABEL_EAGER = AGENT_LABEL_ENV ?? null;
+const GENOME_LABEL_ENV  = process.env.OPENCLAW_GENOME_LABEL ?? AGENT_LABEL_ENV ?? null;
+const WORKSPACE_PATH    = process.env.OPENCLAW_WORKSPACE_PATH ?? _join(_homedir(), ".openclaw", "workspace");
+
+function buildRegistryConfig(opts: {
+  label: string;
+  genomeLabel: string;
+  kind: "server" | "client-session";
+  extraMetadata?: Record<string, unknown>;
+}) {
+  return {
+    label:         opts.label,
+    genomeLabel:   opts.genomeLabel,
+    workspacePath: WORKSPACE_PATH,
+    version:       "0.1.0",
+    gatewayUrl:    process.env.OPENCLAW_GATEWAY_URL ?? undefined,
+    ports: {
+      gateway:    parseInt(process.env.OPENCLAW_GATEWAY_PORT    ?? "18789", 10),
+      belief:     parseInt(process.env.OPENCLAW_BELIEF_PORT     ?? "18790", 10),
+      motivation: parseInt(process.env.OPENCLAW_MOTIVATION_PORT ?? "18792", 10),
+      dashboard:  parseInt(process.env.OPENCLAW_DASHBOARD_PORT  ?? "8787",  10),
+      cockpit:    parseInt(process.env.OPENCLAW_COCKPIT_PORT    ?? "8767",  10),
+    },
+    capabilities: (process.env.OPENCLAW_CAPABILITIES ?? "memory,soul,motivation,belief,sleep").split(","),
+    metadata: {
+      started_at: new Date().toISOString(),
+      registered_by: "mcp-server",
+      ...(opts.extraMetadata ?? {}),
+    },
+    kind: opts.kind,
+  };
+}
+
+let registryService: RegistryService | null = AGENT_LABEL_EAGER
+  ? new RegistryService(
+      SUPABASE_URL,
+      SUPABASE_KEY,
+      buildRegistryConfig({
+        label:       AGENT_LABEL_EAGER,
+        genomeLabel: GENOME_LABEL_ENV ?? AGENT_LABEL_EAGER,
+        kind:        "server",
+      }),
+    )
+  : null;
+
+// Resolved at tool-call time. In eager mode (env override) the registry is
+// already constructed and these return env-derived values immediately. In
+// lazy mode (per-client) MCP guarantees `initialize` completes before any
+// tool call, so by the time any handler runs the registry is filled in.
+const getAgentLabel  = (): string => registryService?.cfg.label       ?? AGENT_LABEL_ENV  ?? "main";
+const getGenomeLabel = (): string => registryService?.cfg.genomeLabel ?? GENOME_LABEL_ENV ?? "main";
 
 const server = new McpServer({
   name: "vector-memory",
@@ -348,14 +385,14 @@ server.tool(
   "remember",
   "Store a new memory with automatic embedding generation. Use for important facts, decisions, people info, or project details.",
   rememberSchema.shape,
-  withErrorHandling((input) => remember(memoryService, affectService, projectService, AGENT_LABEL, rememberSchema.parse(input)))
+  withErrorHandling((input) => remember(memoryService, affectService, projectService, getAgentLabel(), rememberSchema.parse(input)))
 );
 
 server.tool(
   "absorb",
   "Low-friction learning: pass any text you picked up during conversation — a fact, preference, decision, person detail. The server auto-detects category, extracts tags, scores importance, checks for duplicates, and — when the text carries real emotion — ALSO auto-records a lightweight experience so the soul layer fills up organically without waiting for digest. USE THIS whenever you notice something worth remembering — don't wait to be asked.",
   absorbSchema.shape,
-  withErrorHandling((input) => absorb(memoryService, experienceService, affectService, projectService, AGENT_LABEL, absorbSchema.parse(input)))
+  withErrorHandling((input) => absorb(memoryService, experienceService, affectService, projectService, getAgentLabel(), absorbSchema.parse(input)))
 );
 
 server.tool(
@@ -433,7 +470,7 @@ server.tool(
   "record_experience",
   "Record an episodic experience: what happened, how hard it felt, what worked, what failed, and the emotional tone. Use after completing any non-trivial task — these episodes feed the agent's evolving 'soul'.",
   recordExperienceSchema.shape,
-  withErrorHandling((input) => recordExperience(experienceService, neurochemistryService, projectService, GENOME_LABEL, AGENT_LABEL, recordExperienceSchema.parse(input)))
+  withErrorHandling((input) => recordExperience(experienceService, neurochemistryService, projectService, getGenomeLabel(), getAgentLabel(), recordExperienceSchema.parse(input)))
 );
 
 server.tool(
@@ -454,7 +491,7 @@ server.tool(
   "record_lesson",
   "Store a synthesised lesson distilled from a cluster of episodes. Marks the source episodes as reflected.",
   recordLessonSchema.shape,
-  withErrorHandling((input) => recordLesson(experienceService, neurochemistryService, projectService, GENOME_LABEL, AGENT_LABEL, recordLessonSchema.parse(input)))
+  withErrorHandling((input) => recordLesson(experienceService, neurochemistryService, projectService, getGenomeLabel(), getAgentLabel(), recordLessonSchema.parse(input)))
 );
 
 server.tool(
@@ -511,7 +548,7 @@ server.tool(
   "set_intention",
   "Declare a forward-looking goal in first person. Subsequent experiences that semantically match will automatically advance its progress.",
   setIntentionSchema.shape,
-  withErrorHandling((input) => setIntention(experienceService, projectService, AGENT_LABEL, setIntentionSchema.parse(input)))
+  withErrorHandling((input) => setIntention(experienceService, projectService, getAgentLabel(), setIntentionSchema.parse(input)))
 );
 
 server.tool(
@@ -567,14 +604,14 @@ server.tool(
   "narrate_self",
   "Return a coherent first-person self-narration: who I am, what I want, what I have learned, who I am bonded with, what tensions I hold, and how fast I am evolving.",
   narrateSelfSchema.shape,
-  withErrorHandling((input) => narrateSelf(experienceService, GENOME_LABEL, narrateSelfSchema.parse(input)))
+  withErrorHandling((input) => narrateSelf(experienceService, getGenomeLabel(), narrateSelfSchema.parse(input)))
 );
 
 server.tool(
   "digest",
   "END-OF-CONVERSATION soul development. Call this ONCE at the end of every conversation. It automatically: (1) records the experience, (2) stores extracted facts, (3) runs REM-sleep reflection to find patterns, (4) creates or reinforces lessons, (5) promotes mature lessons to soul traits, (6) consolidates memories, (7) updates the agent's affective state from the outcome, (8) tracks skill performance per task_type from tools_used, (9) auto-ingests plausible causal edges to prior experiences. Pass a first-person summary, outcome, optional facts, and especially `tools_used` + `task_type` so the learning loop fills up.",
   digestSchema.shape,
-  withErrorHandling((input) => digest(experienceService, memoryService, affectService, causalService, skillsService, neurochemistryService, GENOME_LABEL, digestSchema.parse(input)))
+  withErrorHandling((input) => digest(experienceService, memoryService, affectService, causalService, skillsService, neurochemistryService, getGenomeLabel(), digestSchema.parse(input)))
 );
 
 // --- affective state layer --------------------------------------------------
@@ -641,7 +678,7 @@ server.tool(
   "infer_action",
   "Active-Inference decision: given a task description, probe the vector memory, then ask the PyMDP belief sidecar whether to recall (exploit known), research (explore), or ask_teacher (delegate). Minimises Expected Free Energy = pragmatic_value + epistemic_value + action_cost. Use BEFORE starting any non-trivial task to decide whether to lean on memory or escalate. Falls back to a simple rule-of-thumb if the sidecar is down.",
   inferActionSchema.shape,
-  withErrorHandling((input) => inferAction(memoryService, beliefService, affectService, neurochemistryService, GENOME_LABEL, inferActionSchema.parse(input)))
+  withErrorHandling((input) => inferAction(memoryService, beliefService, affectService, neurochemistryService, getGenomeLabel(), inferActionSchema.parse(input)))
 );
 
 server.tool(
@@ -1128,14 +1165,18 @@ async function main() {
   }
 
   // Register in the agents-Tabelle. Non-fatal if it fails — memory operations
-  // still work.
-  try {
-    await registryService.start();
-  } catch (err) {
-    console.error(
-      "agent registry unavailable (non-fatal):",
-      err instanceof Error ? err.message : String(err)
-    );
+  // still work. Eager path runs only when OPENCLAW_getAgentLabel() is set
+  // (backend/server processes). For MCP clients we wait for the initialize
+  // handshake — see server.server.oninitialized below.
+  if (registryService) {
+    try {
+      await registryService.start();
+    } catch (err) {
+      console.error(
+        "agent registry unavailable (non-fatal):",
+        err instanceof Error ? err.message : String(err)
+      );
+    }
   }
 
   // Agent event-bus (Migration 047) — ON by default. Set
@@ -1183,9 +1224,50 @@ async function main() {
     }
   }
 
+  // If no eager getAgentLabel() was provided, register a per-client row once the
+  // MCP `initialize` handshake completes. clientInfo.name is the source of
+  // truth ("claude-code", "openclaw", "cursor", "codex", …).
+  if (!registryService) {
+    server.server.oninitialized = () => {
+      const ci = server.server.getClientVersion();
+      const host = os.hostname();
+      const label = deriveClientLabel(ci, host, process.pid);
+      const genomeLabel = GENOME_LABEL_ENV ?? "visiting-client";
+      registryService = new RegistryService(
+        SUPABASE_URL,
+        SUPABASE_KEY,
+        buildRegistryConfig({
+          label,
+          genomeLabel,
+          kind: "client-session",
+          extraMetadata: {
+            client_name:    ci?.name    ?? null,
+            client_version: ci?.version ?? null,
+            pid:            process.pid,
+          },
+        }),
+      );
+      void registryService.start().catch((err) => {
+        console.error(
+          "agent registry (client-session) unavailable (non-fatal):",
+          err instanceof Error ? err.message : String(err),
+        );
+      });
+      console.error(
+        `vector-memory MCP server initialized for client=${ci?.name ?? "unknown"} → agent=${label}`,
+      );
+    };
+  }
+
   const transport = new StdioServerTransport();
   await server.connect(transport);
-  console.error(`vector-memory MCP server started (agent=${AGENT_LABEL} genome=${GENOME_LABEL})`);
+  if (registryService) {
+    console.error(
+      `vector-memory MCP server started (agent=${registryService.cfg.label} genome=${registryService.cfg.genomeLabel} kind=${registryService.cfg.kind ?? "server"})`,
+    );
+  } else {
+    console.error("vector-memory MCP server started (waiting for client initialize for agent registry)");
+  }
 }
 
 main().catch((err) => {

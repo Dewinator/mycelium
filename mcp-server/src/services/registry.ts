@@ -17,8 +17,10 @@ function fmtErr(err: unknown): string {
   return e.message || e.details || e.hint || e.code || JSON.stringify(err);
 }
 
+export type AgentKind = "server" | "client-session";
+
 export interface RegistryConfig {
-  /** Label of this running instance — e.g. "main", "dev-agent", "inherit_smoke". */
+  /** Label of this running instance — e.g. "main", "dev-agent", "claude-code-mac-12345". */
   label: string;
   /** Label of the genome this instance runs. Defaults to same as instance label. */
   genomeLabel: string;
@@ -38,6 +40,8 @@ export interface RegistryConfig {
   metadata?: Record<string, unknown>;
   /** Heartbeat interval in ms (default 30s). */
   heartbeatMs?: number;
+  /** Registry row kind — "server" for backend processes, "client-session" for MCP clients. */
+  kind?: AgentKind;
 }
 
 export class RegistryService {
@@ -69,6 +73,7 @@ export class RegistryService {
       p_ports:          this.cfg.ports ?? {},
       p_capabilities:   this.cfg.capabilities ?? [],
       p_metadata:       this.cfg.metadata ?? {},
+      p_kind:           this.cfg.kind ?? "server",
     });
     if (error) {
       console.error(`agent_register(${this.cfg.label}) failed:`, fmtErr(error));
