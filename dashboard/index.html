@@ -70,8 +70,8 @@
     display: flex; align-items: center; justify-content: space-between;
     margin-bottom: 24px; gap: 16px; flex-wrap: wrap;
   }
-  .brand { display: flex; flex-direction: column; align-items: flex-start; gap: 6px; min-width: 0; }
-  .brand .logo { width: 100%; max-width: 200px; height: auto; display: block; }
+  .brand { display: flex; flex-direction: column; align-items: flex-start; gap: 4px; min-width: 0; margin-bottom: 4px; }
+  .brand .logo { width: auto; max-width: 120px; height: auto; display: block; }
   .brand .logo-mark { width: 56px; height: 56px; display: block; }
   .brand h1 { margin: 0; font-size: 20px; font-weight: 600; letter-spacing: -0.01em;
               background: linear-gradient(90deg, var(--accent-2), var(--accent), var(--accent-3));
@@ -728,41 +728,41 @@
 
     <!-- mood centerpiece -->
     <section class="card" style="margin-top:16px">
-      <h2>aktuelle stimmung</h2>
+      <h2 data-i18n="card.soul.mood">aktuelle stimmung</h2>
       <div class="mood-center">
         <div class="mood-disc neutral" id="mood-disc">
           <div class="mood-label" id="mood-label">neutral</div>
           <div class="mood-numbers" id="mood-numbers">—</div>
         </div>
         <div class="mood-side">
-          <h3>letzte 24h</h3>
+          <h3 data-i18n="card.soul.last24h">letzte 24h</h3>
           <div class="mood-spark"><canvas id="chart-mood-spark"></canvas></div>
         </div>
       </div>
       <div style="border-top:1px solid var(--border);margin-top:14px;padding-top:12px">
-        <h3 style="font-size:11px;text-transform:uppercase;letter-spacing:0.08em;color:var(--text-dim);margin:0 0 8px">affektive verfassung <span class="sub" id="soul-affect-meta" style="text-transform:none;letter-spacing:normal"></span></h3>
+        <h3 style="font-size:11px;text-transform:uppercase;letter-spacing:0.08em;color:var(--text-dim);margin:0 0 8px"><span data-i18n="card.soul.affective">affektive verfassung</span> <span class="sub" id="soul-affect-meta" style="text-transform:none;letter-spacing:normal"></span></h3>
         <div id="soul-affect-bars" class="bars"></div>
       </div>
     </section>
 
     <section class="grid grid-charts">
       <div class="card">
-        <h2>episoden / valenz (30 tage)</h2>
+        <h2 data-i18n="card.soul.timeline">episoden / valenz (30 tage)</h2>
         <div class="chart-wrap"><canvas id="chart-soul-timeline"></canvas></div>
       </div>
       <div class="card">
-        <h2>ergebnisse</h2>
+        <h2 data-i18n="card.soul.outcomes">ergebnisse</h2>
         <div class="chart-wrap"><canvas id="chart-soul-outcomes"></canvas></div>
       </div>
     </section>
 
     <section class="grid grid-charts-2">
       <div class="card">
-        <h2>user-stimmung</h2>
+        <h2 data-i18n="card.soul.sentiment">user-stimmung</h2>
         <div class="chart-wrap"><canvas id="chart-soul-sentiment"></canvas></div>
       </div>
       <div class="card">
-        <h2>task-typen (erfolgsrate)</h2>
+        <h2 data-i18n="card.soul.tasktypes">task-typen (erfolgsrate)</h2>
         <div class="bars" id="soul-tasktypes"></div>
       </div>
     </section>
@@ -770,28 +770,28 @@
     <!-- intentions + people row -->
     <section class="grid grid-tables">
       <div class="card">
-        <h2>intentionen (was die seele will)</h2>
+        <h2 data-i18n="card.soul.intentions">intentionen (was die seele will)</h2>
         <div class="intent-list" id="soul-intents"></div>
       </div>
       <div class="card">
-        <h2>menschen (mit denen sie lebt)</h2>
+        <h2 data-i18n="card.soul.people">menschen (mit denen sie lebt)</h2>
         <div class="people-grid" id="soul-people"></div>
       </div>
     </section>
 
     <!-- conflicts: full-width, dramatic -->
     <section class="card" style="margin-top:16px">
-      <h2>innere spannungen</h2>
+      <h2 data-i18n="card.soul.conflicts">innere spannungen</h2>
       <div class="conflict-list" id="soul-conflicts"></div>
     </section>
 
     <section class="grid grid-tables">
       <div class="card">
-        <h2>lessons (verdichtet)</h2>
+        <h2 data-i18n="card.soul.lessons">lessons (verdichtet)</h2>
         <div class="lesson-list" id="soul-lessons"></div>
       </div>
       <div class="card">
-        <h2>traits (identität)</h2>
+        <h2 data-i18n="card.soul.traits">traits (identität)</h2>
         <div class="trait-list" id="soul-traits"></div>
       </div>
     </section>
@@ -1388,11 +1388,25 @@
   // Bootstrap i18n before the main dashboard script runs.
   // Exposes window.myceliumI18n for the legacy non-module script to consume
   // when it builds DOM dynamically (planned in follow-up phases).
-  import { initI18n, setLocale, getLocale, t, applyToDom, AVAILABLE_LOCALES } from "/i18n/i18n.js";
+  import { initI18n, setLocale, getLocale, t, applyToDom, AVAILABLE_LOCALES, onLocaleChange } from "/i18n/i18n.js?v=2026-04-26-2";
 
   await initI18n();
 
-  window.myceliumI18n = { t, setLocale, getLocale, applyToDom, AVAILABLE_LOCALES };
+  window.myceliumI18n = { t, setLocale, getLocale, applyToDom, AVAILABLE_LOCALES, onLocaleChange };
+
+  // Trigger a full re-render of JS-built content when the locale changes.
+  // Render functions (renderSoulKpis, renderAffect, …) read from
+  // window.myceliumI18n.t at render time, so load() picks up the new
+  // language for everything that's not just a static data-i18n attribute.
+  onLocaleChange(() => {
+    if (typeof window.load === "function") window.load();
+  });
+
+  // The legacy script's initial load() runs synchronously before this
+  // module finishes (ES modules are deferred). At that moment
+  // window.myceliumI18n is still undefined, so tt() returned raw keys.
+  // Re-render once now that translations are available.
+  if (typeof window.load === "function") window.load();
 
   const updateToggle = () => {
     const btn = document.getElementById("lang-toggle");
@@ -1415,6 +1429,14 @@
 const ENDPOINT = "/api";
 const REFRESH_MS = 30000;
 const TOP_TAGS = 15;
+
+// Translation helper for legacy script — proxies to the i18n module if it
+// has finished initialising, falls back to the key (which makes missing keys
+// visible during development without crashing).
+function tt(key, vars) {
+  const i18n = window.myceliumI18n;
+  return (i18n && typeof i18n.t === "function") ? i18n.t(key, vars) : key;
+}
 
 const $ = (id) => document.getElementById(id);
 const fmt  = new Intl.NumberFormat("de-DE");
@@ -1507,21 +1529,12 @@ function helpBadge(text) {
   return `<span class="help" tabindex="0" data-help="${escapeHtml(text)}">?</span>`;
 }
 
-// Plain-German label for raw event-type strings (used across multiple tabs).
+// Locale-aware label for raw event-type strings (used across multiple tabs).
 function eventLabelDe(e) {
-  return ({
-    task_complete:     "Aufgabe ok",
-    task_failed:       "Aufgabe fehlgeschlagen",
-    novel_stimulus:    "Neues bemerkt",
-    familiar_task:     "Vertrautes",
-    idle:              "Ruhe",
-    error:             "Fehler",
-    teacher_consulted: "Hilfe geholt",
-    remember:          "etwas gespeichert",
-    recall:            "Erinnerung abgerufen",
-    absorb:            "neuen Eindruck aufgenommen",
-    digest:            "Erfahrung verdaut",
-  })[e] || (e ?? "—");
+  if (!e) return "—";
+  const key = `event.${e}`;
+  const translated = tt(key);
+  return translated === key ? e : translated;
 }
 
 // Render a foldable "Tech-Info" block with key-value pairs (definition list).
@@ -1616,25 +1629,25 @@ function renderAffect(state) {
     return;
   }
   const dims = [
-    { k: "curiosity",    label: "Neugier",         hint: "Offenheit für Neues",
-      help: "Wie breit der Agent sucht. Hoch = probiert ungewohnte Wege. Niedrig = bleibt im Bekannten.",
-      mode: "calm" },
-    { k: "frustration",  label: "Frustration",     hint: "innerer Stress",
-      help: "Stress aus Misserfolgen oder ungelösten Konflikten. Niedrig ist gut. Baut sich mit der Zeit von selbst ab.",
-      mode: "lessIsBetter" },
-    { k: "satisfaction", label: "Zufriedenheit",   hint: "Erfolgs-Niveau",
-      help: "Wie viele der letzten Aufgaben erfolgreich abgeschlossen wurden.",
-      mode: "moreIsBetter" },
-    { k: "confidence",   label: "Selbstvertrauen", hint: "Sicherheit in eigenen Antworten",
-      help: "Wie sicher der Agent in seinen Schlüssen ist. Steigt mit Erfahrung, sinkt nach Widersprüchen.",
-      mode: "moreIsBetter" },
+    { k: "curiosity",    labelKey: "affect.curiosity",    hintKey: "affect.curiosity.hint",
+      helpKey: "affect.curiosity.help", mode: "calm" },
+    { k: "frustration",  labelKey: "affect.frustration",  hintKey: "affect.frustration.hint",
+      helpKey: "affect.frustration.help", mode: "lessIsBetter" },
+    { k: "satisfaction", labelKey: "affect.satisfaction", hintKey: "affect.satisfaction.hint",
+      helpKey: "affect.satisfaction.help", mode: "moreIsBetter" },
+    { k: "confidence",   labelKey: "affect.confidence",   hintKey: "affect.confidence.hint",
+      helpKey: "affect.confidence.help", mode: "moreIsBetter" },
   ];
   $("affect-bars").innerHTML = dims.map(d => renderMetricBar({
-    label: d.label, value: state[d.k] ?? 0, hint: d.hint, help: d.help, mode: d.mode,
+    label: tt(d.labelKey), value: state[d.k] ?? 0, hint: tt(d.hintKey), help: tt(d.helpKey), mode: d.mode,
   })).join("");
   const hrs = state.hours_since != null ? state.hours_since.toFixed(1) : "?";
-  const evt = state.last_event ? eventLabelDe(state.last_event) : "noch keine";
-  $("affect-meta").innerHTML = `Letzte Aktion: <b>${escapeHtml(evt)}</b> · vor ${hrs} Stunden · letzte Aktualisierung ${state.updated_at ? formatDate(state.updated_at) : "—"}`;
+  const evt = state.last_event ? eventLabelDe(state.last_event) : tt("affect.no_event");
+  $("affect-meta").innerHTML = tt("affect.meta", {
+    event: escapeHtml(evt),
+    hours: hrs,
+    updated: state.updated_at ? formatDate(state.updated_at) : "—",
+  });
 
   const bias = biasFromAffect(state);
   const kDeltaText = bias.k_delta > 0 ? `+${bias.k_delta} mehr Treffer` : bias.k_delta < 0 ? `${bias.k_delta} weniger Treffer` : "unverändert";
@@ -1661,20 +1674,16 @@ function renderSoulAffect(state) {
     return;
   }
   const dims = [
-    { k: "curiosity",    label: "Neugier",         hint: "Offenheit für Neues",
-      help: "Wie breit der Agent gerade sucht und exploriert.", mode: "calm" },
-    { k: "satisfaction", label: "Zufriedenheit",   hint: "Erfolgs-Niveau",
-      help: "Wie viele Aufgaben kürzlich gut gelaufen sind.", mode: "moreIsBetter" },
-    { k: "confidence",   label: "Selbstvertrauen", hint: "Sicherheit in eigenen Antworten",
-      help: "Wie sicher der Agent in seinen Schlüssen ist.", mode: "moreIsBetter" },
-    { k: "frustration",  label: "Frustration",     hint: "innerer Stress",
-      help: "Stress aus Misserfolgen — niedrig ist gut.", mode: "lessIsBetter" },
+    { k: "curiosity",    labelKey: "affect.curiosity",    hintKey: "affect.curiosity.hint",    helpKey: "affect.curiosity.help.short",    mode: "calm" },
+    { k: "satisfaction", labelKey: "affect.satisfaction", hintKey: "affect.satisfaction.hint", helpKey: "affect.satisfaction.help.short", mode: "moreIsBetter" },
+    { k: "confidence",   labelKey: "affect.confidence",   hintKey: "affect.confidence.hint",   helpKey: "affect.confidence.help.short",   mode: "moreIsBetter" },
+    { k: "frustration",  labelKey: "affect.frustration",  hintKey: "affect.frustration.hint",  helpKey: "affect.frustration.help.short",  mode: "lessIsBetter" },
   ];
   barsEl.innerHTML = dims.map(d => renderMetricBar({
-    label: d.label, value: state[d.k] ?? 0, hint: d.hint, help: d.help, mode: d.mode,
+    label: tt(d.labelKey), value: state[d.k] ?? 0, hint: tt(d.hintKey), help: tt(d.helpKey), mode: d.mode,
   })).join("");
   if (metaEl) {
-    const evt = state.last_event ? eventLabelDe(state.last_event) : "noch keine Aktion";
+    const evt = state.last_event ? eventLabelDe(state.last_event) : tt("affect.no_event");
     metaEl.textContent = ` — ${evt}`;
   }
 }
@@ -1855,21 +1864,13 @@ function renderMotivation(health, status, stats, stimuli, tasks) {
   }
 }
 
-// Plain-German labels for raw band/status keys. Falls back to the key itself
-// for unknown values so new statuses still render correctly.
-const BAND_LABELS = {
-  urgent:      "dringend",
-  act:         "handeln",
-  explore:     "erkunden",
-  log:         "protokoll",
-  ignore:      "ignoriert",
-  proposed:    "vorgeschlagen",
-  approved:    "freigegeben",
-  in_progress: "in Arbeit",
-  done:        "erledigt",
-  dismissed:   "verworfen",
-  abandoned:   "aufgegeben",
-};
+// Locale-aware labels for raw band/status keys. Falls back to the key itself
+// for unknown values so new statuses still render correctly. Resolved at
+// render time via tt(), so a language switch + load() picks up the new label.
+function bandLabel(k) {
+  const translated = tt(`band.${k}`);
+  return translated === `band.${k}` ? k : translated;
+}
 
 function renderBandBars(elId, obj, order) {
   const el = $(elId);
@@ -1882,7 +1883,7 @@ function renderBandBars(elId, obj, order) {
     const v = obj[k] || 0;
     const pct = Math.max(0, Math.min(100, (v / max) * 100));
     return `<div class="bar-row">
-      <div class="name">${escapeHtml(BAND_LABELS[k] || k)}</div>
+      <div class="name">${escapeHtml(bandLabel(k))}</div>
       <div class="bar-track"><div class="bar-fill" style="width:${pct}%"></div></div>
       <div class="count">${fmt.format(v)}</div>
     </div>`;
@@ -2514,18 +2515,10 @@ function renderNeurochemistry(data) {
     statusEl.innerHTML = `<div class="sub">kein neurochemistry-eintrag für '${data.label}'</div>`;
     return;
   }
-  // Plain-language status header — last event in human form, no raw codes.
-  const eventLabel = ({
-    task_complete:    "Aufgabe erfolgreich abgeschlossen",
-    task_failed:      "Aufgabe fehlgeschlagen",
-    novel_stimulus:   "etwas Neues bemerkt",
-    familiar_task:    "vertraute Aufgabe bearbeitet",
-    idle:             "Ruhephase",
-    error:            "Fehler aufgetreten",
-    teacher_consulted: "hat um Hilfe gebeten",
-  })[s.last_event] || s.last_event || "—";
+  // Plain-language status header — last event in human form via i18n.
+  const eventLabel = eventLabelDe(s.last_event);
   statusEl.innerHTML =
-    `<div>Genom <b>${escapeHtml(data.label)}</b> · zuletzt: <b>${escapeHtml(eventLabel)}</b> · ` +
+    `<div>${tt("neuro.genome")} <b>${escapeHtml(data.label)}</b> · ${tt("neuro.lastEvent")}: <b>${escapeHtml(eventLabel)}</b> · ` +
     `<span class="sub">${escapeHtml(formatDate(s.updated_at))}</span></div>`;
 
   const dopaDelta = s.dopamine.current - s.dopamine.baseline;
@@ -2648,34 +2641,25 @@ function renderNeurochemistry(data) {
       line("na", "#e90");
   }
 
-  // History table — translate raw event codes + column shorthand into German labels.
+  // History table — translate raw event codes + column shorthand via i18n.
   if (hist.length > 0) {
     const rowsNewestFirst = Array.isArray(data.history) ? data.history : [];
-    const eventLabel = (e) => ({
-      task_complete:    "Aufgabe ok",
-      task_failed:      "Aufgabe fehlgeschlagen",
-      novel_stimulus:   "Neues",
-      familiar_task:    "Vertrautes",
-      idle:             "Ruhe",
-      error:            "Fehler",
-      teacher_consulted: "Hilfe geholt",
-    })[e] || (e ?? "—");
     const outcomeLabel = (o) => ({ success: "✓", failure: "✗", partial: "~", unknown: "?" })[o] || (o ?? "—");
     histEl.innerHTML =
       `<thead><tr>
-        <th>Zeit</th>
-        <th>Ereignis</th>
-        <th>Ergebnis<span class="help" tabindex="0" data-help="✓ Erfolg, ✗ Misserfolg, ~ teilweise, ? unbekannt">?</span></th>
-        <th>δ<span class="help" tabindex="0" data-help="Prediction-Error: Differenz zwischen Erwartung und Realität (Dopamin-Signal).">?</span></th>
-        <th>Dopamin</th>
-        <th>Serotonin</th>
-        <th>Noradrenalin</th>
-        <th>Konflikte<span class="help" tabindex="0" data-help="Anzahl der zu diesem Zeitpunkt offenen Widersprüche im Gedächtnis.">?</span></th>
+        <th>${tt("neuro.col.time")}</th>
+        <th>${tt("neuro.col.event")}</th>
+        <th>${tt("neuro.col.outcome")}<span class="help" tabindex="0" data-help="${tt("neuro.col.outcome.help")}">?</span></th>
+        <th>δ<span class="help" tabindex="0" data-help="${tt("neuro.col.delta.help")}">?</span></th>
+        <th>${tt("neuro.col.dopamine")}</th>
+        <th>${tt("neuro.col.serotonin")}</th>
+        <th>${tt("neuro.col.noradrenaline")}</th>
+        <th>${tt("neuro.col.conflicts")}<span class="help" tabindex="0" data-help="${tt("neuro.col.conflicts.help")}">?</span></th>
       </tr></thead>` +
       rowsNewestFirst.map((h) =>
         `<tr>` +
         `<td>${escapeHtml(formatDate(h.t))}</td>` +
-        `<td>${escapeHtml(eventLabel(h.e))}</td>` +
+        `<td>${escapeHtml(eventLabelDe(h.e))}</td>` +
         `<td>${escapeHtml(outcomeLabel(h.o))}</td>` +
         `<td class="meta">${h.d ?? "—"}</td>` +
         `<td class="meta">${h.da ?? "—"}</td>` +
@@ -2685,7 +2669,7 @@ function renderNeurochemistry(data) {
         `</tr>`
       ).join("");
   } else {
-    histEl.innerHTML = `<tbody><tr><td class="empty">noch keine Ereignisse aufgezeichnet</td></tr></tbody>`;
+    histEl.innerHTML = `<tbody><tr><td class="empty">${tt("neuro.history.empty")}</td></tr></tbody>`;
   }
 }
 
@@ -2863,12 +2847,12 @@ function kpiCard(label, value, hint) {
 function renderKpis(d) {
   const t = d.totals, l = d.links;
   $("kpis").innerHTML = [
-    kpiCard("neuronen", fmt.format(t.memories), `${fmt.format(t.with_embedding)} mit vektor`),
-    kpiCard("episodisch / semantisch", `${fmt.format(t.episodic)} / ${fmt.format(t.semantic)}`, `${fmt.format(t.archived)} archiviert`),
-    kpiCard("beziehungen", fmt.format(l.count), `dichte ${fmt2.format(l.density || 0)} pro neuron`),
-    kpiCard("vergessen", fmt.format(d.forgotten), "soft-archiviert"),
-    kpiCard("ø stärke", fmt2.format(t.avg_strength || 0), `ø wichtigkeit ${fmt2.format(t.avg_importance || 0)}`),
-    kpiCard("zugriffe", fmt.format(t.total_access), `${fmt.format(t.total_useful)} davon nützlich`),
+    kpiCard(tt("kpi.mem.neurons"),  fmt.format(t.memories),                                tt("kpi.mem.neurons.hint", { n: fmt.format(t.with_embedding) })),
+    kpiCard(tt("kpi.mem.split"),    `${fmt.format(t.episodic)} / ${fmt.format(t.semantic)}`, tt("kpi.mem.split.hint", { n: fmt.format(t.archived) })),
+    kpiCard(tt("kpi.mem.links"),    fmt.format(l.count),                                   tt("kpi.mem.links.hint", { d: fmt2.format(l.density || 0) })),
+    kpiCard(tt("kpi.mem.forgotten"),fmt.format(d.forgotten),                               tt("kpi.mem.forgotten.hint")),
+    kpiCard(tt("kpi.mem.strength"), fmt2.format(t.avg_strength || 0),                      tt("kpi.mem.strength.hint", { n: fmt2.format(t.avg_importance || 0) })),
+    kpiCard(tt("kpi.mem.access"),   fmt.format(t.total_access),                            tt("kpi.mem.access.hint", { n: fmt.format(t.total_useful) })),
   ].join("");
 }
 
@@ -2896,8 +2880,8 @@ function renderTimeline(timeline) {
     data: {
       labels,
       datasets: [
-        { type: "bar", label: "neu / tag", data, backgroundColor: p.accent + "cc", borderRadius: 3, yAxisID: "y" },
-        { type: "line", label: "kumulativ", data: cum, borderColor: p.accent2, backgroundColor: "transparent", tension: 0.3, pointRadius: 0, borderWidth: 2, yAxisID: "y1" },
+        { type: "bar", label: tt("chart.mem.daily"), data, backgroundColor: p.accent + "cc", borderRadius: 3, yAxisID: "y" },
+        { type: "line", label: tt("chart.mem.cumulative"), data: cum, borderColor: p.accent2, backgroundColor: "transparent", tension: 0.3, pointRadius: 0, borderWidth: 2, yAxisID: "y1" },
       ],
     },
     options: {
@@ -3119,18 +3103,18 @@ function renderSoulKpis(d) {
     ? "—"
     : fmt2.format(dr.drift);
   const driftHint = (dr.drift == null || dr.recent_n === 0 || dr.older_n === 0)
-    ? "noch keine baseline"
-    : `7d-zentroid vs älter (n=${dr.recent_n}/${dr.older_n})`;
+    ? tt("kpi.soul.drift.empty")
+    : tt("kpi.soul.drift.hint", { recent: dr.recent_n, older: dr.older_n });
 
   $("soul-kpis").innerHTML = [
-    kpiCard("episoden", fmt.format(t.experiences || 0), `${fmt.format(t.unreflected || 0)} unreflektiert`),
-    kpiCard("lessons", fmt.format(t.lessons || 0), `${fmt.format(t.traits || 0)} traits`),
-    kpiCard("intentionen", fmt.format(t.intentions_active || 0), `${fmt.format(t.intentions_fulfilled || 0)} erfüllt`),
-    kpiCard("menschen", fmt.format(t.people || 0), "verbundene personen"),
-    kpiCard("erfolgsrate", `${Math.round((t.success_rate || 0) * 100)}%`, "ohne 'unknown'"),
-    kpiCard("spannungen", fmt.format(t.conflicts || 0), "innere konflikte"),
-    kpiCard("seelen-drift", driftStr, driftHint),
-    kpiCard("cross-links", fmt.format(t.cross_links || 0), `${fmt.format(t.useful_total || 0)} useful-signale`),
+    kpiCard(tt("kpi.soul.episodes"),    fmt.format(t.experiences || 0),       tt("kpi.soul.episodes.hint",   { n: fmt.format(t.unreflected || 0) })),
+    kpiCard(tt("kpi.soul.lessons"),     fmt.format(t.lessons || 0),           tt("kpi.soul.lessons.hint",    { n: fmt.format(t.traits || 0) })),
+    kpiCard(tt("kpi.soul.intentions"),  fmt.format(t.intentions_active || 0), tt("kpi.soul.intentions.hint", { n: fmt.format(t.intentions_fulfilled || 0) })),
+    kpiCard(tt("kpi.soul.people"),      fmt.format(t.people || 0),            tt("kpi.soul.people.hint")),
+    kpiCard(tt("kpi.soul.success"),     `${Math.round((t.success_rate || 0) * 100)}%`, tt("kpi.soul.success.hint")),
+    kpiCard(tt("kpi.soul.conflicts"),   fmt.format(t.conflicts || 0),         tt("kpi.soul.conflicts.hint")),
+    kpiCard(tt("kpi.soul.drift"),       driftStr,                              driftHint),
+    kpiCard(tt("kpi.soul.crosslinks"),  fmt.format(t.cross_links || 0),       tt("kpi.soul.crosslinks.hint", { n: fmt.format(t.useful_total || 0) })),
   ].join("");
 }
 
@@ -3295,8 +3279,8 @@ function renderSoulTimeline(timeline) {
     data: {
       labels,
       datasets: [
-        { type: "bar", label: "episoden", data: counts, backgroundColor: p.accent2 + "cc", borderRadius: 3, yAxisID: "y" },
-        { type: "line", label: "ø valenz", data: val, borderColor: p.accent3, backgroundColor: "transparent", tension: 0.3, pointRadius: 0, borderWidth: 2, yAxisID: "y1" },
+        { type: "bar", label: tt("chart.soul.episodes"), data: counts, backgroundColor: p.accent2 + "cc", borderRadius: 3, yAxisID: "y" },
+        { type: "line", label: tt("chart.soul.valence"), data: val, borderColor: p.accent3, backgroundColor: "transparent", tension: 0.3, pointRadius: 0, borderWidth: 2, yAxisID: "y1" },
       ],
     },
     options: {
@@ -5918,6 +5902,7 @@ if (origTabSwitch) {
 }
 
 initTheme();
+window.load = load;
 load();
 setInterval(load, REFRESH_MS);
 </script>
