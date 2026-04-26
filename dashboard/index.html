@@ -481,6 +481,108 @@
     .syn-legend .row .ct { display: none; }
     .syn-legend .row { font-size: 10px; }
   }
+
+  /* === beginner-friendly UI primitives (Reed 2026-04-26) ============== */
+
+  /* Plain-language intro at the top of each panel. Tells the user what
+     this tab shows in one sentence. Keep it short. */
+  .panel-intro {
+    margin: -4px 0 18px;
+    padding: 14px 16px;
+    background: linear-gradient(180deg, rgba(122,162,247,0.06), transparent 70%);
+    border-left: 3px solid var(--accent);
+    border-radius: var(--radius-sm);
+    font-size: 14px; line-height: 1.55; color: var(--text);
+  }
+  .panel-intro b { color: var(--accent); font-weight: 600; }
+  .panel-intro .sub { display: block; margin-top: 6px; font-size: 12px; color: var(--text-dim); }
+
+  /* "Was du hier siehst" — a labelled card section that appears under the
+     panel-intro on tabs that have multiple cards. Uses caps + accent. */
+  .section-head {
+    display: flex; align-items: baseline; gap: 10px; margin: 22px 0 8px;
+    font-size: 11px; text-transform: uppercase; letter-spacing: 0.10em;
+    color: var(--text-dim); font-weight: 600;
+  }
+  .section-head .num {
+    display: inline-flex; align-items: center; justify-content: center;
+    width: 18px; height: 18px; border-radius: 50%;
+    background: var(--accent-soft); color: var(--accent);
+    font-size: 11px; font-weight: 600; letter-spacing: 0;
+  }
+
+  /* Help tooltip — small "?" badge next to a label. Hover or tap to see
+     a short plain-German explanation. Keyboard-accessible via tabindex. */
+  .help {
+    display: inline-flex; align-items: center; justify-content: center;
+    width: 14px; height: 14px; margin-left: 6px;
+    border-radius: 50%; background: var(--bg-elev-2); color: var(--text-dim);
+    font-size: 10px; font-weight: 600; cursor: help;
+    user-select: none; vertical-align: middle;
+    position: relative;
+  }
+  .help:hover, .help:focus { background: var(--accent-soft); color: var(--accent); outline: none; }
+  .help::after {
+    content: attr(data-help);
+    position: absolute; bottom: calc(100% + 8px); left: 50%; transform: translateX(-50%);
+    width: max-content; max-width: 280px;
+    padding: 8px 10px; border-radius: var(--radius-sm);
+    background: var(--bg-elev-2); color: var(--text);
+    border: 1px solid var(--border); box-shadow: var(--shadow);
+    font-size: 12px; font-weight: 400; line-height: 1.45; letter-spacing: 0; text-align: left;
+    text-transform: none;
+    opacity: 0; pointer-events: none; transition: opacity 0.12s ease;
+    z-index: 50;
+  }
+  .help:hover::after, .help:focus::after { opacity: 1; }
+
+  /* Semantic-coloured bar fill — adds intuitive green/orange/red to the
+     existing .bar-fill 0..1 component without changing its layout. */
+  .bar-fill.good { background: var(--good); }
+  .bar-fill.warn { background: var(--warn); }
+  .bar-fill.bad  { background: var(--bad); }
+  .bar-fill.calm { background: var(--accent); } /* neutral / informational */
+
+  /* "Tech-Info" foldable — tucks IPs, ports, migration numbers, raw event
+     names, etc. away from the primary surface. The user opens it only if
+     they care. Closed by default. */
+  details.tech-info {
+    margin-top: 14px; padding: 0;
+    border-top: 1px dashed var(--border);
+    font-size: 12px; color: var(--text-dim);
+  }
+  details.tech-info > summary {
+    cursor: pointer; padding: 8px 0 4px;
+    color: var(--text-faint); font-size: 11px;
+    text-transform: uppercase; letter-spacing: 0.08em;
+    list-style: none;
+  }
+  details.tech-info > summary::-webkit-details-marker { display: none; }
+  details.tech-info > summary::before {
+    content: "▸ "; display: inline-block; margin-right: 4px;
+    transition: transform 0.12s ease; color: var(--text-faint);
+  }
+  details.tech-info[open] > summary::before { transform: rotate(90deg); }
+  details.tech-info .tech-grid {
+    display: grid; grid-template-columns: max-content 1fr; gap: 4px 14px;
+    padding: 6px 0 4px;
+  }
+  details.tech-info .tech-grid dt {
+    color: var(--text-faint); font-size: 11px;
+    text-transform: uppercase; letter-spacing: 0.06em;
+  }
+  details.tech-info .tech-grid dd {
+    margin: 0; color: var(--text-dim); font-family: var(--mono); font-size: 12px;
+  }
+
+  /* Compact KPI row — alternative to the auto-fit grid for cases where you
+     want explicit horizontal labels with hint text aligned to the right. */
+  .stat-row { display: flex; justify-content: space-between; align-items: baseline; padding: 10px 0; border-bottom: 1px solid var(--border); }
+  .stat-row:last-child { border-bottom: 0; }
+  .stat-row .stat-label { color: var(--text); font-size: 13px; }
+  .stat-row .stat-label .sub { display: block; color: var(--text-dim); font-size: 11px; margin-top: 2px; font-weight: 400; }
+  .stat-row .stat-value { font-family: var(--mono); font-variant-numeric: tabular-nums; color: var(--text); font-size: 14px; font-weight: 500; }
+
 </style>
 <!-- Three.js (UMD bundle, last UMD release before module-only) — powers the
      synapses tab's 3D Hebbian-graph visualisation. Loaded from a pinned CDN
@@ -543,6 +645,10 @@
   <div id="error-box"></div>
 
   <div class="tab-panel active" id="panel-memory">
+  <div class="panel-intro">
+    Das <b>Gedächtnis</b> ist die zentrale Schicht — alles was der Agent gelernt, gespeichert und wiedergefunden hat. Hier siehst du, wie viel er weiß, was er kürzlich gespeichert hat, welche Themen sich häufen und welche Erinnerungen am stärksten verankert sind.
+    <span class="sub">Die Stärke einer Erinnerung steigt durch Nutzung und sinkt durch Inaktivität — ähnlich der Vergessenskurve nach Ebbinghaus.</span>
+  </div>
   <section class="grid grid-kpi" id="kpis"></section>
 
   <!-- top row: timeline (wide) + stage donut -->
@@ -599,6 +705,10 @@
   </div><!-- /panel-memory -->
 
   <div class="tab-panel" id="panel-soul">
+    <div class="panel-intro">
+      Die <b>Seele</b> ist das, was sich aus den vielen einzelnen Erfahrungen herausbildet — Stimmung, gelernte Grundsätze, Persönlichkeits-Merkmale, Beziehungen zu Personen, innere Konflikte und langfristige Vorhaben. Im Gegensatz zum nüchternen Gedächtnis ist hier die emotionale Färbung wichtig.
+      <span class="sub">Der Agent erzählt sich selbst in der ersten Person — die Sprache spiegelt, wie er sich gerade sieht.</span>
+    </div>
     <!-- self-narration: the soul speaking in first person -->
     <div class="narrate-card" id="narrate-card">
       <p style="opacity:.5">noch keine seele zu erzählen — erste erfahrungen sammeln</p>
@@ -695,66 +805,83 @@
   </div><!-- /panel-soul -->
 
   <div class="tab-panel" id="panel-regulator">
+    <div class="panel-intro">
+      Der <b>Regulator</b> ist die Affekt-Schicht — vier emotionale Grundwerte, die sich aus jeder Aktion verändern und ihrerseits beeinflussen, wie der Agent das nächste Mal denkt und antwortet.
+      <span class="sub">Frustration baut sich mit der Zeit von selbst wieder ab — Stress wird langsam kleiner, wenn nichts Neues hinzukommt.</span>
+    </div>
     <section class="card">
-      <h2>affective state (ebene 1b)</h2>
-      <div class="sub" style="margin-bottom:8px">vier persistente regelvariablen. werden automatisch von <code>remember</code>, <code>recall</code>, <code>absorb</code>, <code>digest</code> aktualisiert. frustration hat zeit-decay (half-life aus <code>agent_affect.decay_half_life_hours</code>).</div>
+      <h2>aktuelle gefühlslage</h2>
+      <div class="sub" style="margin-bottom:10px">Die vier Werte werden automatisch aktualisiert, wenn der Agent etwas speichert, abruft oder auswertet.</div>
       <div id="affect-bars" class="bars"></div>
       <div id="affect-meta" class="sub" style="margin-top:10px"></div>
     </section>
 
     <section class="card" style="margin-top:16px">
-      <h2>recall bias (ableitung)</h2>
-      <div class="sub" style="margin-bottom:8px">wie der aktuelle state dein <code>recall</code> gerade beeinflusst. Δk = zusätzliche memory-treffer, threshold = score-cutoff (null = caller-default), spread_wide = aggressive spreading activation, adjacent_tags = angrenzende tags einbeziehen.</div>
+      <h2>einfluss auf das gedächtnis-suchen</h2>
+      <div class="sub" style="margin-bottom:10px">Der innere Zustand verändert, <i>wie</i> der Agent das Gedächtnis durchsucht — wie viele Treffer er holt, wie streng er filtert und wie weit er assoziativ ausschwärmt.</div>
       <div class="health-grid" id="affect-bias"></div>
     </section>
 
     <section class="card" style="margin-top:16px">
-      <h2>belief sidecar (ebene 3 — active inference)</h2>
-      <div class="sub" style="margin-bottom:8px">pymdp-agent auf <code>127.0.0.1:18790</code> als launchagent <code>ai.openclaw.belief</code>. wird von <code>infer_action</code> angefragt; empfiehlt <em>recall</em> / <em>research</em> / <em>ask_teacher</em> per minimierter expected free energy.</div>
+      <h2>entscheidungs-finder</h2>
+      <div class="sub" style="margin-bottom:10px">Eine separate Entscheidungs-Engine, die dem Agenten vorschlägt, ob er bei einer offenen Frage besser im Gedächtnis suchen, recherchieren oder um Hilfe fragen sollte. Wählt jeweils den Weg mit der geringsten erwarteten Unsicherheit.</div>
       <div class="health-grid" id="belief-health"></div>
       <div id="belief-model" style="margin-top:14px"></div>
     </section>
   </div><!-- /panel-regulator -->
 
   <div class="tab-panel" id="panel-learning">
+    <div class="panel-intro">
+      Hier siehst du, was der Agent <b>aus seinen Aufgaben gelernt</b> hat — welche Werkzeuge bei welcher Aufgaben-Art zuverlässig funktionieren, und welche Ursache-Wirkungs-Ketten er erkannt hat. Diese Lernerfahrung fließt automatisch in zukünftige Empfehlungen ein.
+    </div>
     <section class="card">
-      <h2>skill performance (was hat funktioniert?)</h2>
-      <div class="sub" style="margin-bottom:8px">success-rate pro skill × task-type, gefüttert aus <code>digest</code>-aufrufen mit <code>tools_used</code>. grundlage für <code>prime_context</code> und <code>recommend_skill</code>.</div>
+      <h2>was hat funktioniert</h2>
+      <div class="sub" style="margin-bottom:10px">Erfolgsrate pro Werkzeug × Aufgaben-Art. Je voller der Balken, desto verlässlicher hat dieses Werkzeug für diese Art Aufgabe geliefert.</div>
       <table class="mem" id="skills-table"></table>
     </section>
 
     <section class="card" style="margin-top:16px">
-      <h2>kausale annotationen (ursache → wirkung)</h2>
-      <div class="sub" style="margin-bottom:8px">zwischen erfahrungen gezogene kausal-kanten. auto-ingested mit <code>source=digest_extracted</code>, bestätigt mit <code>source=explicit</code>/<code>user_confirmed</code>. keine pearl-kausalität — annotations-schicht. nutze <code>causal_chain</code> um einer kette zu folgen.</div>
+      <h2>ursache → wirkung</h2>
+      <div class="sub" style="margin-bottom:10px">Verbindungen zwischen Erfahrungen, in denen der Agent erkannt hat, dass eine Sache eine andere ausgelöst hat. Manche werden automatisch beim Verdauen einer Aufgabe gezogen, andere von dir bestätigt.</div>
       <div id="causal-list"></div>
     </section>
   </div><!-- /panel-learning -->
 
   <div class="tab-panel" id="panel-motivation">
+    <div class="panel-intro">
+      Hier sammelt der Agent automatisch Reize aus der Welt — HackerNews, RSS-Feeds, Git-Aktivität, GitHub-Trending — und schlägt selbst neue Aufgaben vor.
+      Jeder Reiz wird gegen das eigene <b>Gedächtnis</b>, den <b>aktuellen Affekt</b>, die <b>Persönlichkeit</b> und offene <b>Vorhaben</b> gewichtet. Was relevant ist, wird zu einem Vorschlag — wartet aber auf deine Freigabe.
+    </div>
+
     <section class="card">
-      <h2>motivation sidecar (ebene 4)</h2>
-      <div class="sub" style="margin-bottom:8px">stimulus-sammler auf <code>127.0.0.1:18792</code> als launchagent <code>ai.openclaw.motivation</code>. schleife: <em>collect → score → generate → drift</em>, alle 60 min. quellen: HackerNews, RSS, git activity, GitHub trending. relevanz-score = 0.20·memory + 0.35·affect + 0.25·soul + 0.20·intention.</div>
+      <h2>status des stimulus-sammlers</h2>
       <div class="health-grid" id="motivation-health"></div>
       <div id="motivation-meta" class="sub" style="margin-top:10px"></div>
+      <details class="tech-info"><summary>Tech-Info anzeigen</summary>
+        <dl class="tech-grid">
+          <dt>Service</dt><dd>openclaw-motivation</dd>
+          <dt>LaunchAgent</dt><dd>ai.openclaw.motivation</dd>
+          <dt>URL</dt><dd>127.0.0.1:18792</dd>
+          <dt>Zyklus</dt><dd>collect → score → generate → drift, alle 60 min</dd>
+          <dt>Quellen</dt><dd>HackerNews, RSS, Git activity, GitHub trending</dd>
+          <dt>Relevanz-Formel</dt><dd>0.20·memory + 0.35·affect + 0.25·soul + 0.20·intention</dd>
+        </dl>
+      </details>
     </section>
 
     <section class="card" style="margin-top:16px">
-      <h3>kopplung an die neurochemie (migration 043)</h3>
-      <div class="sub" style="margin-bottom:8px">
-        drei rückkanäle: (a) nach jedem gescorten stimulus feedback an dopamin/noradrenalin je band,
-        (b) band-thresholds shiften dynamisch mit NE (hoch = enger, niedrig = breiter),
-        (c) drift-rate × (2−5-HT): niedriges serotonin lässt dormant tasks schneller „unruhig" werden.
-      </div>
+      <h2>einfluss der stimmung auf die motivation</h2>
+      <div class="sub" style="margin-bottom:10px">Der innere Zustand verändert, wie der Agent neue Reize bewertet — drei Rückkanäle aus der Neurochemie steuern Aufmerksamkeit und Ungeduld.</div>
       <div id="motivation-coupling"></div>
     </section>
 
     <section class="grid grid-charts-2" style="margin-top:16px">
       <div class="card">
-        <h2>stimuli nach band (7 tage)</h2>
+        <h2>reize nach dringlichkeit <span class="help" tabindex="0" data-help="Wie viele Reize in den letzten 7 Tagen jeweils als dringend / handlungswert / explorativ eingestuft wurden.">?</span></h2>
         <div class="bars" id="motivation-bands"></div>
       </div>
       <div class="card">
-        <h2>generated tasks nach status</h2>
+        <h2>vorgeschlagene aufgaben nach status <span class="help" tabindex="0" data-help="Status der Aufgaben, die der Agent sich aus den Reizen abgeleitet hat.">?</span></h2>
         <div class="bars" id="motivation-task-status"></div>
       </div>
     </section>
@@ -765,21 +892,24 @@
     </section>
 
     <section class="card" style="margin-top:16px">
-      <h2>offene tasks (proposed)</h2>
-      <div class="sub" style="margin-bottom:8px">was der agent sich selbst aus externen reizen abgeleitet hat und wartet auf approval. drift-score steigt mit jedem tag den ein task schläft.</div>
+      <h2>offene vorschläge — warten auf deine freigabe</h2>
+      <div class="sub" style="margin-bottom:8px">Was der Agent sich selbst aus den gesammelten Reizen abgeleitet hat. Jeder Tag, den ein Vorschlag schläft, erhöht seine "Drift" — er drängt sich stärker in den Vordergrund.</div>
       <table class="mem" id="motivation-tasks-table"></table>
     </section>
 
     <section class="card" style="margin-top:16px">
-      <h2>neueste stimuli</h2>
+      <h2>letzte aufgenommene reize</h2>
       <table class="mem" id="motivation-stimuli-table"></table>
     </section>
   </div><!-- /panel-motivation -->
 
   <div class="tab-panel" id="panel-identity">
+    <div class="panel-intro">
+      Das <b>Selbstbild</b> ist die Sicht des Agenten auf sich selbst — wie er sein eigenes Verhalten, seine Stärken, Schwächen und Eigenheiten zusammenfasst. Anders als die Seele (Stimmung &amp; Erfahrungen) ist das Selbstbild eine bewusste Selbst-Beschreibung.
+      <span class="sub">Wird beim Schlaf-Zyklus jede Nacht neu erstellt — der Agent reflektiert, wer er gerade ist.</span>
+    </div>
     <section class="card">
-      <h2>gelerntes selbstbild (ebene 5a)</h2>
-      <div class="sub" style="margin-bottom:8px">der agent beobachtet seine experiences + memories + traits und destilliert daraus was er beobachtet über sich selbst. aufruf des mcp-tools <code>update_self_model</code> erzeugt einen neuen snapshot.</div>
+      <h2>aktuelles selbstbild</h2>
       <div id="self-model-body"></div>
     </section>
 
@@ -791,9 +921,12 @@
   </div><!-- /panel-identity -->
 
   <div class="tab-panel" id="panel-sleep">
+    <div class="panel-intro">
+      Jede Nacht um 03:00 läuft ein <b>Schlaf-Zyklus</b> — biologisch inspiriert: erst Tiefschlaf (Erinnerungen festigen, Schwaches vergessen, Doppeltes zusammenfassen), dann REM (Muster erkennen, daraus Lektionen formen), dann Metakognition (das Selbstbild aktualisieren). Sonntags wird zusätzlich die "Fitness" der Persönlichkeit gemessen.
+      <span class="sub">Der Agent verbessert sich also nicht nur beim Arbeiten, sondern auch beim Ruhen — wie ein Mensch.</span>
+    </div>
     <section class="card">
-      <h2>nightly consolidation (biomimetisch)</h2>
-      <div class="sub" style="margin-bottom:8px">LaunchAgent <code>ai.openclaw.sleep</code> läuft täglich 03:00. Biologisches Vorbild: <strong>SWS</strong> (forget_weak → consolidate → dedup) · <strong>REM</strong> (cluster → dedup_lessons → promote_trait) · <strong>Metacognition/DMN</strong> (update_self_model) · <strong>Weekly</strong> snapshot_fitness (Sonntag). Log: <code>~/.openclaw/sleep/logs/</code></div>
+      <h2>letzter schlaf-zyklus</h2>
       <div class="health-grid" id="sleep-summary"></div>
     </section>
 
@@ -959,10 +1092,20 @@
   </template>
 
   <div class="tab-panel" id="panel-guard">
+    <div class="panel-intro">
+      Der <b>Wächter</b> prüft fremde Inhalte (RSS-Feeds, fremde Profile, Web-Texte) <i>bevor</i> sie ins Gedächtnis geschrieben werden — er erkennt typische Versuche, dem Agenten falsche Anweisungen unterzujubeln. Bösartiger Inhalt wird blockiert, verdächtiger nur als Notiz abgelegt, sauberer ganz normal aufgenommen.
+    </div>
     <section class="card">
-      <h2>prompt-injection guard</h2>
-      <div class="sub" style="margin-bottom:8px">sidecar <code>ai.openclaw.guard</code> auf <code>127.0.0.1:18793</code>. kombiniert structural sanitizer (regex-muster für bekannte injection-familien) mit <strong>llama-guard3:1b</strong> über ollama. fremder content (hackernews-titel, rss-feeds, bot-profile) wird <em>vor</em> dem schreiben klassifiziert. verdict-mapping: <code>malicious</code>→block, <code>suspicious</code>→demote (band ≤ log), <code>safe</code>→allow.</div>
+      <h2>wächter-status</h2>
       <div class="health-grid" id="guard-health"></div>
+      <details class="tech-info"><summary>Tech-Info anzeigen</summary>
+        <dl class="tech-grid">
+          <dt>Sidecar</dt><dd>ai.openclaw.guard</dd>
+          <dt>URL</dt><dd>127.0.0.1:18793</dd>
+          <dt>Modell</dt><dd>structural sanitizer + llama-guard3:1b über Ollama</dd>
+          <dt>Verdict-Mapping</dt><dd>malicious → block · suspicious → demote (band ≤ log) · safe → allow</dd>
+        </dl>
+      </details>
     </section>
 
     <section class="grid grid-charts-2" style="margin-top:16px">
@@ -984,9 +1127,12 @@
   </div><!-- /panel-guard -->
 
   <div class="tab-panel" id="panel-emergence">
+    <div class="panel-intro">
+      <b>Emergenz</b> sind Momente, in denen der Agent etwas tut, das nicht direkt aus seiner Programmierung folgt — er widerspricht seinen eigenen Grundsätzen, lehnt eine Aufgabe begründet ab, formuliert ein neues Ziel, drückt unaufgefordert Unsicherheit aus, bildet eine stabile Meinung über jemanden. Solche Momente werden erfasst, damit du sie sehen und einordnen kannst.
+      <span class="sub">Sechs Indikatoren werden erkannt — vier automatisch aus den Daten, zwei aus den Tagesereignissen des Agenten.</span>
+    </div>
     <section class="card">
-      <h2>emergenz-monitoring (ebene 5d)</h2>
-      <div class="sub" style="margin-bottom:8px">der betreiber bekommt einen alert wenn der agent indikatoren aus der spec zeigt: widerspricht SOUL.md, lehnt task begründet ab, generiert neuartige ziele, bittet um genome-änderung, äussert unprompted uncertainty, bildet persistente peer-meinungen. gelogt via mcp-tool <code>flag_emergence</code>.</div>
+      <h2>aufgezeichnete momente</h2>
       <div id="emergence-summary" style="margin-bottom:12px"></div>
       <table class="mem" id="emergence-table"></table>
     </section>
@@ -1024,46 +1170,58 @@
   </template>
 
   <div class="tab-panel" id="panel-neurochemistry">
+    <div class="panel-intro">
+      Drei chemische Signale steuern den inneren Zustand des Agenten — analog zur menschlichen Neurochemie.
+      <b>Dopamin</b> misst, wie gut Vorhersagen passen (Lernfortschritt).
+      <b>Serotonin</b> bestimmt Geduld und Planungsweite.
+      <b>Noradrenalin</b> regelt Wachheit und Fokus.
+      <span class="sub">Die vier klassischen Affekt-Werte (Neugier, Zufriedenheit, Selbstvertrauen, Frustration) werden aus diesen drei Signalen abgeleitet.</span>
+    </div>
     <section class="card">
-      <h2>neurochemie (dopamin / serotonin / noradrenalin)</h2>
-      <div class="sub" style="margin-bottom:8px">
-        3-system affect-engine (migration 042). dopamin = prediction error (TD-learning),
-        serotonin = zeithorizont &amp; geduld, noradrenalin = arousal (yerkes-dodson).
-        die alten 4 variablen (curiosity/frustration/satisfaction/confidence) werden
-        aus diesen systemen als computed properties abgeleitet.
-      </div>
+      <h2>verbindung zum genom</h2>
       <div id="neurochemistry-status" style="margin-bottom:12px"></div>
-      <div style="margin-bottom:12px">
-        <label for="neurochemistry-label" class="sub" style="margin-right:6px">genom:</label>
+      <div>
+        <label for="neurochemistry-label" class="sub" style="margin-right:6px">Genom:</label>
         <select id="neurochemistry-label"></select>
-        <button id="neurochemistry-refresh" class="sub" style="margin-left:8px">refresh</button>
+        <button id="neurochemistry-refresh" class="sub" style="margin-left:8px">aktualisieren</button>
       </div>
+      <details class="tech-info"><summary>Tech-Info anzeigen</summary>
+        <dl class="tech-grid">
+          <dt>Engine</dt><dd>3-system affect-engine</dd>
+          <dt>Modell</dt><dd>Dopamin = TD-Prediction-Error · Serotonin = Zeithorizont · Noradrenalin = Yerkes-Dodson</dd>
+        </dl>
+      </details>
     </section>
     <section class="card">
-      <h3>aktuelle systeme</h3>
+      <h2>aktuelle stimmungs-signale</h2>
       <div id="neurochemistry-bars"></div>
     </section>
     <section class="card">
-      <h3>derivate (kompatibel zur alten affekt-engine)</h3>
+      <h2>abgeleitete affektwerte</h2>
+      <div class="sub" style="margin-bottom:10px">Die vier vertrauten Werte aus der ursprünglichen Affekt-Engine — direkt aus den drei Signalen oben gerechnet.</div>
       <div id="neurochemistry-compat"></div>
     </section>
     <section class="card">
-      <h3>recall-parameter &amp; planungshorizont</h3>
+      <h2>wie der agent gerade arbeitet</h2>
+      <div class="sub" style="margin-bottom:10px">Wie viele Erinnerungen werden bei jeder Suche zurückgeholt, wie weit plant der Agent in die Zukunft, und wann fragt er nach Hilfe?</div>
       <div id="neurochemistry-params"></div>
     </section>
     <section class="card">
-      <h3>verlauf (letzten 30 events)</h3>
-      <div class="sub">dopamin (blau), serotonin (grün), noradrenalin (orange) über die letzten events. sparkline.</div>
+      <h2>verlauf der letzten ereignisse</h2>
+      <div class="sub" style="margin-bottom:10px">Die drei Signale über die Zeit. Dopamin in <b style="color:var(--accent)">blau</b>, Serotonin in <b style="color:var(--good)">grün</b>, Noradrenalin in <b style="color:var(--warn)">orange</b>.</div>
       <svg id="neurochemistry-sparkline" width="100%" height="120" style="background:var(--bg-alt,#111);border-radius:6px"></svg>
       <table class="mem" id="neurochemistry-history"></table>
     </section>
   </div><!-- /panel-neurochemistry -->
 
   <div class="tab-panel" id="panel-projects">
+    <div class="panel-intro">
+      <b>Projekte</b> sind dauerhafte Etiketten für deine Arbeitsschwerpunkte. Erinnerungen, Erfahrungen, Vorhaben und Lektionen können einem Projekt zugeordnet werden — so siehst du auf einen Blick, was zu welchem Thema gehört.
+    </div>
     <section class="card">
       <h2>projekte</h2>
       <div class="sub" style="margin-bottom:8px">
-        stabile handles für deine arbeitsschwerpunkte. memories, experiences, intentionen &amp;
+        Stabile Handles für deine Arbeitsschwerpunkte. Erinnerungen, Erfahrungen, Vorhaben &amp;
         lessons werden pro projekt gescoped, sobald der agent ein projekt als aktiv setzt.
         klick <em>prompt kopieren</em> auf einer karte → der agent lädt seinen kontext via
         <code>project_brief</code>.
@@ -1321,6 +1479,82 @@ function formatDay(iso) {
   return new Date(iso).toLocaleDateString("de-DE", { month: "2-digit", day: "2-digit" });
 }
 
+// === beginner-friendly UI helpers (Reed 2026-04-26) =====================
+
+// Map a 0..1 value to a semantic colour class for .bar-fill.
+//   mode = "moreIsBetter" → high=good (green), low=bad (red) — default
+//   mode = "lessIsBetter" → low=good (green), high=bad (red)
+//   mode = "centered"     → centred around 0.5 (Yerkes-Dodson-style)
+//   mode = "calm"         → no semantic interpretation, just accent blue
+function colorScale01(value, mode = "moreIsBetter") {
+  if (value == null || isNaN(value)) return "calm";
+  if (mode === "calm") return "calm";
+  if (mode === "centered") {
+    const d = Math.abs(value - 0.5);
+    if (d < 0.15) return "good";
+    if (d < 0.30) return "warn";
+    return "bad";
+  }
+  const v = mode === "lessIsBetter" ? 1 - value : value;
+  if (v >= 0.65) return "good";
+  if (v >= 0.35) return "warn";
+  return "bad";
+}
+
+// Render a labelled 0..1 bar with a help tooltip + value.
+//   { label, value, hint?, help?, mode?, valueText? }
+function renderMetricBar(opts) {
+  const cls = colorScale01(opts.value, opts.mode || "moreIsBetter");
+  const pct = Math.max(0, Math.min(1, opts.value || 0)) * 100;
+  const help = opts.help
+    ? `<span class="help" tabindex="0" data-help="${escapeHtml(opts.help)}">?</span>`
+    : "";
+  const hint = opts.hint ? `<span class="bar-hint"> — ${escapeHtml(opts.hint)}</span>` : "";
+  const val  = opts.valueText ?? (opts.value != null ? Number(opts.value).toFixed(2) : "—");
+  return `<div class="bar-row">
+    <div class="bar-label">${escapeHtml(opts.label)}${help}${hint}</div>
+    <div class="bar-track"><div class="bar-fill ${cls}" style="width:${pct}%"></div></div>
+    <div class="bar-val">${escapeHtml(val)}</div>
+  </div>`;
+}
+
+// Render a help-tooltip badge inline. Use this next to any technical-looking
+// label in a card body where the user might wonder what it means.
+function helpBadge(text) {
+  if (!text) return "";
+  return `<span class="help" tabindex="0" data-help="${escapeHtml(text)}">?</span>`;
+}
+
+// Plain-German label for raw event-type strings (used across multiple tabs).
+function eventLabelDe(e) {
+  return ({
+    task_complete:     "Aufgabe ok",
+    task_failed:       "Aufgabe fehlgeschlagen",
+    novel_stimulus:    "Neues bemerkt",
+    familiar_task:     "Vertrautes",
+    idle:              "Ruhe",
+    error:             "Fehler",
+    teacher_consulted: "Hilfe geholt",
+    remember:          "etwas gespeichert",
+    recall:            "Erinnerung abgerufen",
+    absorb:            "neuen Eindruck aufgenommen",
+    digest:            "Erfahrung verdaut",
+  })[e] || (e ?? "—");
+}
+
+// Render a foldable "Tech-Info" block with key-value pairs (definition list).
+// Pass an array of [label, value] tuples. Empty values are skipped.
+function renderTechInfo(rows, summary = "Tech-Info anzeigen") {
+  const items = rows
+    .filter(([k, v]) => v != null && v !== "" && v !== "—")
+    .map(([k, v]) => `<dt>${escapeHtml(k)}</dt><dd>${typeof v === "string" && v.includes("<") ? v : escapeHtml(String(v))}</dd>`)
+    .join("");
+  if (!items) return "";
+  return `<details class="tech-info"><summary>${escapeHtml(summary)}</summary>
+    <dl class="tech-grid">${items}</dl>
+  </details>`;
+}
+
 async function fetchRpc(name) {
   const r = await fetch(`${ENDPOINT}/rpc/${name}`, {
     method: "POST",
@@ -1400,33 +1634,34 @@ function renderAffect(state) {
     return;
   }
   const dims = [
-    { k: "curiosity",    label: "curiosity",    hint: "Explorationsbreite"    },
-    { k: "frustration",  label: "frustration",  hint: "Wiederholungs-Stress (mit zeit-decay)" },
-    { k: "satisfaction", label: "satisfaction", hint: "Erfolgsniveau"         },
-    { k: "confidence",   label: "confidence",   hint: "Selbstvertrauen"       },
+    { k: "curiosity",    label: "Neugier",         hint: "Offenheit für Neues",
+      help: "Wie breit der Agent sucht. Hoch = probiert ungewohnte Wege. Niedrig = bleibt im Bekannten.",
+      mode: "calm" },
+    { k: "frustration",  label: "Frustration",     hint: "innerer Stress",
+      help: "Stress aus Misserfolgen oder ungelösten Konflikten. Niedrig ist gut. Baut sich mit der Zeit von selbst ab.",
+      mode: "lessIsBetter" },
+    { k: "satisfaction", label: "Zufriedenheit",   hint: "Erfolgs-Niveau",
+      help: "Wie viele der letzten Aufgaben erfolgreich abgeschlossen wurden.",
+      mode: "moreIsBetter" },
+    { k: "confidence",   label: "Selbstvertrauen", hint: "Sicherheit in eigenen Antworten",
+      help: "Wie sicher der Agent in seinen Schlüssen ist. Steigt mit Erfahrung, sinkt nach Widersprüchen.",
+      mode: "moreIsBetter" },
   ];
-  const max = 1.0;
-  $("affect-bars").innerHTML = dims.map(d => {
-    const v = state[d.k] ?? 0;
-    const pct = Math.max(0, Math.min(100, v * 100));
-    return `<div class="bar-row">
-      <div class="bar-label">${d.label}<span class="bar-hint"> — ${d.hint}</span></div>
-      <div class="bar-track"><div class="bar-fill" style="width:${pct}%"></div></div>
-      <div class="bar-val">${v.toFixed(2)}</div>
-    </div>`;
-  }).join("");
-  const hrs = state.hours_since != null ? state.hours_since.toFixed(2) : "?";
-  const decay = state.decay_factor != null ? state.decay_factor.toFixed(3) : "?";
-  const evt = state.last_event ? `last event: <code>${state.last_event}</code>` : "last event: <em>none</em>";
-  $("affect-meta").innerHTML = `${evt} &middot; ${hrs}h since last update &middot; decay factor on frustration: ${decay} &middot; updated_at ${state.updated_at ? formatDate(state.updated_at) : "—"}`;
+  $("affect-bars").innerHTML = dims.map(d => renderMetricBar({
+    label: d.label, value: state[d.k] ?? 0, hint: d.hint, help: d.help, mode: d.mode,
+  })).join("");
+  const hrs = state.hours_since != null ? state.hours_since.toFixed(1) : "?";
+  const evt = state.last_event ? eventLabelDe(state.last_event) : "noch keine";
+  $("affect-meta").innerHTML = `Letzte Aktion: <b>${escapeHtml(evt)}</b> · vor ${hrs} Stunden · letzte Aktualisierung ${state.updated_at ? formatDate(state.updated_at) : "—"}`;
 
   const bias = biasFromAffect(state);
+  const kDeltaText = bias.k_delta > 0 ? `+${bias.k_delta} mehr Treffer` : bias.k_delta < 0 ? `${bias.k_delta} weniger Treffer` : "unverändert";
   $("affect-bias").innerHTML = [
-    ["Δk (limit-shift)",    String(bias.k_delta)],
-    ["score threshold",     bias.score_threshold != null ? bias.score_threshold.toFixed(2) : "caller default"],
-    ["spread_wide",         bias.spread_wide ? "ja" : "nein"],
-    ["include_adjacent_tags", bias.include_adjacent_tags ? "ja" : "nein"],
-    ["rationale",           `<code>${bias.reason}</code>`],
+    ["Treffer-Menge",       kDeltaText],
+    ["Mindest-Ähnlichkeit", bias.score_threshold != null ? bias.score_threshold.toFixed(2) : "Standard"],
+    ["Breit assoziieren",   bias.spread_wide ? "ja — sucht weiter im Netz" : "nein — bleibt fokussiert"],
+    ["Verwandte Tags",      bias.include_adjacent_tags ? "ja — bezieht ähnliche Themen ein" : "nein"],
+    ["Begründung",          `<span class="sub">${escapeHtml(bias.reason)}</span>`],
   ].map(([k,v]) => `<div class="health-item"><div class="k">${k}</div><div class="v">${v}</div></div>`).join("");
 }
 
@@ -1444,22 +1679,20 @@ function renderSoulAffect(state) {
     return;
   }
   const dims = [
-    { k: "curiosity",    label: "neugier",      hint: "explorationsbreite"        },
-    { k: "satisfaction", label: "zufriedenheit", hint: "erfolgsniveau"            },
-    { k: "confidence",   label: "selbstvertrauen", hint: "confidence"              },
-    { k: "frustration",  label: "frustration",  hint: "wiederholungs-stress (decay)" },
+    { k: "curiosity",    label: "Neugier",         hint: "Offenheit für Neues",
+      help: "Wie breit der Agent gerade sucht und exploriert.", mode: "calm" },
+    { k: "satisfaction", label: "Zufriedenheit",   hint: "Erfolgs-Niveau",
+      help: "Wie viele Aufgaben kürzlich gut gelaufen sind.", mode: "moreIsBetter" },
+    { k: "confidence",   label: "Selbstvertrauen", hint: "Sicherheit in eigenen Antworten",
+      help: "Wie sicher der Agent in seinen Schlüssen ist.", mode: "moreIsBetter" },
+    { k: "frustration",  label: "Frustration",     hint: "innerer Stress",
+      help: "Stress aus Misserfolgen — niedrig ist gut.", mode: "lessIsBetter" },
   ];
-  barsEl.innerHTML = dims.map(d => {
-    const v = state[d.k] ?? 0;
-    const pct = Math.max(0, Math.min(100, v * 100));
-    return `<div class="bar-row">
-      <div class="bar-label">${d.label}<span class="bar-hint"> — ${d.hint}</span></div>
-      <div class="bar-track"><div class="bar-fill" style="width:${pct}%"></div></div>
-      <div class="bar-val">${v.toFixed(2)}</div>
-    </div>`;
-  }).join("");
+  barsEl.innerHTML = dims.map(d => renderMetricBar({
+    label: d.label, value: state[d.k] ?? 0, hint: d.hint, help: d.help, mode: d.mode,
+  })).join("");
   if (metaEl) {
-    const evt = state.last_event ? `last: ${state.last_event}` : "no event yet";
+    const evt = state.last_event ? eventLabelDe(state.last_event) : "noch keine Aktion";
     metaEl.textContent = ` — ${evt}`;
   }
 }
@@ -1524,15 +1757,14 @@ function renderCausal(edges) {
 function renderMotivation(health, status, stats, stimuli, tasks) {
   const healthy = health && health.status === "ok";
   $("motivation-health").innerHTML = gridItem([
-    ["sidecar",  healthy ? '<span style="color:var(--good)">online</span>' : '<span style="color:var(--bad)">offline</span>'],
-    ["service",  health?.service || "—"],
-    ["interval", health?.interval_minutes ? `${health.interval_minutes} min` : "—"],
-    ["cycles",   status ? `${status.cycles_completed ?? 0} ok · ${status.cycles_failed ?? 0} fail` : "—"],
-    ["last run", status?.last_cycle_finished ? formatDate(status.last_cycle_finished) : "—"],
-    ["url",      `<code>127.0.0.1:18792</code>`],
+    ["Sammler-Status", healthy ? '<span style="color:var(--good)">aktiv</span>' : '<span style="color:var(--bad)">offline</span>'],
+    ["Sammelt alle",   health?.interval_minutes ? `${health.interval_minutes} Minuten` : "—"],
+    ["Zyklen erfolgreich", status ? `${status.cycles_completed ?? 0}` : "—"],
+    ["Zyklen fehlgeschlagen", status ? `${status.cycles_failed ?? 0}` : "—"],
+    ["Letzter Lauf", status?.last_cycle_finished ? formatDate(status.last_cycle_finished) : "—"],
   ]);
   if (!healthy) {
-    $("motivation-meta").innerHTML = `sidecar down — <code>launchctl kickstart -k gui/$(id -u)/ai.openclaw.motivation</code>`;
+    $("motivation-meta").innerHTML = `<span style="color:var(--warn)">Der Sammler läuft gerade nicht. Im Terminal starten:</span> <code>launchctl kickstart -k gui/$(id -u)/ai.openclaw.motivation</code>`;
   } else if (status?.last_result?.tasks) {
     const lr = status.last_result;
     const coll = lr.collect?.collected_total ?? 0;
@@ -1540,9 +1772,9 @@ function renderMotivation(health, status, stats, stimuli, tasks) {
     const sc   = lr.score?.scored ?? 0;
     const gn   = lr.tasks?.generated ?? 0;
     $("motivation-meta").innerHTML =
-      `letzter zyklus — gesammelt ${coll}, neu eingefügt ${ins}, gescored ${sc}, tasks generiert ${gn}`;
+      `Letzter Zyklus: ${coll} Reize gesammelt · ${ins} neu aufgenommen · ${sc} bewertet · ${gn} Aufgaben vorgeschlagen`;
   } else {
-    $("motivation-meta").textContent = "warte auf ersten vollen zyklus …";
+    $("motivation-meta").textContent = "Wartet auf den ersten vollen Zyklus …";
   }
 
   // Motivation × Neurochemie coupling panel
@@ -1560,21 +1792,21 @@ function renderMotivation(health, status, stats, stimuli, tasks) {
                     shift < -0.005 ? "⤵ breiter (mehr stimuli erreichen act)" :
                     "≈ neutral";
       cEl.innerHTML =
-        `<div style="display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:12px;margin-bottom:10px">` +
-        `  <div><span class="sub">5-HT</span><div><code>${(coupling.serotonin ?? 0).toFixed(3)}</code></div></div>` +
-        `  <div><span class="sub">NE</span><div><code>${(coupling.noradrenaline ?? 0).toFixed(3)}</code></div></div>` +
-        `  <div><span class="sub">DA pred.</span><div><code>${(coupling.dopamine_prediction ?? 0).toFixed(3)}</code></div></div>` +
-        `  <div><span class="sub">cf</span><div><code>${coupling.consecutive_failures ?? 0}</code></div></div>` +
+        `<div style="display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:14px;margin-bottom:14px">` +
+        `  <div><span class="sub">Serotonin <span class="help" tabindex="0" data-help="Geduld &amp; Planungsweite. Hoch = der Agent denkt langfristig.">?</span></span><div style="font-size:18px;font-weight:600;color:var(--text)">${(coupling.serotonin ?? 0).toFixed(2)}</div></div>` +
+        `  <div><span class="sub">Noradrenalin <span class="help" tabindex="0" data-help="Wachheit. Bei hoher Wachheit wird der Filter strenger — nur sehr relevante Reize kommen durch.">?</span></span><div style="font-size:18px;font-weight:600;color:var(--text)">${(coupling.noradrenaline ?? 0).toFixed(2)}</div></div>` +
+        `  <div><span class="sub">Lern-Erwartung <span class="help" tabindex="0" data-help="Aktuelle Dopamin-Vorhersage: wie viel Lernen erwartet der Agent von der nächsten Aufgabe?">?</span></span><div style="font-size:18px;font-weight:600;color:var(--text)">${(coupling.dopamine_prediction ?? 0).toFixed(2)}</div></div>` +
+        `  <div><span class="sub">Misserfolge in Folge <span class="help" tabindex="0" data-help="Anzahl direkt aufeinanderfolgender Fehlschläge. Beeinflusst die Risikobereitschaft.">?</span></span><div style="font-size:18px;font-weight:600;color:var(--text)">${coupling.consecutive_failures ?? 0}</div></div>` +
         `</div>` +
-        `<div style="margin-bottom:6px"><strong>dynamic bands</strong> <span class="sub">(shift ${shiftStr} · ${arrow})</span></div>` +
-        `<table class="mem" style="margin-bottom:10px"><thead><tr><th>band</th><th>threshold</th></tr></thead><tbody>` +
-        `  <tr><td>urgent</td><td><code>${(b.urgent ?? 0.85).toFixed(3)}</code></td></tr>` +
-        `  <tr><td>act</td><td><code>${(b.act ?? 0.70).toFixed(3)}</code></td></tr>` +
-        `  <tr><td>explore</td><td><code>${(b.explore ?? 0.55).toFixed(3)}</code></td></tr>` +
-        `  <tr><td>log</td><td><code>${(b.log ?? 0.35).toFixed(3)}</code></td></tr>` +
+        `<div style="margin-bottom:8px"><b>Filter-Schwellen</b> <span class="sub">— derzeit ${shiftStr} verschoben (${arrow.replace("⤴ enger (nur sehr relevante stimuli)", "strenger: nur sehr Relevantes kommt durch").replace("⤵ breiter (mehr stimuli erreichen act)", "breiter: mehr Reize kommen durch").replace("≈ neutral", "neutral")})</span></div>` +
+        `<table class="mem" style="margin-bottom:14px"><thead><tr><th>Stufe</th><th>Schwelle</th><th>Bedeutung</th></tr></thead><tbody>` +
+        `  <tr><td>dringend</td><td class="meta">${(b.urgent ?? 0.85).toFixed(2)}</td><td class="sub">sofort handeln</td></tr>` +
+        `  <tr><td>handeln</td><td class="meta">${(b.act ?? 0.70).toFixed(2)}</td><td class="sub">Aufgabe vorschlagen</td></tr>` +
+        `  <tr><td>erkunden</td><td class="meta">${(b.explore ?? 0.55).toFixed(2)}</td><td class="sub">interessant, weiter beobachten</td></tr>` +
+        `  <tr><td>protokoll</td><td class="meta">${(b.log ?? 0.35).toFixed(2)}</td><td class="sub">nur ablegen, nicht bewerben</td></tr>` +
         `</tbody></table>` +
-        `<div><strong>drift time multiplier</strong>: <code>×${tm.toFixed(2)}</code> ` +
-        `<span class="sub">(niedriges 5-HT beschleunigt gefühlte zeit bis ×2)</span></div>`;
+        `<div><b>Zeit-Beschleuniger</b>: ×${tm.toFixed(2)} ` +
+        `<span class="help" tabindex="0" data-help="Bei niedrigem Serotonin laufen Aufgaben gefühlt schneller ab — der Agent wird ungeduldiger und drängt offene Vorschläge stärker in den Vordergrund. Maximum ×2.">?</span></div>`;
     }
   }
 
@@ -1641,6 +1873,22 @@ function renderMotivation(health, status, stats, stimuli, tasks) {
   }
 }
 
+// Plain-German labels for raw band/status keys. Falls back to the key itself
+// for unknown values so new statuses still render correctly.
+const BAND_LABELS = {
+  urgent:      "dringend",
+  act:         "handeln",
+  explore:     "erkunden",
+  log:         "protokoll",
+  ignore:      "ignoriert",
+  proposed:    "vorgeschlagen",
+  approved:    "freigegeben",
+  in_progress: "in Arbeit",
+  done:        "erledigt",
+  dismissed:   "verworfen",
+  abandoned:   "aufgegeben",
+};
+
 function renderBandBars(elId, obj, order) {
   const el = $(elId);
   const keys = order.filter(k => k in obj);
@@ -1652,7 +1900,7 @@ function renderBandBars(elId, obj, order) {
     const v = obj[k] || 0;
     const pct = Math.max(0, Math.min(100, (v / max) * 100));
     return `<div class="bar-row">
-      <div class="name">${escapeHtml(k)}</div>
+      <div class="name">${escapeHtml(BAND_LABELS[k] || k)}</div>
       <div class="bar-track"><div class="bar-fill" style="width:${pct}%"></div></div>
       <div class="count">${fmt.format(v)}</div>
     </div>`;
@@ -2284,53 +2532,119 @@ function renderNeurochemistry(data) {
     statusEl.innerHTML = `<div class="sub">kein neurochemistry-eintrag für '${data.label}'</div>`;
     return;
   }
+  // Plain-language status header — last event in human form, no raw codes.
+  const eventLabel = ({
+    task_complete:    "Aufgabe erfolgreich abgeschlossen",
+    task_failed:      "Aufgabe fehlgeschlagen",
+    novel_stimulus:   "etwas Neues bemerkt",
+    familiar_task:    "vertraute Aufgabe bearbeitet",
+    idle:             "Ruhephase",
+    error:            "Fehler aufgetreten",
+    teacher_consulted: "hat um Hilfe gebeten",
+  })[s.last_event] || s.last_event || "—";
   statusEl.innerHTML =
-    `<div><strong>genom:</strong> <code>${data.label}</code> &middot; ` +
-    `last event: <code>${s.last_event ?? "—"}</code> &middot; ` +
-    `updated ${String(s.updated_at).slice(0, 19).replace("T", " ")}</div>`;
-
-  // Bar helper: label + absolute number + coloured bar (width 0..100%)
-  const bar = (label, value, color, extra = "") => {
-    const pct = Math.max(0, Math.min(1, value)) * 100;
-    return `<div style="margin:6px 0">` +
-      `<div style="display:flex;justify-content:space-between"><span>${label}</span>` +
-      `<span><code>${value.toFixed(3)}</code> ${extra}</span></div>` +
-      `<div style="background:var(--bg-alt,#222);border-radius:3px;height:10px;overflow:hidden">` +
-      `<div style="width:${pct}%;height:100%;background:${color}"></div></div></div>`;
-  };
+    `<div>Genom <b>${escapeHtml(data.label)}</b> · zuletzt: <b>${escapeHtml(eventLabel)}</b> · ` +
+    `<span class="sub">${escapeHtml(formatDate(s.updated_at))}</span></div>`;
 
   const dopaDelta = s.dopamine.current - s.dopamine.baseline;
   barsEl.innerHTML =
-    bar("dopamin (current)",     s.dopamine.current,     "#4a9",
-        `baseline ${s.dopamine.baseline.toFixed(2)} · prediction ${s.dopamine.prediction.toFixed(2)} · δ ${dopaDelta >= 0 ? "+" : ""}${dopaDelta.toFixed(3)}`) +
-    bar("serotonin",             s.serotonin.current,    "#6c9",
-        `decay ${s.serotonin.decay_rate} / tag`) +
-    bar("noradrenalin",          s.noradrenaline.current,"#e90",
-        `optimal ${s.noradrenaline.optimal.toFixed(2)}`);
+    renderMetricBar({
+      label: "Dopamin",
+      value: s.dopamine.current,
+      hint:  `Erwartung ${s.dopamine.prediction.toFixed(2)}, Abweichung ${dopaDelta >= 0 ? "+" : ""}${dopaDelta.toFixed(2)}`,
+      help:  "Lern-Signal: misst die Differenz zwischen Erwartung und Realität. Hohe Werte = der Agent lernt gerade etwas Neues.",
+      mode:  "calm",
+    }) +
+    renderMetricBar({
+      label: "Serotonin",
+      value: s.serotonin.current,
+      hint:  `Zerfall ${s.serotonin.decay_rate}/Tag`,
+      help:  "Geduld und Planungsweite. Hoch = der Agent denkt langfristig. Niedrig = er wird ungeduldig und priorisiert kurzfristig.",
+      mode:  "moreIsBetter",
+    }) +
+    renderMetricBar({
+      label: "Noradrenalin",
+      value: s.noradrenaline.current,
+      hint:  `Optimum bei ${s.noradrenaline.optimal.toFixed(2)}`,
+      help:  "Wachheit und Fokus. Yerkes-Dodson: Leistung ist am höchsten bei mittlerem Wert (~0.5). Zu niedrig = schläfrig, zu hoch = überfordert.",
+      mode:  "centered",
+    });
 
-  // Compat variables
+  // Derived classic affect values — plain German labels with help text.
   const c = data.compat;
   if (c && c.exists) {
     compatEl.innerHTML =
-      bar("curiosity",    c.curiosity,    "#8af") +
-      bar("frustration",  c.frustration,  "#c66") +
-      bar("satisfaction", c.satisfaction, "#9c6") +
-      bar("confidence",   c.confidence,   "#a8d");
+      renderMetricBar({
+        label: "Neugier",
+        value: c.curiosity,
+        help:  "Offenheit für Neues und Exploration. Hoch = der Agent probiert ungewohnte Wege.",
+        mode:  "calm",
+      }) +
+      renderMetricBar({
+        label: "Frustration",
+        value: c.frustration,
+        help:  "Innerer Stress aus Misserfolgen oder ungelösten Konflikten. Niedrig ist gut.",
+        mode:  "lessIsBetter",
+      }) +
+      renderMetricBar({
+        label: "Zufriedenheit",
+        value: c.satisfaction,
+        help:  "Erfolgs-Niveau über die letzten Aufgaben.",
+        mode:  "moreIsBetter",
+      }) +
+      renderMetricBar({
+        label: "Selbstvertrauen",
+        value: c.confidence,
+        help:  "Wie sicher der Agent in seinen eigenen Antworten ist.",
+        mode:  "moreIsBetter",
+      });
   }
 
-  // Recall params + horizon
+  // Recall params + horizon — translated into "what does this mean for me"
   const rp = data.recall_params;
   const hz = data.horizon;
   if (rp && rp.exists) {
-    paramsEl.innerHTML =
-      `<div><strong>yerkes-dodson performance:</strong> <code>${rp.performance.toFixed(3)}</code> (peak bei NE=0.5)</div>` +
-      `<div><strong>recall k:</strong> <code>${rp.k}</code> &middot; ` +
-      `<strong>score threshold:</strong> <code>${rp.score_threshold.toFixed(3)}</code> &middot; ` +
-      `<strong>include adjacent tags:</strong> <code>${rp.include_adjacent}</code></div>` +
-      (hz && hz.exists
-        ? `<div><strong>planning horizon:</strong> <code>${hz.days.toFixed(2)}</code> tage &middot; ` +
-          `<strong>patience threshold:</strong> <code>${hz.patience_threshold.toFixed(3)}</code></div>`
-        : "");
+    const horizonText = hz && hz.exists ? `${hz.days.toFixed(1)} Tage voraus planen` : "—";
+    paramsEl.innerHTML = `
+      <div class="stat-row">
+        <div class="stat-label">Erinnerungen pro Suche
+          <span class="help" tabindex="0" data-help="Wie viele Treffer aus dem Gedächtnis der Agent bei jeder Anfrage berücksichtigt. Mehr = breiter, weniger = fokussierter.">?</span>
+          <span class="sub">Recall-k</span>
+        </div>
+        <div class="stat-value">${rp.k}</div>
+      </div>
+      <div class="stat-row">
+        <div class="stat-label">Mindest-Ähnlichkeit
+          <span class="help" tabindex="0" data-help="Treffer unterhalb dieser Schwelle werden ignoriert. Steigt mit Wachheit (Noradrenalin), damit der Agent unter Stress nur das Wichtigste behält.">?</span>
+          <span class="sub">Score-Threshold</span>
+        </div>
+        <div class="stat-value">${rp.score_threshold.toFixed(2)}</div>
+      </div>
+      <div class="stat-row">
+        <div class="stat-label">Verwandte Themen mitdenken
+          <span class="help" tabindex="0" data-help="Wenn aktiv, holt der Agent auch Erinnerungen mit ähnlichen Tags — breiteres Netz, mehr Assoziationen.">?</span>
+          <span class="sub">Adjacent Tags</span>
+        </div>
+        <div class="stat-value">${rp.include_adjacent ? "ja" : "nein"}</div>
+      </div>
+      <div class="stat-row">
+        <div class="stat-label">Planungshorizont
+          <span class="help" tabindex="0" data-help="Wie weit in die Zukunft der Agent plant. Wird durch Serotonin geregelt.">?</span>
+          <span class="sub">Planning Horizon</span>
+        </div>
+        <div class="stat-value">${horizonText}</div>
+      </div>
+      <div class="stat-row">
+        <div class="stat-label">Geduld-Schwelle
+          <span class="help" tabindex="0" data-help="Wie schnell der Agent Hilfe holt, statt selber weiter zu probieren. Hoch = lange selbst probieren.">?</span>
+          <span class="sub">Patience Threshold</span>
+        </div>
+        <div class="stat-value">${hz && hz.exists ? hz.patience_threshold.toFixed(2) : "—"}</div>
+      </div>
+      ${renderTechInfo([
+        ["Yerkes-Dodson Performance", rp.performance.toFixed(3) + " (peak bei Noradrenalin = 0.5)"],
+      ], "Modell-Details anzeigen")}
+    `;
   }
 
   // Sparkline over history (newest last → we reverse so time goes left→right)
@@ -2352,25 +2666,44 @@ function renderNeurochemistry(data) {
       line("na", "#e90");
   }
 
-  // History table (newest first, already delivered that way from RPC)
+  // History table — translate raw event codes + column shorthand into German labels.
   if (hist.length > 0) {
     const rowsNewestFirst = Array.isArray(data.history) ? data.history : [];
+    const eventLabel = (e) => ({
+      task_complete:    "Aufgabe ok",
+      task_failed:      "Aufgabe fehlgeschlagen",
+      novel_stimulus:   "Neues",
+      familiar_task:    "Vertrautes",
+      idle:             "Ruhe",
+      error:            "Fehler",
+      teacher_consulted: "Hilfe geholt",
+    })[e] || (e ?? "—");
+    const outcomeLabel = (o) => ({ success: "✓", failure: "✗", partial: "~", unknown: "?" })[o] || (o ?? "—");
     histEl.innerHTML =
-      `<thead><tr><th>when</th><th>event</th><th>outcome</th><th>δ</th><th>DA</th><th>5-HT</th><th>NE</th><th>cf</th></tr></thead>` +
+      `<thead><tr>
+        <th>Zeit</th>
+        <th>Ereignis</th>
+        <th>Ergebnis<span class="help" tabindex="0" data-help="✓ Erfolg, ✗ Misserfolg, ~ teilweise, ? unbekannt">?</span></th>
+        <th>δ<span class="help" tabindex="0" data-help="Prediction-Error: Differenz zwischen Erwartung und Realität (Dopamin-Signal).">?</span></th>
+        <th>Dopamin</th>
+        <th>Serotonin</th>
+        <th>Noradrenalin</th>
+        <th>Konflikte<span class="help" tabindex="0" data-help="Anzahl der zu diesem Zeitpunkt offenen Widersprüche im Gedächtnis.">?</span></th>
+      </tr></thead>` +
       rowsNewestFirst.map((h) =>
         `<tr>` +
-        `<td>${String(h.t ?? "").slice(0, 19).replace("T", " ")}</td>` +
-        `<td><code>${h.e ?? "—"}</code></td>` +
-        `<td>${h.o ?? "—"}</td>` +
-        `<td>${h.d ?? "—"}</td>` +
-        `<td>${h.da ?? "—"}</td>` +
-        `<td>${h.se ?? "—"}</td>` +
-        `<td>${h.na ?? "—"}</td>` +
-        `<td>${h.cf ?? 0}</td>` +
+        `<td>${escapeHtml(formatDate(h.t))}</td>` +
+        `<td>${escapeHtml(eventLabel(h.e))}</td>` +
+        `<td>${escapeHtml(outcomeLabel(h.o))}</td>` +
+        `<td class="meta">${h.d ?? "—"}</td>` +
+        `<td class="meta">${h.da ?? "—"}</td>` +
+        `<td class="meta">${h.se ?? "—"}</td>` +
+        `<td class="meta">${h.na ?? "—"}</td>` +
+        `<td class="meta">${h.cf ?? 0}</td>` +
         `</tr>`
       ).join("");
   } else {
-    histEl.innerHTML = `<tr><td class="sub">— noch keine events —</td></tr>`;
+    histEl.innerHTML = `<tbody><tr><td class="empty">noch keine Ereignisse aufgezeichnet</td></tr></tbody>`;
   }
 }
 
