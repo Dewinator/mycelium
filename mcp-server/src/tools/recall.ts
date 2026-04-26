@@ -2,6 +2,13 @@ import { z } from "zod";
 import { randomUUID } from "node:crypto";
 import type { MemoryService } from "../services/supabase.js";
 import { AffectService } from "../services/affect.js";
+import type { ProjectService } from "../services/projects.js";
+
+// Layer-0 (Bedrock) + Layer-1 (per-role) recall — opt-in via env flag.
+// When MYCELIUM_PRIVATE_BY_DEFAULT=1, recall scopes results to the agent's
+// active project, with pinned memories (Bedrock) still surfacing globally.
+// Without the flag, behaviour is unchanged: every memory is visible.
+const PRIVATE_BY_DEFAULT = process.env.MYCELIUM_PRIVATE_BY_DEFAULT === "1";
 
 export const recallSchema = z.object({
   query: z.string().describe("What to search for (semantic + keyword)"),
@@ -48,8 +55,25 @@ export const recallSchema = z.object({
 export async function recall(
   service: MemoryService,
   affect: AffectService,
+  projects: ProjectService,
+  agentLabel: string,
   input: z.infer<typeof recallSchema>
 ) {
+  // ---- Scope resolution ---------------------------------------------------
+  // Behind MYCELIUM_PRIVATE_BY_DEFAULT, restrict recall to the agent's L1 +
+  // global Bedrock (pinned). Without the flag, scope is null = global = old
+  // behaviour. Lookup is non-fatal: if the agent has no active project, we
+  // fall back to global recall and the agent sees everything.
+  let scope: { projectId: string | null; includePinnedGlobal?: boolean } | undefined;
+  if (PRIVATE_BY_DEFAULT) {
+    try {
+      const projectId = await projects.activeProjectId(agentLabel);
+      if (projectId) scope = { projectId, includePinnedGlobal: true };
+    } catch (err) {
+      console.error("recall: scope lookup failed (non-fatal, falling back to global):", err);
+    }
+  }
+
   // ---- Affective biasing --------------------------------------------------
   // Pull the current state and translate it into small deltas on k and
   // spread behaviour. Failure to read affect is non-fatal (returns null).
@@ -75,7 +99,8 @@ export async function recall(
     input.query,
     input.category,
     effectiveLimit,
-    input.vector_weight
+    input.vector_weight,
+    scope
   );
 
   // ---- Observability: emit a `recalled` memory_event ----------------------

@@ -157,7 +157,7 @@ test("remember truncates long content in output", async () => {
 
 test("recall returns 'no matching' when empty", async () => {
   const svc = new FakeService({ searchResults: [] });
-  const res = await recall(svc as unknown as MemoryService, fakeAffect, {
+  const res = await recall(svc as unknown as MemoryService, fakeAffect, fakeProjects as unknown as ProjectService, "main", {
     query: "anything",
     limit: 10,
     vector_weight: 0.7,
@@ -190,7 +190,7 @@ test("recall formats results with rank, score and id", async () => {
       },
     ],
   });
-  const res = await recall(svc as unknown as MemoryService, fakeAffect, {
+  const res = await recall(svc as unknown as MemoryService, fakeAffect, fakeProjects as unknown as ProjectService, "main", {
     query: "alice",
     limit: 10,
     vector_weight: 0.7,
@@ -206,7 +206,7 @@ test("recall formats results with rank, score and id", async () => {
 
 test("recall emits recalled memory_event with hits=0 on empty result", async () => {
   const svc = new FakeService({ searchResults: [] });
-  await recall(svc as unknown as MemoryService, fakeAffect, {
+  await recall(svc as unknown as MemoryService, fakeAffect, fakeProjects as unknown as ProjectService, "main", {
     query: "no matches for this",
     limit: 10,
     vector_weight: 0.7,
@@ -261,7 +261,7 @@ test("recall emits recalled memory_event with hit count and top score", async ()
       },
     ],
   });
-  await recall(svc as unknown as MemoryService, fakeAffect, {
+  await recall(svc as unknown as MemoryService, fakeAffect, fakeProjects as unknown as ProjectService, "main", {
     query: "two hits",
     limit: 10,
     vector_weight: 0.7,
@@ -310,7 +310,7 @@ test("recall(cite=true) with ≥2 hits emits used_in_response with shared trace_
   const svc = new FakeService({
     searchResults: [makeHit(UUID, 0.9), makeHit(id2, 0.7)],
   });
-  await recall(svc as unknown as MemoryService, fakeAffect, {
+  await recall(svc as unknown as MemoryService, fakeAffect, fakeProjects as unknown as ProjectService, "main", {
     query: "two hits cited",
     limit: 10,
     vector_weight: 0.7,
@@ -328,7 +328,7 @@ test("recall(cite=true) with 1 hit does NOT emit used_in_response (gate: ≥2)",
   const svc = new FakeService({
     searchResults: [makeHit(UUID, 0.9)],
   });
-  await recall(svc as unknown as MemoryService, fakeAffect, {
+  await recall(svc as unknown as MemoryService, fakeAffect, fakeProjects as unknown as ProjectService, "main", {
     query: "single hit cited",
     limit: 10,
     vector_weight: 0.7,
@@ -344,7 +344,7 @@ test("recall(cite=false) never emits used_in_response even with many hits", asyn
   const svc = new FakeService({
     searchResults: [makeHit(UUID, 0.9), makeHit(id2, 0.7)],
   });
-  await recall(svc as unknown as MemoryService, fakeAffect, {
+  await recall(svc as unknown as MemoryService, fakeAffect, fakeProjects as unknown as ProjectService, "main", {
     query: "not cited",
     limit: 10,
     vector_weight: 0.7,
@@ -360,7 +360,7 @@ test("recall(cite=true) caps used_in_response to first 5 hits", async () => {
     makeHit(`${(i + 1).toString().repeat(8)}-2222-3333-4444-555555555555`, 0.9 - i * 0.05),
   );
   const svc = new FakeService({ searchResults: hits });
-  await recall(svc as unknown as MemoryService, fakeAffect, {
+  await recall(svc as unknown as MemoryService, fakeAffect, fakeProjects as unknown as ProjectService, "main", {
     query: "seven hits cited",
     limit: 10,
     vector_weight: 0.7,

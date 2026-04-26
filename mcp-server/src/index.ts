@@ -362,7 +362,7 @@ server.tool(
   "recall",
   "Search memories using semantic similarity and keyword matching. Returns the most relevant memories for a query. Biased by the agent's current affective state (high frustration widens search, high satisfaction narrows it) — pass ignore_affect=true to disable. Pass cite=true when the retrieved memories will actually inform the response — that emits `used_in_response` events so the CoactivationAgent Hebbian-links them pairwise.",
   recallSchema.shape,
-  withErrorHandling((input) => recall(memoryService, affectService, recallSchema.parse(input)))
+  withErrorHandling((input) => recall(memoryService, affectService, projectService, AGENT_LABEL, recallSchema.parse(input)))
 );
 
 server.tool(

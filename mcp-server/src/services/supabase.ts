@@ -289,12 +289,21 @@ export class MemoryService {
     return (data as number) ?? 0;
   }
 
-  /** Cognitive search: relevance × strength × salience. */
+  /**
+   * Cognitive search: relevance × strength × salience.
+   *
+   * scope.projectId scopes results to a single project (= a role's L1 brain);
+   * when set, scope.includePinnedGlobal (default true) keeps Bedrock visible —
+   * pinned memories outside the scope still surface, because pinned IS the
+   * explicit "every role should know this" signal. With scope.projectId=null
+   * (the default) recall behaves exactly as before — global, all visible.
+   */
   async search(
     query: string,
     category?: string,
     limit: number = 10,
-    vectorWeight: number = 0.6
+    vectorWeight: number = 0.6,
+    scope?: { projectId: string | null; includePinnedGlobal?: boolean }
   ): Promise<MemorySearchResult[]> {
     const queryEmbedding = await this.embeddings.embed(query);
 
@@ -305,6 +314,8 @@ export class MemoryService {
       filter_category: category ?? null,
       vector_weight: vectorWeight,
       include_archived: false,
+      p_project_id: scope?.projectId ?? null,
+      p_include_pinned_global: scope?.includePinnedGlobal ?? true,
     });
 
     if (error) throw new Error(`Failed to search memories: ${fmtErr(error)}`);
