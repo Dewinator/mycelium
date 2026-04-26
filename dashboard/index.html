@@ -489,23 +489,148 @@
   /*   synapses panel — interactive neural-network visualisation    */
   /* ============================================================== */
   #panel-synapses.tab-panel.active { display: flex; flex-direction: column; gap: 12px; }
+
+  /* Toolbar: groups separated by hairline dividers, stats anchored right.
+     Restrained — flat, no glow, no gradient fills.                       */
   .syn-toolbar {
-    display: flex; flex-wrap: wrap; gap: 8px; align-items: center;
-    padding: 10px 12px; background: var(--bg-elev); border: 1px solid var(--border);
-    border-radius: var(--radius); box-shadow: var(--shadow);
+    display: flex; flex-wrap: wrap; align-items: center;
+    gap: 6px 14px;
+    padding: 8px 12px;
+    background: var(--bg-elev);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    box-shadow: var(--shadow);
   }
-  .syn-toolbar label { display: inline-flex; align-items: center; gap: 6px; font-size: 12px; color: var(--text-dim); cursor: pointer; user-select: none; }
-  .syn-toolbar select,
-  .syn-toolbar input[type="text"] {
-    background: var(--bg-elev-2); color: var(--text); border: 1px solid var(--border);
-    border-radius: var(--radius-sm); padding: 6px 8px; font: inherit; font-size: 12px;
+  .syn-toolbar > .syn-group {
+    display: inline-flex; align-items: center; gap: 6px; flex-wrap: wrap;
   }
-  .syn-toolbar input[type="text"] { min-width: 160px; }
-  .syn-toolbar .chip {
-    padding: 3px 8px; border-radius: 999px; font-size: 11px;
-    background: var(--bg-elev-2); color: var(--text-dim); border: 1px solid var(--border);
+  .syn-group-label {
+    font-size: 10px; text-transform: uppercase; letter-spacing: 0.10em;
+    color: var(--text-faint); padding-right: 2px; user-select: none;
   }
-  .syn-toolbar .chip b { color: var(--text); }
+  .syn-divider {
+    width: 1px; align-self: stretch; background: var(--border);
+    margin: 4px 0;
+  }
+
+  /* Toggle pill — semantic checkbox replacement.
+     Selected state uses accent-soft + tinted border, not a fill.          */
+  .syn-pill {
+    display: inline-flex; align-items: center;
+    padding: 5px 11px;
+    background: transparent;
+    border: 1px solid var(--border);
+    border-radius: 999px;
+    font-size: 12px; color: var(--text-dim);
+    cursor: pointer; user-select: none;
+    transition: background .14s ease, border-color .14s ease, color .14s ease;
+  }
+  .syn-pill > span { line-height: 1; }
+  .syn-pill input { position: absolute; opacity: 0; pointer-events: none; }
+  .syn-pill:hover { background: var(--bg-elev-2); color: var(--text); border-color: var(--text-faint); }
+  .syn-pill:has(input:checked) {
+    background: var(--accent-soft);
+    border-color: color-mix(in srgb, var(--accent) 55%, var(--border));
+    color: var(--accent);
+  }
+  .syn-pill:has(input:checked):hover {
+    background: color-mix(in srgb, var(--accent-soft) 80%, var(--bg-elev-2));
+  }
+  .syn-pill:focus-within { outline: 2px solid color-mix(in srgb, var(--accent) 50%, transparent); outline-offset: 1px; }
+
+  /* Filter field — compact label + native select with chevron */
+  .syn-field {
+    display: inline-flex; align-items: center; gap: 6px;
+    font-size: 11px; color: var(--text-faint); cursor: pointer; user-select: none;
+  }
+  .syn-field-label { text-transform: uppercase; letter-spacing: 0.06em; }
+  .syn-toolbar select {
+    background: var(--bg-elev-2); color: var(--text);
+    border: 1px solid var(--border); border-radius: var(--radius-sm);
+    padding: 5px 22px 5px 8px; font: inherit; font-size: 12px;
+    appearance: none; -webkit-appearance: none;
+    background-image:
+      linear-gradient(45deg, transparent 50%, var(--text-dim) 50%),
+      linear-gradient(135deg, var(--text-dim) 50%, transparent 50%);
+    background-position: calc(100% - 12px) 50%, calc(100% - 7px) 50%;
+    background-size: 5px 5px;
+    background-repeat: no-repeat;
+    cursor: pointer;
+    transition: border-color .14s ease, background-color .14s ease;
+  }
+  .syn-toolbar select:hover { border-color: var(--text-faint); }
+  .syn-toolbar select:focus { outline: none; border-color: var(--accent); }
+
+  /* Search box with leading magnifier icon */
+  .syn-search-wrap { position: relative; display: inline-flex; align-items: center; }
+  .syn-search-icon { position: absolute; left: 9px; color: var(--text-faint); pointer-events: none; }
+  .syn-toolbar input[type="text"]#syn-search {
+    background: var(--bg-elev-2); color: var(--text);
+    border: 1px solid var(--border); border-radius: var(--radius-sm);
+    padding: 5px 10px 5px 28px; font: inherit; font-size: 12px;
+    min-width: 200px;
+    transition: border-color .14s ease, background-color .14s ease;
+  }
+  .syn-toolbar input[type="text"]#syn-search::placeholder { color: var(--text-faint); }
+  .syn-toolbar input[type="text"]#syn-search:focus {
+    outline: none; border-color: var(--accent); background: var(--bg-elev);
+  }
+
+  /* Slim action buttons */
+  .syn-toolbar .syn-btn { padding: 5px 11px; font-size: 12px; line-height: 1.2; border-radius: var(--radius-sm); }
+  .syn-toolbar .syn-btn-icon {
+    width: 28px; height: 28px; padding: 0;
+    display: inline-flex; align-items: center; justify-content: center;
+    font-size: 14px; line-height: 1;
+  }
+
+  /* View-slots — segmented control (1 | 2 | 3). Saved slots tint accent. */
+  .syn-views {
+    display: inline-flex;
+    background: var(--bg-elev-2);
+    border: 1px solid var(--border);
+    border-radius: var(--radius-sm);
+    overflow: hidden;
+  }
+  .syn-views .syn-view {
+    background: transparent; border: 0;
+    padding: 0 10px; height: 28px; min-width: 24px;
+    color: var(--text-dim); font: inherit; font-size: 11px; font-weight: 500;
+    font-variant-numeric: tabular-nums;
+    cursor: pointer;
+    border-right: 1px solid var(--border);
+    transition: background .12s ease, color .12s ease;
+  }
+  .syn-views .syn-view:last-child { border-right: 0; }
+  .syn-views .syn-view:hover { background: var(--bg-elev); color: var(--text); }
+  .syn-views .syn-view.active { background: var(--accent-soft); color: var(--accent); }
+
+  /* Vision-snapshot link — small star, pivots on hover */
+  .syn-vision {
+    width: 28px; height: 28px;
+    display: inline-flex; align-items: center; justify-content: center;
+    border: 1px solid var(--border); border-radius: 999px;
+    color: var(--text-dim); font-size: 12px; line-height: 1;
+    text-decoration: none; user-select: none;
+    transition: background .14s ease, border-color .14s ease, color .14s ease, transform .25s ease;
+  }
+  .syn-vision:hover {
+    background: var(--bg-elev-2); border-color: color-mix(in srgb, var(--accent-2) 60%, var(--border));
+    color: var(--accent-2); transform: rotate(72deg);
+  }
+
+  /* Stats cluster — pushed to right edge, pills with mono numerals */
+  .syn-stats { display: inline-flex; gap: 6px; margin-left: auto; align-items: center; flex-wrap: wrap; }
+  .syn-stat {
+    display: inline-flex; align-items: baseline; gap: 5px;
+    padding: 4px 10px; border-radius: 999px;
+    background: var(--bg-elev-2); border: 1px solid var(--border);
+    font-size: 11px; color: var(--text-faint);
+  }
+  .syn-stat b {
+    color: var(--text); font-weight: 600; font-variant-numeric: tabular-nums;
+    font-family: var(--mono); font-size: 12px;
+  }
 
   /* Starlight-Scheme: tiefes Navy, cyan Synapsen, gold-leuchtende Brücken —
      biologische Atmosphäre statt nüchternem UI-Grau. */
@@ -592,9 +717,11 @@
     }
     .syn-details.open { transform: translateY(0); }
     .syn-legend { max-width: 60%; font-size: 10px; }
-    .syn-toolbar { padding: 8px; gap: 6px; }
-    .syn-toolbar label { font-size: 11px; }
-    .syn-toolbar input[type="text"] { min-width: 120px; flex: 1; }
+    .syn-toolbar { padding: 8px; gap: 6px 8px; }
+    .syn-toolbar .syn-divider { display: none; }
+    .syn-toolbar .syn-stats { order: -1; margin-left: 0; width: 100%; justify-content: flex-end; }
+    .syn-toolbar input[type="text"]#syn-search { min-width: 140px; flex: 1; }
+    .syn-group-label { display: none; }
     .syn-hint { display: none; }
   }
   @media (max-width: 520px) {
@@ -1367,54 +1494,79 @@
 
   <div class="tab-panel" id="panel-synapses">
     <div class="syn-toolbar">
-      <label>3d
-        <input type="checkbox" id="syn-3d" checked />
-      </label>
-      <label>hebb
-        <input type="checkbox" id="syn-hebbian" checked />
-      </label>
-      <label title="Cluster über stärkste Inter-Cluster-Synapse verbinden">brücken
-        <input type="checkbox" id="syn-bridges" checked />
-      </label>
-      <label>kategorie
-        <select id="syn-category">
-          <option value="">alle</option>
-          <option value="general">general</option>
-          <option value="people">people</option>
-          <option value="projects">projects</option>
-          <option value="topics">topics</option>
-          <option value="decisions">decisions</option>
-        </select>
-      </label>
-      <label>limit
-        <select id="syn-limit">
-          <option value="200">200</option>
-          <option value="400" selected>400</option>
-          <option value="800">800</option>
-          <option value="1500">1500</option>
-        </select>
-      </label>
-      <label>min.gewicht
-        <select id="syn-min-weight">
-          <option value="0">0</option>
-          <option value="0.3">0.3</option>
-          <option value="0.5">0.5</option>
-          <option value="0.7">0.7</option>
-        </select>
-      </label>
-      <input type="text" id="syn-search" placeholder="suchen (inhalt / tag)…" autocomplete="off" />
-      <button class="btn" id="syn-reload">neu laden</button>
-      <button class="btn" id="syn-recenter">zentrieren</button>
-      <button class="btn" id="syn-pulse" title="simuliere aktivierungswelle">puls</button>
-      <span class="syn-views" style="display:inline-flex;gap:2px;margin-left:4px">
-        <button class="btn" id="syn-v1" title="klick: laden · shift+klick: speichern · alt+klick: löschen">v1</button>
-        <button class="btn" id="syn-v2" title="klick: laden · shift+klick: speichern · alt+klick: löschen">v2</button>
-        <button class="btn" id="syn-v3" title="klick: laden · shift+klick: speichern · alt+klick: löschen">v3</button>
-      </span>
-      <a class="btn" href="assets/synapsen-vision-2026-04-25.png" target="_blank" rel="noopener" title="Vision-Snapshot 2026-04-25 — der angestrebte Look" style="text-decoration:none">vision</a>
-      <span class="chip"><b id="syn-node-count">0</b>&nbsp;neuronen</span>
-      <span class="chip"><b id="syn-edge-count">0</b>&nbsp;synapsen</span>
-      <span class="chip" id="syn-bridge-chip" style="display:none"><b id="syn-bridge-count">0</b>&nbsp;brücken</span>
+      <div class="syn-group" role="group" aria-label="ansicht">
+        <span class="syn-group-label">ansicht</span>
+        <label class="syn-pill" title="3d-modus umschalten">
+          <input type="checkbox" id="syn-3d" checked />
+          <span>3d</span>
+        </label>
+        <label class="syn-pill" title="hebbsche koaktivierungs-kanten anzeigen">
+          <input type="checkbox" id="syn-hebbian" checked />
+          <span>hebbian</span>
+        </label>
+        <label class="syn-pill" title="cluster über stärkste inter-cluster-synapse verbinden">
+          <input type="checkbox" id="syn-bridges" checked />
+          <span>brücken</span>
+        </label>
+      </div>
+
+      <span class="syn-divider" aria-hidden="true"></span>
+
+      <div class="syn-group" role="group" aria-label="filter">
+        <label class="syn-field">
+          <span class="syn-field-label">kategorie</span>
+          <select id="syn-category">
+            <option value="">alle</option>
+            <option value="general">general</option>
+            <option value="people">people</option>
+            <option value="projects">projects</option>
+            <option value="topics">topics</option>
+            <option value="decisions">decisions</option>
+          </select>
+        </label>
+        <label class="syn-field">
+          <span class="syn-field-label">knoten</span>
+          <select id="syn-limit">
+            <option value="200">200</option>
+            <option value="400" selected>400</option>
+            <option value="800">800</option>
+            <option value="1500">1500</option>
+          </select>
+        </label>
+        <label class="syn-field">
+          <span class="syn-field-label">min.&nbsp;gewicht</span>
+          <select id="syn-min-weight">
+            <option value="0">0</option>
+            <option value="0.3">0.3</option>
+            <option value="0.5">0.5</option>
+            <option value="0.7">0.7</option>
+          </select>
+        </label>
+        <div class="syn-search-wrap">
+          <svg class="syn-search-icon" width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="11" cy="11" r="7"/><path d="m21 21-4.3-4.3"/></svg>
+          <input type="text" id="syn-search" placeholder="suche inhalt oder tag" autocomplete="off" />
+        </div>
+      </div>
+
+      <span class="syn-divider" aria-hidden="true"></span>
+
+      <div class="syn-group" role="group" aria-label="aktionen">
+        <button class="btn syn-btn" id="syn-reload" title="graph neu laden">neu laden</button>
+        <button class="btn syn-btn syn-btn-icon" id="syn-recenter" title="zentrieren" aria-label="zentrieren">⊕</button>
+        <button class="btn syn-btn syn-btn-icon" id="syn-pulse" title="aktivierungs-puls simulieren" aria-label="aktivierungs-puls simulieren">⚡</button>
+        <span class="syn-views" role="group" aria-label="ansicht-slots">
+          <button class="syn-view" id="syn-v1" title="klick: laden · shift+klick: speichern · alt+klick: löschen">1</button>
+          <button class="syn-view" id="syn-v2" title="klick: laden · shift+klick: speichern · alt+klick: löschen">2</button>
+          <button class="syn-view" id="syn-v3" title="klick: laden · shift+klick: speichern · alt+klick: löschen">3</button>
+        </span>
+        <a class="syn-vision" href="assets/synapsen-vision-2026-04-25.png" target="_blank" rel="noopener" title="vision-snapshot 2026-04-25 — der angestrebte look" aria-label="vision-snapshot öffnen">★</a>
+      </div>
+
+      <div class="syn-stats" role="status" aria-live="polite">
+        <span class="syn-stat"><b id="syn-node-count">0</b><span>neuronen</span></span>
+        <span class="syn-stat"><b id="syn-edge-count">0</b><span>synapsen</span></span>
+        <span class="syn-stat" id="syn-bridge-chip" style="display:none"><b id="syn-bridge-count">0</b><span>brücken</span></span>
+      </div>
     </div>
     <div class="syn-stage" id="syn-stage">
       <canvas class="syn-canvas" id="syn-canvas"></canvas>
