@@ -30,6 +30,44 @@ export type AffectEvent =
   | "recall_touch"
   | "novel_encoding";
 
+/**
+ * Bridge mapping: legacy AffectEvent → neurochem-engine event name.
+ *
+ * Mirrors the CASE statement inside `affect_apply()` (migration 042). The
+ * receiver (`neurochem_apply()`) only recognises the seven event labels
+ * listed in `neurochemUpdateSchema.event` (task_complete, task_failed,
+ * novel_stimulus, familiar_task, idle, error, teacher_consulted). Any
+ * AffectEvent not present here, or mapped to a non-recognised label,
+ * silently falls through and corrupts compute_affect()'s observables.
+ *
+ * If either side changes, update BOTH and the contract tests in
+ * affect-apply-mapping.test.ts will keep them honest.
+ *
+ * KNOWN GAP: `recall_touch` is not wired in SQL — `affect_apply()`'s ELSE
+ * branch passes it through verbatim, so neurochem_apply receives an
+ * unknown event label. Tracked as a Phase-2 follow-up alongside Issue #11.
+ */
+export const NEUROCHEM_RECOGNISED_EVENTS = [
+  "task_complete",
+  "task_failed",
+  "novel_stimulus",
+  "familiar_task",
+  "idle",
+  "error",
+  "teacher_consulted",
+] as const;
+export type NeurochemEvent = (typeof NEUROCHEM_RECOGNISED_EVENTS)[number];
+
+export const AFFECT_TO_NEUROCHEM_EVENT_MAP: Record<AffectEvent, NeurochemEvent | "__UNMAPPED__"> = {
+  success:        "task_complete",
+  failure:        "task_failed",
+  unknown:        "novel_stimulus",
+  recall_empty:   "novel_stimulus",
+  recall_rich:    "familiar_task",
+  recall_touch:   "__UNMAPPED__",
+  novel_encoding: "novel_stimulus",
+};
+
 export interface AffectState {
   curiosity: number;
   frustration: number;

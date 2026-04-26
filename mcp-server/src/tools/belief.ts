@@ -66,12 +66,15 @@ export async function inferAction(
 
   // ---- Step 3: affect coupling -----------------------------------------
   // Empty recall → curiosity↑; unknown state → curiosity↑; known + recall → confirms rich recall.
+  // Fire-and-forget with a tail-catch — see remember.ts.
+  const tailCatch = (event: string) => (err: unknown) =>
+    console.error(`[belief] affect.apply(${event}) tail-failed:`, err);
   if (hits.length === 0) {
-    void affect.apply("recall_empty", 0.4);
+    affect.apply("recall_empty", 0.4).catch(tailCatch("recall_empty"));
   } else if (result.state === "known" && result.action === "recall") {
-    void affect.apply("recall_rich", 0.3);
+    affect.apply("recall_rich", 0.3).catch(tailCatch("recall_rich"));
   } else if (result.state === "unknown") {
-    void affect.apply("unknown", 0.5);
+    affect.apply("unknown", 0.5).catch(tailCatch("unknown"));
   }
 
   const [pK, pP, pU] = result.state_prior;

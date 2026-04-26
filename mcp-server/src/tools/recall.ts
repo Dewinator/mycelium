@@ -112,12 +112,15 @@ export async function recall(
 
   // ---- Auto-update affect from recall outcome -----------------------------
   // Empty recalls nudge curiosity up / confidence down; rich recalls confirm
-  // confidence. Touches (single weak hit) don't move state.
+  // confidence. Touches (single weak hit) don't move state. Fire-and-forget
+  // with a tail-catch — see remember.ts.
   if (!input.ignore_affect) {
+    const tailCatch = (event: string) => (err: unknown) =>
+      console.error(`[recall] affect.apply(${event}) tail-failed:`, err);
     if (results.length === 0) {
-      void affect.apply("recall_empty", 0.5);
+      affect.apply("recall_empty", 0.5).catch(tailCatch("recall_empty"));
     } else if (results.length >= 5 && topScore >= 0.6) {
-      void affect.apply("recall_rich", 0.3);
+      affect.apply("recall_rich", 0.3).catch(tailCatch("recall_rich"));
     }
   }
 

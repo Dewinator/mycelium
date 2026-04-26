@@ -62,7 +62,12 @@ export async function remember(
     memory.updated_at &&
     new Date(memory.updated_at).getTime() - new Date(memory.created_at).getTime() > 1000;
   if (!wasDuplicate) {
-    void affect.apply("novel_encoding", 0.3);
+    // Fire-and-forget: affect.apply already swallows errors internally, but
+    // a tail-catch keeps a future refactor that throws from becoming an
+    // unhandled rejection. See AFFECT_TO_NEUROCHEM_EVENT_MAP for the wire.
+    affect.apply("novel_encoding", 0.3).catch((err) => {
+      console.error("[remember] affect.apply tail-failed:", err);
+    });
   }
 
   return {
