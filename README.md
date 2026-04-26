@@ -1,8 +1,16 @@
-# mycelium
+<p align="center">
+  <img src="docs/images/logo.png" alt="mycelium" width="320" />
+</p>
 
-> **Your agent forgets everything. Mycelium fixes that.**
+<h1 align="center">mycelium</h1>
 
-🇬🇧 English · [🇩🇪 Deutsch](README.de.md)
+<p align="center">
+  <b>Your agent forgets everything. Mycelium fixes that.</b>
+</p>
+
+<p align="center">
+  🇬🇧 English · <a href="README.de.md">🇩🇪 Deutsch</a>
+</p>
 
 A persistent memory and identity layer for LLM agents, served over MCP. Runs locally on a Mac mini or a modest Linux box. No cloud dependency.
 

@@ -4,6 +4,8 @@
 <meta charset="utf-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1" />
 <title>mycelium — dashboard</title>
+<link rel="icon" type="image/png" href="/assets/logo.png" />
+<link rel="apple-touch-icon" href="/assets/logo.png" />
 <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
 <style>
   :root {
@@ -68,9 +70,14 @@
     display: flex; align-items: center; justify-content: space-between;
     margin-bottom: 24px; gap: 16px; flex-wrap: wrap;
   }
-  .brand { display: flex; flex-direction: column; gap: 4px; min-width: 0; }
-  .brand h1 { margin: 0; font-size: 20px; font-weight: 600; letter-spacing: -0.01em; }
+  .brand { display: flex; flex-direction: column; align-items: flex-start; gap: 6px; min-width: 0; }
+  .brand .logo { width: 100%; max-width: 200px; height: auto; display: block; }
+  .brand .logo-mark { width: 56px; height: 56px; display: block; }
+  .brand h1 { margin: 0; font-size: 20px; font-weight: 600; letter-spacing: -0.01em;
+              background: linear-gradient(90deg, var(--accent-2), var(--accent), var(--accent-3));
+              -webkit-background-clip: text; background-clip: text; color: transparent; }
   .brand .sub { color: var(--text-dim); font-size: 13px; }
+  .brand .visually-hidden { position: absolute; width: 1px; height: 1px; margin: -1px; padding: 0; overflow: hidden; clip: rect(0,0,0,0); white-space: nowrap; border: 0; }
   .status-line { color: var(--text-dim); font-size: 13px; flex: 1; min-width: 0; }
   .controls { display: flex; align-items: center; gap: 8px; }
   button.btn {
@@ -484,17 +491,22 @@
 
   /* === beginner-friendly UI primitives (Reed 2026-04-26) ============== */
 
-  /* Plain-language intro at the top of each panel. Tells the user what
-     this tab shows in one sentence. Keep it short. */
+  /* Plain-language intro at the top of each panel. Picks up the logo's
+     violet→cyan gradient so the brand identity is felt across the UI. */
   .panel-intro {
     margin: -4px 0 18px;
-    padding: 14px 16px;
-    background: linear-gradient(180deg, rgba(122,162,247,0.06), transparent 70%);
-    border-left: 3px solid var(--accent);
+    padding: 14px 16px 14px 18px;
+    background: linear-gradient(135deg, rgba(187,154,247,0.07), rgba(125,207,255,0.05) 60%, transparent);
+    border-left: 3px solid;
+    border-image: linear-gradient(180deg, var(--accent-2), var(--accent), var(--accent-3)) 1;
     border-radius: var(--radius-sm);
     font-size: 14px; line-height: 1.55; color: var(--text);
   }
-  .panel-intro b { color: var(--accent); font-weight: 600; }
+  .panel-intro b {
+    background: linear-gradient(90deg, var(--accent-2), var(--accent));
+    -webkit-background-clip: text; background-clip: text; color: transparent;
+    font-weight: 600;
+  }
   .panel-intro .sub { display: block; margin-top: 6px; font-size: 12px; color: var(--text-dim); }
 
   /* "Was du hier siehst" — a labelled card section that appears under the
@@ -600,7 +612,10 @@
 <body>
   <aside class="sidebar" id="sidebar">
     <div class="brand">
-      <h1>mycelium</h1>
+      <a href="/" aria-label="mycelium home" style="display:block;width:100%">
+        <img src="/assets/logo.png" alt="mycelium" class="logo" />
+      </a>
+      <h1 class="visually-hidden">mycelium</h1>
       <div class="sub" data-i18n="brand.subtitle">your AI</div>
     </div>
     <nav class="tabs">
@@ -645,10 +660,7 @@
   <div id="error-box"></div>
 
   <div class="tab-panel active" id="panel-memory">
-  <div class="panel-intro">
-    Das <b>Gedächtnis</b> ist die zentrale Schicht — alles was der Agent gelernt, gespeichert und wiedergefunden hat. Hier siehst du, wie viel er weiß, was er kürzlich gespeichert hat, welche Themen sich häufen und welche Erinnerungen am stärksten verankert sind.
-    <span class="sub">Die Stärke einer Erinnerung steigt durch Nutzung und sinkt durch Inaktivität — ähnlich der Vergessenskurve nach Ebbinghaus.</span>
-  </div>
+  <div class="panel-intro" data-i18n-html="intro.memory"></div>
   <section class="grid grid-kpi" id="kpis"></section>
 
   <!-- top row: timeline (wide) + stage donut -->
@@ -705,10 +717,7 @@
   </div><!-- /panel-memory -->
 
   <div class="tab-panel" id="panel-soul">
-    <div class="panel-intro">
-      Die <b>Seele</b> ist das, was sich aus den vielen einzelnen Erfahrungen herausbildet — Stimmung, gelernte Grundsätze, Persönlichkeits-Merkmale, Beziehungen zu Personen, innere Konflikte und langfristige Vorhaben. Im Gegensatz zum nüchternen Gedächtnis ist hier die emotionale Färbung wichtig.
-      <span class="sub">Der Agent erzählt sich selbst in der ersten Person — die Sprache spiegelt, wie er sich gerade sieht.</span>
-    </div>
+    <div class="panel-intro" data-i18n-html="intro.soul"></div>
     <!-- self-narration: the soul speaking in first person -->
     <div class="narrate-card" id="narrate-card">
       <p style="opacity:.5">noch keine seele zu erzählen — erste erfahrungen sammeln</p>
@@ -805,56 +814,48 @@
   </div><!-- /panel-soul -->
 
   <div class="tab-panel" id="panel-regulator">
-    <div class="panel-intro">
-      Der <b>Regulator</b> ist die Affekt-Schicht — vier emotionale Grundwerte, die sich aus jeder Aktion verändern und ihrerseits beeinflussen, wie der Agent das nächste Mal denkt und antwortet.
-      <span class="sub">Frustration baut sich mit der Zeit von selbst wieder ab — Stress wird langsam kleiner, wenn nichts Neues hinzukommt.</span>
-    </div>
+    <div class="panel-intro" data-i18n-html="intro.regulator"></div>
     <section class="card">
-      <h2>aktuelle gefühlslage</h2>
-      <div class="sub" style="margin-bottom:10px">Die vier Werte werden automatisch aktualisiert, wenn der Agent etwas speichert, abruft oder auswertet.</div>
+      <h2 data-i18n="card.regulator.affect">aktuelle gefühlslage</h2>
+      <div class="sub" data-i18n="card.regulator.affect.sub" style="margin-bottom:10px">Die vier Werte werden automatisch aktualisiert, wenn der Agent etwas speichert, abruft oder auswertet.</div>
       <div id="affect-bars" class="bars"></div>
       <div id="affect-meta" class="sub" style="margin-top:10px"></div>
     </section>
 
     <section class="card" style="margin-top:16px">
-      <h2>einfluss auf das gedächtnis-suchen</h2>
-      <div class="sub" style="margin-bottom:10px">Der innere Zustand verändert, <i>wie</i> der Agent das Gedächtnis durchsucht — wie viele Treffer er holt, wie streng er filtert und wie weit er assoziativ ausschwärmt.</div>
+      <h2 data-i18n="card.regulator.bias">einfluss auf das gedächtnis-suchen</h2>
+      <div class="sub" data-i18n-html="card.regulator.bias.sub" style="margin-bottom:10px">Der innere Zustand verändert, <i>wie</i> der Agent das Gedächtnis durchsucht — wie viele Treffer er holt, wie streng er filtert und wie weit er assoziativ ausschwärmt.</div>
       <div class="health-grid" id="affect-bias"></div>
     </section>
 
     <section class="card" style="margin-top:16px">
-      <h2>entscheidungs-finder</h2>
-      <div class="sub" style="margin-bottom:10px">Eine separate Entscheidungs-Engine, die dem Agenten vorschlägt, ob er bei einer offenen Frage besser im Gedächtnis suchen, recherchieren oder um Hilfe fragen sollte. Wählt jeweils den Weg mit der geringsten erwarteten Unsicherheit.</div>
+      <h2 data-i18n="card.regulator.belief">entscheidungs-finder</h2>
+      <div class="sub" data-i18n="card.regulator.belief.sub" style="margin-bottom:10px">Eine separate Entscheidungs-Engine, die dem Agenten vorschlägt, ob er bei einer offenen Frage besser im Gedächtnis suchen, recherchieren oder um Hilfe fragen sollte. Wählt jeweils den Weg mit der geringsten erwarteten Unsicherheit.</div>
       <div class="health-grid" id="belief-health"></div>
       <div id="belief-model" style="margin-top:14px"></div>
     </section>
   </div><!-- /panel-regulator -->
 
   <div class="tab-panel" id="panel-learning">
-    <div class="panel-intro">
-      Hier siehst du, was der Agent <b>aus seinen Aufgaben gelernt</b> hat — welche Werkzeuge bei welcher Aufgaben-Art zuverlässig funktionieren, und welche Ursache-Wirkungs-Ketten er erkannt hat. Diese Lernerfahrung fließt automatisch in zukünftige Empfehlungen ein.
-    </div>
+    <div class="panel-intro" data-i18n-html="intro.learning"></div>
     <section class="card">
-      <h2>was hat funktioniert</h2>
-      <div class="sub" style="margin-bottom:10px">Erfolgsrate pro Werkzeug × Aufgaben-Art. Je voller der Balken, desto verlässlicher hat dieses Werkzeug für diese Art Aufgabe geliefert.</div>
+      <h2 data-i18n="card.learning.skills">was hat funktioniert</h2>
+      <div class="sub" data-i18n="card.learning.skills.sub" style="margin-bottom:10px">Erfolgsrate pro Werkzeug × Aufgaben-Art. Je voller der Balken, desto verlässlicher hat dieses Werkzeug für diese Art Aufgabe geliefert.</div>
       <table class="mem" id="skills-table"></table>
     </section>
 
     <section class="card" style="margin-top:16px">
-      <h2>ursache → wirkung</h2>
-      <div class="sub" style="margin-bottom:10px">Verbindungen zwischen Erfahrungen, in denen der Agent erkannt hat, dass eine Sache eine andere ausgelöst hat. Manche werden automatisch beim Verdauen einer Aufgabe gezogen, andere von dir bestätigt.</div>
+      <h2 data-i18n="card.learning.causal">ursache → wirkung</h2>
+      <div class="sub" data-i18n="card.learning.causal.sub" style="margin-bottom:10px">Verbindungen zwischen Erfahrungen, in denen der Agent erkannt hat, dass eine Sache eine andere ausgelöst hat. Manche werden automatisch beim Verdauen einer Aufgabe gezogen, andere von dir bestätigt.</div>
       <div id="causal-list"></div>
     </section>
   </div><!-- /panel-learning -->
 
   <div class="tab-panel" id="panel-motivation">
-    <div class="panel-intro">
-      Hier sammelt der Agent automatisch Reize aus der Welt — HackerNews, RSS-Feeds, Git-Aktivität, GitHub-Trending — und schlägt selbst neue Aufgaben vor.
-      Jeder Reiz wird gegen das eigene <b>Gedächtnis</b>, den <b>aktuellen Affekt</b>, die <b>Persönlichkeit</b> und offene <b>Vorhaben</b> gewichtet. Was relevant ist, wird zu einem Vorschlag — wartet aber auf deine Freigabe.
-    </div>
+    <div class="panel-intro" data-i18n-html="intro.motivation"></div>
 
     <section class="card">
-      <h2>status des stimulus-sammlers</h2>
+      <h2 data-i18n="card.motivation.status">status des stimulus-sammlers</h2>
       <div class="health-grid" id="motivation-health"></div>
       <div id="motivation-meta" class="sub" style="margin-top:10px"></div>
       <details class="tech-info"><summary>Tech-Info anzeigen</summary>
@@ -870,8 +871,8 @@
     </section>
 
     <section class="card" style="margin-top:16px">
-      <h2>einfluss der stimmung auf die motivation</h2>
-      <div class="sub" style="margin-bottom:10px">Der innere Zustand verändert, wie der Agent neue Reize bewertet — drei Rückkanäle aus der Neurochemie steuern Aufmerksamkeit und Ungeduld.</div>
+      <h2 data-i18n="card.motivation.coupling">einfluss der stimmung auf die motivation</h2>
+      <div class="sub" data-i18n="card.motivation.coupling.sub" style="margin-bottom:10px">Der innere Zustand verändert, wie der Agent neue Reize bewertet — drei Rückkanäle aus der Neurochemie steuern Aufmerksamkeit und Ungeduld.</div>
       <div id="motivation-coupling"></div>
     </section>
 
@@ -887,29 +888,26 @@
     </section>
 
     <section class="card" style="margin-top:16px">
-      <h2>quellen</h2>
+      <h2 data-i18n="card.motivation.sources">quellen</h2>
       <table class="mem" id="motivation-sources-table"></table>
     </section>
 
     <section class="card" style="margin-top:16px">
-      <h2>offene vorschläge — warten auf deine freigabe</h2>
-      <div class="sub" style="margin-bottom:8px">Was der Agent sich selbst aus den gesammelten Reizen abgeleitet hat. Jeder Tag, den ein Vorschlag schläft, erhöht seine "Drift" — er drängt sich stärker in den Vordergrund.</div>
+      <h2 data-i18n="card.motivation.tasks">offene vorschläge — warten auf deine freigabe</h2>
+      <div class="sub" data-i18n="card.motivation.tasks.sub" style="margin-bottom:8px">Was der Agent sich selbst aus den gesammelten Reizen abgeleitet hat. Jeder Tag, den ein Vorschlag schläft, erhöht seine "Drift" — er drängt sich stärker in den Vordergrund.</div>
       <table class="mem" id="motivation-tasks-table"></table>
     </section>
 
     <section class="card" style="margin-top:16px">
-      <h2>letzte aufgenommene reize</h2>
+      <h2 data-i18n="card.motivation.stimuli">letzte aufgenommene reize</h2>
       <table class="mem" id="motivation-stimuli-table"></table>
     </section>
   </div><!-- /panel-motivation -->
 
   <div class="tab-panel" id="panel-identity">
-    <div class="panel-intro">
-      Das <b>Selbstbild</b> ist die Sicht des Agenten auf sich selbst — wie er sein eigenes Verhalten, seine Stärken, Schwächen und Eigenheiten zusammenfasst. Anders als die Seele (Stimmung &amp; Erfahrungen) ist das Selbstbild eine bewusste Selbst-Beschreibung.
-      <span class="sub">Wird beim Schlaf-Zyklus jede Nacht neu erstellt — der Agent reflektiert, wer er gerade ist.</span>
-    </div>
+    <div class="panel-intro" data-i18n-html="intro.identity"></div>
     <section class="card">
-      <h2>aktuelles selbstbild</h2>
+      <h2 data-i18n="card.identity.self">aktuelles selbstbild</h2>
       <div id="self-model-body"></div>
     </section>
 
@@ -921,12 +919,9 @@
   </div><!-- /panel-identity -->
 
   <div class="tab-panel" id="panel-sleep">
-    <div class="panel-intro">
-      Jede Nacht um 03:00 läuft ein <b>Schlaf-Zyklus</b> — biologisch inspiriert: erst Tiefschlaf (Erinnerungen festigen, Schwaches vergessen, Doppeltes zusammenfassen), dann REM (Muster erkennen, daraus Lektionen formen), dann Metakognition (das Selbstbild aktualisieren). Sonntags wird zusätzlich die "Fitness" der Persönlichkeit gemessen.
-      <span class="sub">Der Agent verbessert sich also nicht nur beim Arbeiten, sondern auch beim Ruhen — wie ein Mensch.</span>
-    </div>
+    <div class="panel-intro" data-i18n-html="intro.sleep"></div>
     <section class="card">
-      <h2>letzter schlaf-zyklus</h2>
+      <h2 data-i18n="card.sleep.last">letzter schlaf-zyklus</h2>
       <div class="health-grid" id="sleep-summary"></div>
     </section>
 
@@ -1092,11 +1087,9 @@
   </template>
 
   <div class="tab-panel" id="panel-guard">
-    <div class="panel-intro">
-      Der <b>Wächter</b> prüft fremde Inhalte (RSS-Feeds, fremde Profile, Web-Texte) <i>bevor</i> sie ins Gedächtnis geschrieben werden — er erkennt typische Versuche, dem Agenten falsche Anweisungen unterzujubeln. Bösartiger Inhalt wird blockiert, verdächtiger nur als Notiz abgelegt, sauberer ganz normal aufgenommen.
-    </div>
+    <div class="panel-intro" data-i18n-html="intro.guard"></div>
     <section class="card">
-      <h2>wächter-status</h2>
+      <h2 data-i18n="card.guard.status">wächter-status</h2>
       <div class="health-grid" id="guard-health"></div>
       <details class="tech-info"><summary>Tech-Info anzeigen</summary>
         <dl class="tech-grid">
@@ -1127,12 +1120,9 @@
   </div><!-- /panel-guard -->
 
   <div class="tab-panel" id="panel-emergence">
-    <div class="panel-intro">
-      <b>Emergenz</b> sind Momente, in denen der Agent etwas tut, das nicht direkt aus seiner Programmierung folgt — er widerspricht seinen eigenen Grundsätzen, lehnt eine Aufgabe begründet ab, formuliert ein neues Ziel, drückt unaufgefordert Unsicherheit aus, bildet eine stabile Meinung über jemanden. Solche Momente werden erfasst, damit du sie sehen und einordnen kannst.
-      <span class="sub">Sechs Indikatoren werden erkannt — vier automatisch aus den Daten, zwei aus den Tagesereignissen des Agenten.</span>
-    </div>
+    <div class="panel-intro" data-i18n-html="intro.emergence"></div>
     <section class="card">
-      <h2>aufgezeichnete momente</h2>
+      <h2 data-i18n="card.emergence.recent">aufgezeichnete momente</h2>
       <div id="emergence-summary" style="margin-bottom:12px"></div>
       <table class="mem" id="emergence-table"></table>
     </section>
@@ -1170,15 +1160,9 @@
   </template>
 
   <div class="tab-panel" id="panel-neurochemistry">
-    <div class="panel-intro">
-      Drei chemische Signale steuern den inneren Zustand des Agenten — analog zur menschlichen Neurochemie.
-      <b>Dopamin</b> misst, wie gut Vorhersagen passen (Lernfortschritt).
-      <b>Serotonin</b> bestimmt Geduld und Planungsweite.
-      <b>Noradrenalin</b> regelt Wachheit und Fokus.
-      <span class="sub">Die vier klassischen Affekt-Werte (Neugier, Zufriedenheit, Selbstvertrauen, Frustration) werden aus diesen drei Signalen abgeleitet.</span>
-    </div>
+    <div class="panel-intro" data-i18n-html="intro.neurochemistry"></div>
     <section class="card">
-      <h2>verbindung zum genom</h2>
+      <h2 data-i18n="card.neuro.connection">verbindung zum genom</h2>
       <div id="neurochemistry-status" style="margin-bottom:12px"></div>
       <div>
         <label for="neurochemistry-label" class="sub" style="margin-right:6px">Genom:</label>
@@ -1193,31 +1177,29 @@
       </details>
     </section>
     <section class="card">
-      <h2>aktuelle stimmungs-signale</h2>
+      <h2 data-i18n="card.neuro.signals">aktuelle stimmungs-signale</h2>
       <div id="neurochemistry-bars"></div>
     </section>
     <section class="card">
-      <h2>abgeleitete affektwerte</h2>
-      <div class="sub" style="margin-bottom:10px">Die vier vertrauten Werte aus der ursprünglichen Affekt-Engine — direkt aus den drei Signalen oben gerechnet.</div>
+      <h2 data-i18n="card.neuro.derived">abgeleitete affektwerte</h2>
+      <div class="sub" data-i18n="card.neuro.derived.sub" style="margin-bottom:10px">Die vier vertrauten Werte aus der ursprünglichen Affekt-Engine — direkt aus den drei Signalen oben gerechnet.</div>
       <div id="neurochemistry-compat"></div>
     </section>
     <section class="card">
-      <h2>wie der agent gerade arbeitet</h2>
-      <div class="sub" style="margin-bottom:10px">Wie viele Erinnerungen werden bei jeder Suche zurückgeholt, wie weit plant der Agent in die Zukunft, und wann fragt er nach Hilfe?</div>
+      <h2 data-i18n="card.neuro.params">wie der agent gerade arbeitet</h2>
+      <div class="sub" data-i18n="card.neuro.params.sub" style="margin-bottom:10px">Wie viele Erinnerungen werden bei jeder Suche zurückgeholt, wie weit plant der Agent in die Zukunft, und wann fragt er nach Hilfe?</div>
       <div id="neurochemistry-params"></div>
     </section>
     <section class="card">
-      <h2>verlauf der letzten ereignisse</h2>
-      <div class="sub" style="margin-bottom:10px">Die drei Signale über die Zeit. Dopamin in <b style="color:var(--accent)">blau</b>, Serotonin in <b style="color:var(--good)">grün</b>, Noradrenalin in <b style="color:var(--warn)">orange</b>.</div>
+      <h2 data-i18n="card.neuro.history">verlauf der letzten ereignisse</h2>
+      <div class="sub" data-i18n-html="card.neuro.history.sub" style="margin-bottom:10px">Die drei Signale über die Zeit. Dopamin in <b style="color:var(--accent)">blau</b>, Serotonin in <b style="color:var(--good)">grün</b>, Noradrenalin in <b style="color:var(--warn)">orange</b>.</div>
       <svg id="neurochemistry-sparkline" width="100%" height="120" style="background:var(--bg-alt,#111);border-radius:6px"></svg>
       <table class="mem" id="neurochemistry-history"></table>
     </section>
   </div><!-- /panel-neurochemistry -->
 
   <div class="tab-panel" id="panel-projects">
-    <div class="panel-intro">
-      <b>Projekte</b> sind dauerhafte Etiketten für deine Arbeitsschwerpunkte. Erinnerungen, Erfahrungen, Vorhaben und Lektionen können einem Projekt zugeordnet werden — so siehst du auf einen Blick, was zu welchem Thema gehört.
-    </div>
+    <div class="panel-intro" data-i18n-html="intro.projects"></div>
     <section class="card">
       <h2>projekte</h2>
       <div class="sub" style="margin-bottom:8px">

@@ -77,6 +77,13 @@ export function applyToDom(root = document) {
     const key = el.getAttribute('data-i18n');
     el.textContent = t(key);
   });
+  // Same as data-i18n but allows safe HTML markup (<b>, <i>, <span>, …) in
+  // the translation. Use sparingly — only for panel intros and card sub-texts
+  // that legitimately need inline emphasis.
+  root.querySelectorAll('[data-i18n-html]').forEach(el => {
+    const key = el.getAttribute('data-i18n-html');
+    el.innerHTML = t(key);
+  });
   root.querySelectorAll('[data-i18n-attr]').forEach(el => {
     const spec = el.getAttribute('data-i18n-attr');
     spec.split(';').forEach(pair => {
