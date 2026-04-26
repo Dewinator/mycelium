@@ -52,6 +52,8 @@ Flags:
   --cockpit-port=<n>    default: 8767+offset
   --base-model=<s>      default: inherited from parent (documentary only)
   --teacher-model=<s>   default: inherited from parent (documentary only)
+  --supabase-url=<u>    override SUPABASE_URL (hard-isolated instance)
+  --supabase-key=<k>    override SUPABASE_KEY (hard-isolated instance)
   --dry-run             print plan, write nothing
   --force               overwrite existing workspace dir
 `);
@@ -78,9 +80,11 @@ const PORTS = {
   cockpit:    parseInt(args["cockpit-port"]    || String(8767 + OFFSET),  10),
 };
 
-// --- load Supabase creds from root .mcp.json ------------------------------
+// --- load Supabase creds (defaults from root .mcp.json, optional CLI override) ---
 const rootMcp = JSON.parse(await fs.readFile(path.join(ROOT, ".mcp.json"), "utf8"));
-const ENV     = rootMcp.mcpServers["vector-memory"].env;
+const ENV     = { ...rootMcp.mcpServers["vector-memory"].env };
+if (args["supabase-url"]) ENV.SUPABASE_URL = args["supabase-url"];
+if (args["supabase-key"]) ENV.SUPABASE_KEY = args["supabase-key"];
 
 // --- REST helpers ---------------------------------------------------------
 const REST = ENV.SUPABASE_URL.replace(/\/$/, "");
