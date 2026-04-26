@@ -177,71 +177,35 @@ läuft per Trigger, nicht per MCP-Call. Formelspezifikation vor Migration:
 ### Phase A+B — Fundament + Reproduzierbarkeit (erledigt)
 - agents-Registry + Heartbeat (Migration 028)
 - Provenance-Tags auf memories/experiences/lessons/soul_traits (029)
-- Genome-Modellfelder als dokumentarische Vererbung (030 — **Client-Konfig
-  bleibt Authority für Modellwahl**, Genome spiegelt nur wider)
 - `scripts/provision-instance.mjs` — reproduzierbarer Installer
-- Dashboard Population-Tab mit Stammbaum-SVG
 
-### Phase C — Pairing-UI (erledigt)
-- Breed-Button pro Match-Row, Mutual-Consent-Checkbox
-- Genome-Klick öffnet Details-Modal (inherited + provenance counts)
-- `/breed` + `/genome-details` Endpoints
+### Aktuelle Richtung (Reed 2026-04-26 Pivot)
 
-### Phase D — Lifecycle & Evolution (in Arbeit)
-- Genome archivieren/cullen/reaktivieren mit typed-confirmation
-- Fitness-Trendgraph über Zeit im Genome-Modal
-- Genome-Tabelle zeigt Status-Pills farbig (active/paused/culled/archived)
+Fokus liegt auf dem Neurochemie-Kern: persistentes Vektorgedächtnis,
+Affekt-Regulator, 3-System-Neurochemie, REM/SWS-Sleep-Cycles, Hub-Architektur,
+Spreading Activation, Emergenz-Indikatoren. Das Ziel ist eine eigenständige
+Anwendung, die ohne externen MCP-Client (Claude Code, openClaw, Codex) nutzbar
+ist — eingebaute LLM-Einbindung, Agent-Erstellungs-UI, Aufgaben-Verwaltung.
+MCP bleibt als optionale Schnittstelle für Flexibilität.
 
-### Phase E — Federation (Multi-Host)
-- Tailscale-verteilte Instanzen in derselben agents-Registry
-- Gateway-URLs als Discovery-Punkt
-- Read-only-Sharing einzelner Genome-Profile cross-host
-- Voraussetzung für Phase F
+### Deferred Experimental (Code im Repo, Feature-Flags OFF)
 
-### Phase F — "Tinder für Bots" (Population-Matchmaking)
+Die folgenden Schichten sind gebaut aber im aktuellen Build versteckt
+(Env-Vars `MYCELIUM_FEATURE_PAIRING|POPULATION|FEDERATION|TEACHER`,
+default `0`). Reaktivierung wenn der Neurochemie-Kern stabil ist.
 
-**Kernprinzip: Mutual Consent.** Bots swipen nicht selbst. Jeder User swipt
-*für* seinen Bot durch Profile anderer Bots in der gemeinsamen Population.
-Match gilt erst wenn beide User unabhängig right-swipen — analog zu Tinder,
-keine autonome KI-Paarung. Das bestehende Ethik-Gate (`OPENCLAW_ALLOW_BREEDING`
-/ `allow_breeding:true`) bleibt aktiv und wird durch die beidseitige
-User-Zustimmung semantisch erfüllt.
-
-**Bot-Profil** (aus Genome + Fitness + Provenance aggregiert):
-- Label, Generation, Alter (days since created_at)
-- Values + Interests als Tags
-- Trait-Parameter (curiosity, exploration, risk, mutation-rate)
-- Latest Fitness + Trend (steigend/fallend)
-- Provenance-Footprint ("hat 540 Memories, 107 Experiences, 4 Lessons
-  beigetragen")
-- Notable Traits aus soul_traits (die Persönlichkeit in drei Zeilen)
-- Sample Memories (was weiß dieser Bot besonders gut?)
-
-**Swipe-UX:**
-- Right = "für Paarung zugelassen" (speichert `user_likes` Eintrag)
-- Left = "nicht jetzt" (kein Eintrag)
-- Super-like = Right mit Priorität (triggert Push-Benachrichtigung beim
-  anderen User)
-- Match = beide haben right-swiped → Breeding-Modal öffnet sich mit
-  vor-bestätigtem Consent beider Seiten; child_label + mutation_rate +
-  inheritance_mode noch vom initiierenden User gewählt
-
-**Sicherheits-Überlegungen:**
-- Cross-User-Breeding darf kein Wissen leaken, das der andere Bot nicht
-  teilen will → per-Memory `shareable` Flag, Default `true` nur für
-  non-private kategorien
-- Quell-Bots bleiben als parent_ids referenziert, Kind lebt in der gemein-
-  samen Population aber kann einem User "gehören" (`owner_user_id`)
-- Ablehnungen (left-swipe) sind privat — der andere User sieht nicht
-  wer abgelehnt hat
-
-**Warum das gut ist:**
-Macht das Ethik-Gate menschlich bedienbar statt technisch versteckt. Bringt
-zwei unabhängige Meinungen ins System (statt einer). Macht Paarung zu einem
-sozialen Akt zwischen Menschen, nicht zu einem autonomen AI-Event. Und
-schafft den natürlichen Mechanismus warum überhaupt Genomes aus
-verschiedenen Herkünften zusammenkommen — heute muss *ein* Mensch zwei
-Bots kennen, morgen können zwei Menschen ihren jeweiligen Bot vorstellen.
+- **Population/Genome-Stammbaum** — Lineage-Tabelle, Fitness-Trends,
+  Lifecycle-Aktionen (`/genomes`, `/fitness-history`, `/genome-lifecycle`,
+  `list_agents`, `snapshot_fitness`, `genome_inheritance`, `collect_current_knowledge`).
+- **Pairing/Tinder** — Mutual-Consent-Swiping zwischen Bots zweier User,
+  Wright's-F-Inbreeding-Check, Breed-Modal (`/tinder/*`, `/breed`,
+  `breed_agents`, `tinder_*`).
+- **Federation/mTLS** — Tailscale-verteilte Instanzen, signed-lineage
+  Bundles, Trust-Roots, Revocations, Peer-Directory (`/federation/*` auf
+  `:8788`, `federation_*`, `trust_*`, `peer_*`, `revocation_*`,
+  `genome_keygen|sign|verify|refresh_merkle`).
+- **Teacher** — File-basierte Plans/Escalations für openClaw-Plugin
+  (`/teacher/*`, `~/.openclaw/teacher-{plans,escalations}/`).
 
 ## Projektstruktur (Ziel)
 

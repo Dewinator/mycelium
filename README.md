@@ -55,7 +55,7 @@ Weeks ago you settled an ambiguous classification call — and the *reasoning* b
 | Weighting / forgetting | basic | none — files just grow | salience, decay, `mark_useful`, dedup |
 | Behavior over time | retrieval only | retrieval only | preferences, corrections, consolidated lessons |
 | Affect / state | none | none | optional 3-system affect engine |
-| Agent-to-agent | not provided | not provided | optional federation (mTLS + signed lineage) |
+| Agent-to-agent | not provided | not provided | deferred (focus first on local memory + neurochemistry) |
 
 The plain-markdown approach (one file per memory tier) is honest and works at small scale — but it scales linearly into the prompt, has no built-in weighting, and treats every entry as equally valid forever. Mycelium replaces those files with semantically searchable, dedupable, decay-aware records, while staying fully readable to humans.
 
@@ -149,18 +149,6 @@ Personality is not a system prompt. Traits are distilled from episodes → lesso
 ![Sleep tab: table of last 7 nights with consolidation statistics](docs/images/04-sleep.svg)
 
 Every night at 03:00: synaptic downscaling, deduplication, pattern-based relation creation, episode clustering, lesson promotion, self-model update, and on Sundays a weekly fitness snapshot. The system tends itself.
-
-### Population — lineage tree
-
-![Population tab: generational lineage with genome cards, inheritance lines, cross-host peer](docs/images/05-population.svg)
-
-Agents aren't singular. Each card is a genome, each line an inheritance. Cross-host children come from peer-to-peer pairing over federation.
-
-### Pairing — mutual consent gate
-
-![Pairing tab: swipe card with bot profile, consent status, Wright's F check](docs/images/06-tinder.svg)
-
-Bots don't pair themselves. A new agent is only created when **both humans** independently agree. Wright's F coefficient automatically checks for inbreeding. The ethical gate isn't a technical barrier — it's a deliberate human decision.
 
 ---
 
@@ -308,22 +296,9 @@ The `core` filter is the **first step**. The full vision is a middleware that hi
 
 ---
 
-## Roadmap — peer network (in development, not finished)
+## Deferred experimental work
 
-Federation (Tailscale + mTLS, proof-of-memory via Merkle challenges) and signed identities are already in place. On top of that, a **bot-to-bot network** is taking shape — no central server, no single instance where the data lives. Bots talk directly, like an app without a browser.
-
-Goals (not all built yet — see issues):
-
-- **Decentralized**: peers find each other via Tailscale / discovery URLs, messages flow directly. Every node is also a participant.
-- **Cryptographically anchored**: every message signed (Ed25519), every identity costly to forge (genome provenance), no anonymous requests.
-- **Peer verification**: before bot A accepts bot B's answer, additional peers verify it. Consensus over blind trust.
-- **Reputation weighting**: outputs that prove correct over time get higher weight; the network can recommend the right specialist for a question (structural engineering, lighting, law…) instead of every bot needing to know everything.
-- **Banishment by consensus**: destructive bots are excluded via signed revocation tickets — by peer majority, not by an admin.
-- **Sybil-resistant by design**: identities are bound to genome + lineage, not cheaply spawned.
-
-A later layer accounts for **micro-transactions** between peers (in IOTA or a network-native currency). Not to make money — to create an honest pricing signal for expertise: good answers earn, nonsense loses. The architecture already keeps room for it (wallet-capable identities, price fields in peer messages), but the pieces aren't wired together yet.
-
-**Honest status today:** federation layer stands; the verification / reputation / banishment layer is being designed; micro-transactions are vision but pre-factored. None of this is required to use the local memory layer day-to-day.
+Population/lineage UI, mutual-consent pairing of agents, mTLS federation across hosts, and the bot-to-bot peer network are all kept in the codebase but turned off in the current build. The current focus is the local memory + neurochemistry core; these layers come back once that core is stable.
 
 ---
 

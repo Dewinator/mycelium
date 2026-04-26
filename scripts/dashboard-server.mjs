@@ -82,6 +82,21 @@ const GUARD      = process.env.GUARD_URL       || "http://127.0.0.1:18793";
 const PORT       = Number(process.env.PORT || 8787);
 const HOST       = process.env.HOST || "0.0.0.0";
 
+// --- feature flags (Reed 2026-04-26 product pivot) ---------------------------
+// These four feature areas are kept in the codebase but hidden from the user
+// surface until the neurochemistry / memory core is settled. Routes return 410
+// Gone when disabled. Flip the env to true to re-enable a single area.
+const FEATURE = {
+  pairing:    process.env.MYCELIUM_FEATURE_PAIRING    === "1",
+  population: process.env.MYCELIUM_FEATURE_POPULATION === "1",
+  federation: process.env.MYCELIUM_FEATURE_FEDERATION === "1",
+  teacher:    process.env.MYCELIUM_FEATURE_TEACHER    === "1",
+};
+function deferred(res, name) {
+  res.writeHead(410, { "Content-Type": "application/json" });
+  res.end(JSON.stringify({ error: "feature_deferred", feature: name }));
+}
+
 // --- static file serving (just the dashboard dir) ---
 const MIME = {
   ".html": "text/html; charset=utf-8",
@@ -1408,30 +1423,33 @@ const server = http.createServer((req, res) => {
   if (req.url.startsWith("/api/"))            return proxyApi(req, res);
   if (req.url.startsWith("/belief"))          return proxyBelief(req, res);
   if (req.url.startsWith("/guard"))           return proxyGuard(req, res);
-  if (req.url.startsWith("/tinder/cards"))    return handleTinderCards(req, res);
-  if (req.url === "/tinder/swipe")            return handleTinderSwipe(req, res);
-  if (req.url.startsWith("/tinder/matches"))  return handleTinderMatches(req, res);
+  if (req.url.startsWith("/tinder/")) {
+    if (!FEATURE.pairing) return deferred(res, "pairing");
+    if (req.url.startsWith("/tinder/cards"))    return handleTinderCards(req, res);
+    if (req.url === "/tinder/swipe")            return handleTinderSwipe(req, res);
+    if (req.url.startsWith("/tinder/matches"))  return handleTinderMatches(req, res);
+  }
   if (req.url === "/affect")                  return handleAffect(req, res);
   if (req.url === "/skills")                  return handleSkills(req, res);
   if (req.url === "/causal")                  return handleCausal(req, res);
   if (req.url === "/motivation/stats")        return handleMotivationStats(req, res);
   if (req.url.startsWith("/motivation"))      return proxyMotivation(req, res);
   if (req.url === "/self-model")              return handleSelfModel(req, res);
-  if (req.url === "/genomes")                 return handleGenomes(req, res);
+  if (req.url === "/genomes")                 return FEATURE.population ? handleGenomes(req, res) : deferred(res, "population");
   if (req.url === "/sleep")                   return handleSleep(req, res);
   if (req.url === "/agents")                  return handleAgents(req, res);
   if (req.url === "/matches")                 return handleMatches(req, res);
   if (req.url === "/provision")               return handleProvision(req, res);
-  if (req.url === "/breed")                   return handleBreed(req, res);
-  if (req.url.startsWith("/genome-details"))  return handleGenomeDetails(req, res);
-  if (req.url === "/genome-lifecycle")        return handleGenomeLifecycle(req, res);
-  if (req.url.startsWith("/fitness-history")) return handleFitnessHistory(req, res);
-  if (req.url === "/fitness-snapshot")        return handleFitnessSnapshot(req, res);
-  if (req.url === "/inheritance" || req.url.startsWith("/inheritance?")) return handleInheritance(req, res);
+  if (req.url === "/breed")                   return FEATURE.pairing    ? handleBreed(req, res)            : deferred(res, "pairing");
+  if (req.url.startsWith("/genome-details"))  return FEATURE.population ? handleGenomeDetails(req, res)   : deferred(res, "population");
+  if (req.url === "/genome-lifecycle")        return FEATURE.population ? handleGenomeLifecycle(req, res) : deferred(res, "population");
+  if (req.url.startsWith("/fitness-history")) return FEATURE.population ? handleFitnessHistory(req, res)  : deferred(res, "population");
+  if (req.url === "/fitness-snapshot")        return FEATURE.population ? handleFitnessSnapshot(req, res) : deferred(res, "population");
+  if (req.url === "/inheritance" || req.url.startsWith("/inheritance?")) return FEATURE.population ? handleInheritance(req, res) : deferred(res, "population");
   if (req.url === "/emergence" || req.url.startsWith("/emergence?")) return handleEmergence(req, res);
   if (req.url === "/prime" || req.url.startsWith("/prime?")) return handlePrime(req, res);
   if (req.url === "/narrate" || req.url.startsWith("/narrate?")) return handleNarrate(req, res);
-  if (req.url === "/federation/status")       return handleFederationStatus(req, res);
+  if (req.url === "/federation/status")       return FEATURE.federation ? handleFederationStatus(req, res) : deferred(res, "federation");
   if (req.url.startsWith("/neurochemistry"))   return handleNeurochemistry(req, res);
   if (req.url.startsWith("/relations-graph"))  return handleRelationsGraph(req, res);
   if (req.url.startsWith("/memory/"))          return handleMemoryById(req, res);
@@ -1439,12 +1457,15 @@ const server = http.createServer((req, res) => {
   // mycelium liest Files unter ~/.openclaw/teacher-{plans,escalations}/.
   // Soft-couples mycelium ↔ openClaw via Filesystem; akzeptabel solange
   // Teacher-Mode openClaw-Plugin ist (siehe DESIGN-goal-driven-shutdown.md).
-  if (req.url === "/teacher/plans" || req.url.startsWith("/teacher/plans?")) return handleTeacherPlans(req, res);
-  let m = req.url.match(/^\/teacher\/plans\/([^\/?]+)$/);
-  if (m) return handleTeacherPlanById(req, res, m[1]);
-  if (req.url === "/teacher/escalations" || req.url.startsWith("/teacher/escalations?")) return handleTeacherEscalations(req, res);
-  m = req.url.match(/^\/teacher\/escalations\/([^\/]+)\/resolve$/);
-  if (m) return handleTeacherEscalationResolve(req, res, m[1]);
+  if (req.url.startsWith("/teacher/")) {
+    if (!FEATURE.teacher) return deferred(res, "teacher");
+    if (req.url === "/teacher/plans" || req.url.startsWith("/teacher/plans?")) return handleTeacherPlans(req, res);
+    let m = req.url.match(/^\/teacher\/plans\/([^\/?]+)$/);
+    if (m) return handleTeacherPlanById(req, res, m[1]);
+    if (req.url === "/teacher/escalations" || req.url.startsWith("/teacher/escalations?")) return handleTeacherEscalations(req, res);
+    m = req.url.match(/^\/teacher\/escalations\/([^\/]+)\/resolve$/);
+    if (m) return handleTeacherEscalationResolve(req, res, m[1]);
+  }
   if (req.method !== "GET" && req.method !== "HEAD") {
     res.writeHead(405); res.end("method not allowed"); return;
   }
@@ -1482,7 +1503,7 @@ try {
   console.error(`federation cert init FAILED — federation disabled: ${e instanceof Error ? e.message : String(e)}`);
 }
 
-if (hostCert) {
+if (hostCert && FEATURE.federation) {
   // Register host_identity in DB (best-effort; non-fatal).
   try {
     const r = await fetch(`${UPSTREAM}/rpc/host_identity_set`, {

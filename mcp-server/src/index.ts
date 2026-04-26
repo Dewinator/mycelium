@@ -172,6 +172,17 @@ import {
 const SUPABASE_URL = process.env.SUPABASE_URL ?? "http://localhost:54321";
 const SUPABASE_KEY = process.env.SUPABASE_KEY ?? "";
 
+// Feature flags (Reed 2026-04-26 product pivot). These four areas are kept in
+// the codebase but their MCP tool registrations are gated off by default until
+// the neurochemistry / memory core is settled. Flip the env to "1" to expose
+// the corresponding tools again.
+const FEATURE = {
+  pairing:    process.env.MYCELIUM_FEATURE_PAIRING    === "1",
+  population: process.env.MYCELIUM_FEATURE_POPULATION === "1",
+  federation: process.env.MYCELIUM_FEATURE_FEDERATION === "1",
+  teacher:    process.env.MYCELIUM_FEATURE_TEACHER    === "1",
+};
+
 if (!SUPABASE_KEY) {
   console.error(
     "SUPABASE_KEY is required. Set it as an environment variable or in your MCP server config."
@@ -712,35 +723,35 @@ server.tool(
   withErrorHandling((input) => updateSelfModel(identityService, updateSelfModelSchema.parse(input)))
 );
 
-server.tool(
+if (FEATURE.population) server.tool(
   "list_agents",
   "List all recorded agent genomes (values, interests, parameters, latest fitness). Generation 1 is the production agent.",
   listAgentsSchema.shape,
   withErrorHandling((input) => listAgents(identityService, listAgentsSchema.parse(input)))
 );
 
-server.tool(
+if (FEATURE.population) server.tool(
   "snapshot_fitness",
   "Compute and persist a fitness snapshot for a genome: avg_outcome*0.4 + growth*0.25 + breadth*0.2 + autonomy*0.15. Window defaults to 30 days.",
   snapshotFitnessSchema.shape,
   withErrorHandling((input) => snapshotFitness(identityService, snapshotFitnessSchema.parse(input)))
 );
 
-server.tool(
+if (FEATURE.pairing) server.tool(
   "breed_agents",
   "Create a new agent genome by crossing two parents. Inherits BOTH the instinct layer (weighted-union values/interests, averaged + Gaussian-mutated numeric traits) AND the knowledge layer (full union of parents' memories/experiences/lessons/soul-traits — child starts with complete inherited knowledge, not empty mind). Pass inheritance_mode='none' for old behaviour. REQUIRES explicit consent: either env OPENCLAW_ALLOW_BREEDING=1 or allow_breeding=true in the call. Ethical gate — the operator approves reproduction.",
   breedAgentsSchema.shape,
   withErrorHandling((input) => breedAgents(identityService, breedAgentsSchema.parse(input)))
 );
 
-server.tool(
+if (FEATURE.population) server.tool(
   "genome_inheritance",
   "Show how much knowledge a genome has inherited from its parents: counts of memories/experiences/lessons/soul-traits plus a sample preview.",
   genomeInheritanceSchema.shape,
   withErrorHandling((input) => genomeInheritance(identityService, genomeInheritanceSchema.parse(input)))
 );
 
-server.tool(
+if (FEATURE.population) server.tool(
   "collect_current_knowledge",
   "Freeze the current global pool of memories/experiences/lessons/soul-traits as this genome's inherited knowledge. Safety-gated (allow=true required). Useful once for Gen-1 to mark its starting-point snapshot before breeding its first child.",
   collectCurrentKnowledgeSchema.shape,
@@ -769,28 +780,28 @@ server.tool(
 );
 
 // --- tinder / anti-inbreeding (Migration 034 + 035) ----------------------
-server.tool(
+if (FEATURE.pairing) server.tool(
   "tinder_check_inbreeding",
   "Compute Wright's F coefficient between two genomes. Returns blocked=true if F > 0.125 (cousins-level). Use BEFORE proposing a breeding pair.",
   tinderInbreedingCheckSchema.shape,
   withErrorHandling((input) => tinderInbreedingCheck(identityService, tinderInbreedingCheckSchema.parse(input)))
 );
 
-server.tool(
+if (FEATURE.pairing) server.tool(
   "tinder_cards",
   "List candidate genomes for breeding/swiping, ranked by diversity_score = (1-F) × cosine_distance(profile_embeddings). Excludes inbreeding-blocked candidates by default. Already-swiped candidates excluded too unless include_seen=true.",
   tinderCardsSchema.shape,
   withErrorHandling((input) => tinderCards(identityService, tinderCardsSchema.parse(input)))
 );
 
-server.tool(
+if (FEATURE.pairing) server.tool(
   "tinder_population_health",
   "Diagnose the genome pool: avg pairwise centroid distance, avg/max Wright's F, and migrant_recommended flag (true when diversity is low). Use periodically to detect inbreeding drift.",
   tinderPopulationHealthSchema.shape,
   withErrorHandling((input) => tinderPopulationHealth(identityService, tinderPopulationHealthSchema.parse(input)))
 );
 
-server.tool(
+if (FEATURE.pairing) server.tool(
   "tinder_refresh_profile",
   "Recompute a genome's profile_embedding (centroid of its memories). Run after a genome has accumulated significant new memory, or to bootstrap a freshly-bred child.",
   tinderRefreshProfileSchema.shape,
@@ -798,28 +809,28 @@ server.tool(
 );
 
 // --- PKI / signed lineage (Migration 037) -------------------------------
-server.tool(
+if (FEATURE.federation) server.tool(
   "genome_keygen",
   "Generate an Ed25519 keypair for a genome. Privkey is stored at ~/.openclaw/keys/<id>.key (0600), pubkey goes to the DB. Idempotent — refuses to overwrite unless force=true (which would invalidate all prior signatures).",
   genomeKeygenSchema.shape,
   withErrorHandling((input) => genomeKeygen(identityService, genomeKeygenSchema.parse(input)))
 );
 
-server.tool(
+if (FEATURE.federation) server.tool(
   "genome_sign_profile",
   "Sign the genome's canonical profile payload (values, interests, traits, centroid hash) with its privkey. Run after profile changes (new keygen, refreshed centroid, edited values).",
   genomeSignProfileSchema.shape,
   withErrorHandling((input) => genomeSignProfile(identityService, genomeSignProfileSchema.parse(input)))
 );
 
-server.tool(
+if (FEATURE.federation) server.tool(
   "genome_refresh_merkle",
   "Build a SHA-256 merkle root over all memories owned by this genome (created_by_agent_id). Stores the root + leaf-count for later inclusion-proofs. Skip-able for genomes with no own memories.",
   genomeRefreshMerkleSchema.shape,
   withErrorHandling((input) => genomeRefreshMerkle(identityService, genomeRefreshMerkleSchema.parse(input)))
 );
 
-server.tool(
+if (FEATURE.federation) server.tool(
   "genome_verify",
   "Verify a genome's PKI artefacts: profile self-signature against pubkey, birth-certificate signatures against parent pubkeys, optionally re-build the memory merkle root and compare. Returns per-check verdicts and human-readable notes.",
   genomeVerifySchema.shape,
@@ -827,42 +838,42 @@ server.tool(
 );
 
 // --- federation Phase 2 (Migration 038) ---------------------------------
-server.tool(
+if (FEATURE.federation) server.tool(
   "trust_add",
   "Add a Trust-Root to the allowlist. Bundles importing from a foreign source are accepted only if their lineage chain reaches a key on this list (or the source pubkey itself is trusted).",
   trustAddSchema.shape,
   withErrorHandling((input) => trustAdd(federationService, trustAddSchema.parse(input)))
 );
 
-server.tool(
+if (FEATURE.federation) server.tool(
   "trust_list",
   "List configured Trust-Roots (active by default; pass include_revoked=true for the full history).",
   trustListSchema.shape,
   withErrorHandling((input) => trustList(federationService, trustListSchema.parse(input)))
 );
 
-server.tool(
+if (FEATURE.federation) server.tool(
   "trust_revoke",
   "Revoke a key (Trust-Root or any other key). Future imports referencing this key in their lineage will be rejected.",
   trustRevokeSchema.shape,
   withErrorHandling((input) => trustRevoke(federationService, trustRevokeSchema.parse(input)))
 );
 
-server.tool(
+if (FEATURE.federation) server.tool(
   "federation_export",
   "Serialize a genome plus its full lineage chain (with all signatures + birth-certificates) into a portable JSON bundle. Privkeys NEVER leave the host. Memories are NOT included in Phase 2 (Phase 3 will add PoM-verified memory transfer).",
   federationExportSchema.shape,
   withErrorHandling((input) => federationExport(federationService, federationExportSchema.parse(input)))
 );
 
-server.tool(
+if (FEATURE.federation) server.tool(
   "federation_import",
   "Verify and import a foreign genome bundle. Walks the lineage chain (every profile-sig + birth-cert), checks revocation, finds a Trust-Root anchor, runs classify_content on free-text fields, and only then inserts the genome with federated_from set. Every attempt is audited.",
   federationImportSchema.shape,
   withErrorHandling((input) => federationImport(federationService, federationImportSchema.parse(input)))
 );
 
-server.tool(
+if (FEATURE.federation) server.tool(
   "federation_recent",
   "Show the recent federation_imports audit log with decisions and reasons.",
   federationRecentSchema.shape,
@@ -919,42 +930,42 @@ server.tool(
   withErrorHandling((input) => neurochemReset(neurochemistryService, neurochemResetSchema.parse(input)))
 );
 
-server.tool(
+if (FEATURE.federation) server.tool(
   "federation_pull",
   "Pull a genome bundle from a peer host over mTLS and import it locally. Requires the peer's host pubkey to be in trust_roots (kind=host).",
   federationPullSchema.shape,
   withErrorHandling((input) => federationPull(federationService, federationPullSchema.parse(input)))
 );
 
-server.tool(
+if (FEATURE.federation) server.tool(
   "federation_push",
   "Export a local genome and push it to a peer's /federation/import endpoint. Peer decides whether to accept based on its own trust roots.",
   federationPushSchema.shape,
   withErrorHandling((input) => federationPush(federationService, federationPushSchema.parse(input)))
 );
 
-server.tool(
+if (FEATURE.federation) server.tool(
   "revocation_issue",
   "Issue a signed revocation certificate (Ed25519). signer_label must have its privkey locally; allowed when signer is the target (self-revoke) or when signer is an active trust-root with kind genome/group. The revocation propagates via federation_sync_revocations.",
   revocationIssueSchema.shape,
   withErrorHandling((input) => revocationIssue(identityService, revocationIssueSchema.parse(input)))
 );
 
-server.tool(
+if (FEATURE.federation) server.tool(
   "federation_sync_revocations",
   "Pull a peer's signed revocation list, verify each signature + signer authority (self-revoke or local trust-root), merge accepted ones into our revoked_keys. Returns counts per verdict category.",
   federationSyncRevocationsSchema.shape,
   withErrorHandling((input) => federationSyncRevocations(federationService, federationSyncRevocationsSchema.parse(input)))
 );
 
-server.tool(
+if (FEATURE.federation) server.tool(
   "peer_upsert",
   "Register or update a federation peer in the local directory. Set auto_sync_enabled=true to include it in the periodic revocation-sync loop running in the dashboard server.",
   peerUpsertSchema.shape,
   withErrorHandling((input) => peerUpsert(federationService, peerUpsertSchema.parse(input)))
 );
 
-server.tool(
+if (FEATURE.federation) server.tool(
   "peers_list",
   "List known federation peers (inbound + outbound directory). Pass only_autosync=true to see just the ones in the auto-sync loop.",
   peersListSchema.shape,

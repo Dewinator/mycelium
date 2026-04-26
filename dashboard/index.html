@@ -510,14 +510,20 @@
       <button class="tab" data-tab="motivation" data-i18n="nav.motivation">motivation</button>
       <button class="tab" data-tab="identity" data-i18n="nav.identity">identität</button>
       <button class="tab" data-tab="sleep" data-i18n="nav.sleep">schlaf</button>
+      <!-- DEFERRED 2026-04-26 — re-enable when neurochemistry core is stable
       <button class="tab" data-tab="population" data-i18n="nav.population">population</button>
       <button class="tab" data-tab="tinder" data-i18n="nav.tinder">tinder</button>
+      -->
       <button class="tab" data-tab="guard" data-i18n="nav.guard">guard</button>
       <button class="tab" data-tab="emergence" data-i18n="nav.emergence">emergenz</button>
+      <!-- DEFERRED 2026-04-26
       <button class="tab" data-tab="federation" data-i18n="nav.federation">föderation</button>
+      -->
       <button class="tab" data-tab="neurochemistry" data-i18n="nav.neurochemistry">neurochemie</button>
       <button class="tab" data-tab="synapses" data-i18n="nav.synapses">synapsen</button>
+      <!-- DEFERRED 2026-04-26
       <button class="tab" data-tab="teacher" data-i18n="nav.teacher">teacher</button>
+      -->
     </nav>
   </aside>
   <div class="backdrop" id="sidebar-backdrop"></div>
@@ -797,6 +803,7 @@
     </section>
   </div><!-- /panel-sleep -->
 
+  <!-- DEFERRED 2026-04-26 — panel re-enabled together with the Pairing/Schwarm direction.
   <div class="tab-panel" id="panel-population">
     <section class="card">
       <h2 style="display:flex;align-items:center;justify-content:space-between;gap:12px">
@@ -825,6 +832,7 @@
       <div id="tree-wrap" style="overflow:auto;max-width:100%"></div>
     </section>
   </div><!-- /panel-population -->
+  -->
 
   <div id="breed-modal" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,0.6);z-index:100;align-items:center;justify-content:center">
     <div class="card" style="max-width:640px;width:calc(100% - 32px);max-height:90vh;overflow:auto">
@@ -921,6 +929,7 @@
     </div>
   </div>
 
+  <!-- DEFERRED 2026-04-26
   <div class="tab-panel" id="panel-tinder">
     <section class="card">
       <h2 style="display:flex;align-items:center;justify-content:space-between;gap:12px">
@@ -944,6 +953,7 @@
       <div id="tinder-matches-list"></div>
     </section>
   </div><!-- /panel-tinder -->
+  -->
 
   <div class="tab-panel" id="panel-guard">
     <section class="card">
@@ -979,6 +989,7 @@
     </section>
   </div><!-- /panel-emergence -->
 
+  <!-- DEFERRED 2026-04-26
   <div class="tab-panel" id="panel-federation">
     <section class="card">
       <h2>föderation (phase 3)</h2>
@@ -1006,6 +1017,7 @@
       <table class="mem" id="federation-audit"></table>
     </section>
   </div><!-- /panel-federation -->
+  -->
 
   <div class="tab-panel" id="panel-neurochemistry">
     <section class="card">
@@ -1156,6 +1168,7 @@
     </div>
   </div><!-- /panel-synapses -->
 
+  <!-- DEFERRED 2026-04-26
   <div class="tab-panel" id="panel-teacher">
     <section class="card">
       <h2>offene eskalationen <span class="sub" id="tch-esc-count">(0)</span></h2>
@@ -1173,6 +1186,7 @@
       <div id="tch-plan-list">–</div>
     </section>
   </div><!-- /panel-teacher -->
+  -->
 
   <!-- Teacher Escalation Modal -->
   <div id="tch-modal" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,0.55);z-index:40;align-items:center;justify-content:center">
