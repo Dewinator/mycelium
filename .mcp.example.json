@@ -10,8 +10,8 @@
         "OLLAMA_URL": "http://localhost:11434",
         "EMBEDDING_MODEL": "nomic-embed-text",
         "EMBEDDING_DIMENSIONS": "768",
-        "OPENCLAW_AGENT_BUS": "0",
-        "OPENCLAW_AGENT_CONSCIENCE": "0"
+        "MYCELIUM_AGENT_BUS": "0",
+        "MYCELIUM_AGENT_CONSCIENCE": "0"
       }
     }
   }

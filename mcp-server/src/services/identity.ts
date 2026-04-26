@@ -493,8 +493,8 @@ export class IdentityService {
 
     // ---- PKI: Keypair + Birth-Certificate + Profile-Sig --------------------
     // Phase 1: beide Eltern liegen lokal — wenn nicht, fail loud.
-    // Bypass via OPENCLAW_SKIP_PKI=1 (für Test-Pfade ohne Crypto).
-    if (process.env.OPENCLAW_SKIP_PKI !== "1") {
+    // Bypass via MYCELIUM_SKIP_PKI=1 (für Test-Pfade ohne Crypto).
+    if (process.env.MYCELIUM_SKIP_PKI !== "1") {
       try {
         await this._issueChildPki({
           child: data as Genome,
@@ -731,7 +731,7 @@ export class IdentityService {
   // ---- PKI / signed lineage (Migration 037) ---------------------------
   /**
    * Generates an Ed25519 keypair for the genome, persists the privkey to
-   * ~/.openclaw/keys/<id>.key (0600), and writes the pubkey to the DB.
+   * ~/.mycelium/keys/<id>.key (0600), and writes the pubkey to the DB.
    * Refuses if a pubkey already exists unless force=true.
    */
   async genomeKeygen(label: string, force = false): Promise<{

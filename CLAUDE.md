@@ -174,38 +174,35 @@ Tabellen ab (`experiences`, `memory_events`, `skill_outcomes`, `stimuli`) und
 läuft per Trigger, nicht per MCP-Call. Formelspezifikation vor Migration:
 [docs/affect-observables.md](docs/affect-observables.md).
 
-### Phase A+B — Fundament + Reproduzierbarkeit (erledigt)
-- agents-Registry + Heartbeat (Migration 028)
-- Provenance-Tags auf memories/experiences/lessons/soul_traits (029)
-- `scripts/provision-instance.mjs` — reproduzierbarer Installer
+## Roadmap (Reed 2026-04-26)
 
-### Aktuelle Richtung (Reed 2026-04-26 Pivot)
+Klare Reihenfolge — keine Vermischung:
 
-Fokus liegt auf dem Neurochemie-Kern: persistentes Vektorgedächtnis,
-Affekt-Regulator, 3-System-Neurochemie, REM/SWS-Sleep-Cycles, Hub-Architektur,
-Spreading Activation, Emergenz-Indikatoren. Das Ziel ist eine eigenständige
-Anwendung, die ohne externen MCP-Client (Claude Code, openClaw, Codex) nutzbar
-ist — eingebaute LLM-Einbindung, Agent-Erstellungs-UI, Aufgaben-Verwaltung.
-MCP bleibt als optionale Schnittstelle für Flexibilität.
+1. **Gehirn perfektionieren.** Wissen, Erfahrung, Motivation, Stimmung,
+   Neugier, Vergessen, Schlafen, Vertiefen. Persistentes Vektorgedächtnis,
+   Affekt-Regulator, 3-System-Neurochemie, REM/SWS-Sleep-Cycles,
+   Hub-Architektur, Spreading Activation, Emergenz-Indikatoren.
+2. **Installation so einfach wie möglich.** `install.sh` mit allen
+   Abhängigkeiten — Docker-Stack, Ollama-Modell, MCP-Server fertig gebaut.
+3. **Dashboard verbessern.** Lesbar, vollständig, Anfänger-tauglich.
+4. **Paarung.** (deferred — siehe `src/deferred/`, `migrations.deferred/`,
+   Branch `archive/swarm-deferred`).
+5. **Schwarm + Vererbung + Föderation.** (deferred — gleiche Stellen).
 
-### Deferred Experimental (Code im Repo, Feature-Flags OFF)
+Mehrere Gehirne entstehen durch mehrere mycelium-Instanzen — jeder Anwender
+provisioniert pro Rolle (privat / coden / kochen / …) eine Instanz und
+verbindet seinen MCP-Client damit. Das Gehirn weiß nichts von anderen
+Gehirnen. Schwarm/Föderation kommt später als zusätzlicher Layer obendrauf.
 
-Die folgenden Schichten sind gebaut aber im aktuellen Build versteckt
-(Env-Vars `MYCELIUM_FEATURE_PAIRING|POPULATION|FEDERATION|TEACHER`,
-default `0`). Reaktivierung wenn der Neurochemie-Kern stabil ist.
+### Deferred (geparkter Code)
 
-- **Population/Genome-Stammbaum** — Lineage-Tabelle, Fitness-Trends,
-  Lifecycle-Aktionen (`/genomes`, `/fitness-history`, `/genome-lifecycle`,
-  `list_agents`, `snapshot_fitness`, `genome_inheritance`, `collect_current_knowledge`).
-- **Pairing/Tinder** — Mutual-Consent-Swiping zwischen Bots zweier User,
-  Wright's-F-Inbreeding-Check, Breed-Modal (`/tinder/*`, `/breed`,
-  `breed_agents`, `tinder_*`).
-- **Federation/mTLS** — Tailscale-verteilte Instanzen, signed-lineage
-  Bundles, Trust-Roots, Revocations, Peer-Directory (`/federation/*` auf
-  `:8788`, `federation_*`, `trust_*`, `peer_*`, `revocation_*`,
-  `genome_keygen|sign|verify|refresh_merkle`).
-- **Teacher** — File-basierte Plans/Escalations für openClaw-Plugin
-  (`/teacher/*`, `~/.openclaw/teacher-{plans,escalations}/`).
+Pairing/Population/Federation/Teacher sind vollständig vom aktiven Build
+getrennt:
+
+- Migrationen unter `supabase/migrations.deferred/`
+- TS-Code unter `mcp-server/src/deferred/` (vom `tsconfig` ausgeschlossen)
+- OpenClaw-spezifischer Workspace-Provisioner unter `scripts/deferred/openclaw/`
+- Voller Stand erhalten auf Branch `archive/swarm-deferred`
 
 ## Projektstruktur (Ziel)
 

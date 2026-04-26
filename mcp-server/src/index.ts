@@ -120,7 +120,8 @@ import { IdentityService } from "./services/identity.js";
 import { RegistryService } from "./services/registry.js";
 import { GuardService } from "./services/guard.js";
 import { NeurochemistryService } from "./services/neurochemistry.js";
-import { FederationService } from "./services/federation.js";
+// DEFERRED 2026-04-26 (focus on brain core, swarm/federation later):
+// import { FederationService } from "./services/federation.js";
 import {
   neurochemUpdateSchema, neurochemUpdate,
   neurochemGetSchema, neurochemGet,
@@ -130,19 +131,21 @@ import {
   neurochemHistorySchema, neurochemHistory,
   neurochemResetSchema, neurochemReset,
 } from "./tools/neurochemistry.js";
-import {
-  trustAddSchema, trustAdd,
-  trustListSchema, trustList,
-  trustRevokeSchema, trustRevoke,
-  federationExportSchema, federationExport,
-  federationImportSchema, federationImport,
-  federationRecentSchema, federationRecent,
-  federationPullSchema, federationPull,
-  federationPushSchema, federationPush,
-  federationSyncRevocationsSchema, federationSyncRevocations,
-  peerUpsertSchema, peerUpsert,
-  peersListSchema, peersList,
-} from "./tools/federation.js";
+// DEFERRED 2026-04-26 — federation/peer/trust tools are parked under
+// src/deferred/ until the brain core is settled (see roadmap).
+// import {
+//   trustAddSchema, trustAdd,
+//   trustListSchema, trustList,
+//   trustRevokeSchema, trustRevoke,
+//   federationExportSchema, federationExport,
+//   federationImportSchema, federationImport,
+//   federationRecentSchema, federationRecent,
+//   federationPullSchema, federationPull,
+//   federationPushSchema, federationPush,
+//   federationSyncRevocationsSchema, federationSyncRevocations,
+//   peerUpsertSchema, peerUpsert,
+//   peersListSchema, peersList,
+// } from "./tools/federation.js";
 import {
   classifyContentSchema, classifyContent,
   guardStatusSchema, guardStatus,
@@ -150,38 +153,39 @@ import {
 import {
   getSelfModelSchema, getSelfModel,
   updateSelfModelSchema, updateSelfModel,
-  listAgentsSchema, listAgents,
-  snapshotFitnessSchema, snapshotFitness,
-  breedAgentsSchema, breedAgents,
-  genomeInheritanceSchema, genomeInheritance,
-  collectCurrentKnowledgeSchema, collectCurrentKnowledge,
   flagEmergenceSchema, flagEmergence,
   listEmergenceSchema, listEmergence,
   resolveEmergenceSchema, resolveEmergence,
-  tinderInbreedingCheckSchema, tinderInbreedingCheck,
-  tinderCardsSchema, tinderCards,
-  tinderPopulationHealthSchema, tinderPopulationHealth,
-  tinderRefreshProfileSchema, tinderRefreshProfile,
-  genomeKeygenSchema, genomeKeygen,
-  genomeSignProfileSchema, genomeSignProfile,
-  genomeRefreshMerkleSchema, genomeRefreshMerkle,
-  genomeVerifySchema, genomeVerify,
-  revocationIssueSchema, revocationIssue,
+  // DEFERRED 2026-04-26 — population / pairing / federation-PKI tools.
+  // The handlers stay in tools/identity.ts; only the MCP exposure is parked.
+  // listAgentsSchema, listAgents,
+  // snapshotFitnessSchema, snapshotFitness,
+  // breedAgentsSchema, breedAgents,
+  // genomeInheritanceSchema, genomeInheritance,
+  // collectCurrentKnowledgeSchema, collectCurrentKnowledge,
+  // tinderInbreedingCheckSchema, tinderInbreedingCheck,
+  // tinderCardsSchema, tinderCards,
+  // tinderPopulationHealthSchema, tinderPopulationHealth,
+  // tinderRefreshProfileSchema, tinderRefreshProfile,
+  // genomeKeygenSchema, genomeKeygen,
+  // genomeSignProfileSchema, genomeSignProfile,
+  // genomeRefreshMerkleSchema, genomeRefreshMerkle,
+  // genomeVerifySchema, genomeVerify,
+  // revocationIssueSchema, revocationIssue,
 } from "./tools/identity.js";
 
 const SUPABASE_URL = process.env.SUPABASE_URL ?? "http://localhost:54321";
 const SUPABASE_KEY = process.env.SUPABASE_KEY ?? "";
 
-// Feature flags (Reed 2026-04-26 product pivot). These four areas are kept in
-// the codebase but their MCP tool registrations are gated off by default until
-// the neurochemistry / memory core is settled. Flip the env to "1" to expose
-// the corresponding tools again.
-const FEATURE = {
-  pairing:    process.env.MYCELIUM_FEATURE_PAIRING    === "1",
-  population: process.env.MYCELIUM_FEATURE_POPULATION === "1",
-  federation: process.env.MYCELIUM_FEATURE_FEDERATION === "1",
-  teacher:    process.env.MYCELIUM_FEATURE_TEACHER    === "1",
-};
+// DEFERRED 2026-04-26 — pairing / population / federation / teacher tool
+// registrations are parked. Files live under src/deferred/; revive when the
+// brain core is settled.
+// const FEATURE = {
+//   pairing:    process.env.MYCELIUM_FEATURE_PAIRING    === "1",
+//   population: process.env.MYCELIUM_FEATURE_POPULATION === "1",
+//   federation: process.env.MYCELIUM_FEATURE_FEDERATION === "1",
+//   teacher:    process.env.MYCELIUM_FEATURE_TEACHER    === "1",
+// };
 
 if (!SUPABASE_KEY) {
   console.error(
@@ -214,29 +218,30 @@ const guardService = new GuardService(
 );
 const neurochemistryService = new NeurochemistryService(SUPABASE_URL, SUPABASE_KEY);
 const relationsService      = new RelationsService(SUPABASE_URL, SUPABASE_KEY);
-const federationService = new FederationService(
-  SUPABASE_URL,
-  SUPABASE_KEY,
-  guardService,
-  process.env.OPENCLAW_HOST_ID ?? "self"
-);
+// DEFERRED 2026-04-26 — federation service parked until federation phase.
+// const federationService = new FederationService(
+//   SUPABASE_URL,
+//   SUPABASE_KEY,
+//   guardService,
+//   process.env.MYCELIUM_HOST_ID ?? "self"
+// );
 
-// --- agent registry: diese MCP-Instanz registriert sich als 'agent' ---------
+// --- agent registry: this MCP instance registers itself as 'agent' ---------
 // Two modes:
-//   (a) OPENCLAW_getAgentLabel() is set → backend/server kind. Registers
-//       eagerly with that label (LaunchAgents, cron workers, …).
-//   (b) OPENCLAW_getAgentLabel() is unset → client-session kind. Registers
-//       LAZILY in `server.oninitialized`, deriving the label from the MCP
-//       client's `clientInfo.name` (claude-code, openclaw, cursor, codex, …).
-//       Each connected client gets its own row instead of all sharing 'main'.
+//   (a) MYCELIUM_AGENT_LABEL is set → backend/server kind. Registers eagerly
+//       with that label (LaunchAgents, cron workers, …).
+//   (b) MYCELIUM_AGENT_LABEL is unset → client-session kind. Registers LAZILY
+//       in `server.oninitialized`, deriving the label from the MCP client's
+//       `clientInfo.name` (claude-code, cursor, codex, openclaw, …). Each
+//       connected client gets its own row instead of all sharing 'main'.
 import os from "node:os";
 import { homedir as _homedir } from "node:os";
 import { join as _join } from "node:path";
 import { deriveClientLabel } from "./services/client-identity.js";
-const AGENT_LABEL_ENV = process.env.OPENCLAW_AGENT_LABEL;
+const AGENT_LABEL_ENV = process.env.MYCELIUM_AGENT_LABEL;
 const AGENT_LABEL_EAGER = AGENT_LABEL_ENV ?? null;
-const GENOME_LABEL_ENV  = process.env.OPENCLAW_GENOME_LABEL ?? AGENT_LABEL_ENV ?? null;
-const WORKSPACE_PATH    = process.env.OPENCLAW_WORKSPACE_PATH ?? _join(_homedir(), ".openclaw", "workspace");
+const GENOME_LABEL_ENV  = process.env.MYCELIUM_GENOME_LABEL ?? AGENT_LABEL_ENV ?? null;
+const WORKSPACE_PATH    = process.env.MYCELIUM_WORKSPACE_PATH ?? _join(_homedir(), ".mycelium", "workspace");
 
 function buildRegistryConfig(opts: {
   label: string;
@@ -249,15 +254,11 @@ function buildRegistryConfig(opts: {
     genomeLabel:   opts.genomeLabel,
     workspacePath: WORKSPACE_PATH,
     version:       "0.1.0",
-    gatewayUrl:    process.env.OPENCLAW_GATEWAY_URL ?? undefined,
+    gatewayUrl:    process.env.MYCELIUM_GATEWAY_URL ?? undefined,
     ports: {
-      gateway:    parseInt(process.env.OPENCLAW_GATEWAY_PORT    ?? "18789", 10),
-      belief:     parseInt(process.env.OPENCLAW_BELIEF_PORT     ?? "18790", 10),
-      motivation: parseInt(process.env.OPENCLAW_MOTIVATION_PORT ?? "18792", 10),
-      dashboard:  parseInt(process.env.OPENCLAW_DASHBOARD_PORT  ?? "8787",  10),
-      cockpit:    parseInt(process.env.OPENCLAW_COCKPIT_PORT    ?? "8767",  10),
+      dashboard:  parseInt(process.env.MYCELIUM_DASHBOARD_PORT ?? "8787", 10),
     },
-    capabilities: (process.env.OPENCLAW_CAPABILITIES ?? "memory,soul,motivation,belief,sleep").split(","),
+    capabilities: (process.env.MYCELIUM_CAPABILITIES ?? "memory,soul,motivation,sleep").split(","),
     metadata: {
       started_at: new Date().toISOString(),
       registered_by: "mcp-server",
@@ -287,33 +288,25 @@ const getAgentLabel  = (): string => registryService?.cfg.label       ?? AGENT_L
 const getGenomeLabel = (): string => registryService?.cfg.genomeLabel ?? GENOME_LABEL_ENV ?? "main";
 
 const server = new McpServer({
-  name: "vector-memory",
+  name: "mycelium",
   version: "0.1.0",
 });
 
 // -------------------------------------------------------------------------
 // Tool-Profile-Filter
 //
-// Small local models (7-8B) collapse under the full 90-tool schema (~18k
-// tokens of pure tool declaration). This filter lets us expose a focused
-// subset by setting OPENCLAW_TOOL_PROFILE. The server still runs all tool
-// handlers — only the registration (what the model sees in its schema) is
-// scoped. Full server is untouched for Codex/Claude instances.
+// Small local models (7-8B) collapse under the full tool schema (~18k tokens
+// of pure tool declaration). This filter lets us expose a focused subset by
+// setting MYCELIUM_TOOL_PROFILE. The server still runs all tool handlers —
+// only the registration (what the model sees in its schema) is scoped.
 //
-//   full (default) — all 90+ tools
+//   full (default) — all tools
 //   core           — 6 tools covering the complete agent workflow
-//   core-plus      — core + engram-inspired memory-graph reasoning tools
-//                    (chain / why / memory_history / memory_neighbors /
-//                    memory_patterns / mark_used_in_response).
-//                    Target: mid-size capable models (Claude, GPT-4-class)
-//                    running inside OpenClaw — big enough to use relation
-//                    tools, small enough to not want the full federation /
-//                    genome / tinder surface.
-//
-// Additional profiles can be added as the Small-Model-Middleware roadmap
-// (see issues #N1–#N9) materialises.
+//   core-plus      — core + memory-graph reasoning tools (chain / why /
+//                    memory_history / memory_neighbors / memory_patterns /
+//                    mark_used_in_response). Target: mid-size capable models.
 // -------------------------------------------------------------------------
-const TOOL_PROFILE = (process.env.OPENCLAW_TOOL_PROFILE ?? "full").toLowerCase();
+const TOOL_PROFILE = (process.env.MYCELIUM_TOOL_PROFILE ?? "full").toLowerCase();
 
 const CORE_TOOLS = [
   "prime_context",
@@ -357,7 +350,7 @@ const _origTool: any = (server as any).tool.bind(server);
 };
 
 console.error(
-  `[tool-profile] OPENCLAW_TOOL_PROFILE=${TOOL_PROFILE}` +
+  `[tool-profile] MYCELIUM_TOOL_PROFILE=${TOOL_PROFILE}` +
     (_filterActive
       ? `  (registering ${_allowedTools.size} tools: ${[..._allowedTools].join(", ")})`
       : "  (registering all tools)"),
@@ -399,7 +392,7 @@ server.tool(
   "recall",
   "Search memories using semantic similarity and keyword matching. Returns the most relevant memories for a query. Biased by the agent's current affective state (high frustration widens search, high satisfaction narrows it) — pass ignore_affect=true to disable. Pass cite=true when the retrieved memories will actually inform the response — that emits `used_in_response` events so the CoactivationAgent Hebbian-links them pairwise.",
   recallSchema.shape,
-  withErrorHandling((input) => recall(memoryService, affectService, projectService, AGENT_LABEL, recallSchema.parse(input)))
+  withErrorHandling((input) => recall(memoryService, affectService, projectService, getAgentLabel(), recallSchema.parse(input)))
 );
 
 server.tool(
@@ -760,6 +753,7 @@ server.tool(
   withErrorHandling((input) => updateSelfModel(identityService, updateSelfModelSchema.parse(input)))
 );
 
+/* DEFERRED 2026-04-26 — population & pairing tool surface (revive when brain core is settled).
 if (FEATURE.population) server.tool(
   "list_agents",
   "List all recorded agent genomes (values, interests, parameters, latest fitness). Generation 1 is the production agent.",
@@ -776,24 +770,25 @@ if (FEATURE.population) server.tool(
 
 if (FEATURE.pairing) server.tool(
   "breed_agents",
-  "Create a new agent genome by crossing two parents. Inherits BOTH the instinct layer (weighted-union values/interests, averaged + Gaussian-mutated numeric traits) AND the knowledge layer (full union of parents' memories/experiences/lessons/soul-traits — child starts with complete inherited knowledge, not empty mind). Pass inheritance_mode='none' for old behaviour. REQUIRES explicit consent: either env OPENCLAW_ALLOW_BREEDING=1 or allow_breeding=true in the call. Ethical gate — the operator approves reproduction.",
+  "Create a new agent genome by crossing two parents. Inherits BOTH the instinct layer and the knowledge layer.",
   breedAgentsSchema.shape,
   withErrorHandling((input) => breedAgents(identityService, breedAgentsSchema.parse(input)))
 );
 
 if (FEATURE.population) server.tool(
   "genome_inheritance",
-  "Show how much knowledge a genome has inherited from its parents: counts of memories/experiences/lessons/soul-traits plus a sample preview.",
+  "Show how much knowledge a genome has inherited from its parents.",
   genomeInheritanceSchema.shape,
   withErrorHandling((input) => genomeInheritance(identityService, genomeInheritanceSchema.parse(input)))
 );
 
 if (FEATURE.population) server.tool(
   "collect_current_knowledge",
-  "Freeze the current global pool of memories/experiences/lessons/soul-traits as this genome's inherited knowledge. Safety-gated (allow=true required). Useful once for Gen-1 to mark its starting-point snapshot before breeding its first child.",
+  "Freeze the current global pool as this genome's inherited knowledge. Safety-gated.",
   collectCurrentKnowledgeSchema.shape,
   withErrorHandling((input) => collectCurrentKnowledge(identityService, collectCurrentKnowledgeSchema.parse(input)))
 );
+*/
 
 server.tool(
   "flag_emergence",
@@ -816,106 +811,27 @@ server.tool(
   withErrorHandling((input) => resolveEmergence(identityService, resolveEmergenceSchema.parse(input)))
 );
 
+/* DEFERRED 2026-04-26 — pairing (tinder) + federation-PKI + federation Phase 2.
 // --- tinder / anti-inbreeding (Migration 034 + 035) ----------------------
-if (FEATURE.pairing) server.tool(
-  "tinder_check_inbreeding",
-  "Compute Wright's F coefficient between two genomes. Returns blocked=true if F > 0.125 (cousins-level). Use BEFORE proposing a breeding pair.",
-  tinderInbreedingCheckSchema.shape,
-  withErrorHandling((input) => tinderInbreedingCheck(identityService, tinderInbreedingCheckSchema.parse(input)))
-);
-
-if (FEATURE.pairing) server.tool(
-  "tinder_cards",
-  "List candidate genomes for breeding/swiping, ranked by diversity_score = (1-F) × cosine_distance(profile_embeddings). Excludes inbreeding-blocked candidates by default. Already-swiped candidates excluded too unless include_seen=true.",
-  tinderCardsSchema.shape,
-  withErrorHandling((input) => tinderCards(identityService, tinderCardsSchema.parse(input)))
-);
-
-if (FEATURE.pairing) server.tool(
-  "tinder_population_health",
-  "Diagnose the genome pool: avg pairwise centroid distance, avg/max Wright's F, and migrant_recommended flag (true when diversity is low). Use periodically to detect inbreeding drift.",
-  tinderPopulationHealthSchema.shape,
-  withErrorHandling((input) => tinderPopulationHealth(identityService, tinderPopulationHealthSchema.parse(input)))
-);
-
-if (FEATURE.pairing) server.tool(
-  "tinder_refresh_profile",
-  "Recompute a genome's profile_embedding (centroid of its memories). Run after a genome has accumulated significant new memory, or to bootstrap a freshly-bred child.",
-  tinderRefreshProfileSchema.shape,
-  withErrorHandling((input) => tinderRefreshProfile(identityService, tinderRefreshProfileSchema.parse(input)))
-);
+if (FEATURE.pairing) server.tool("tinder_check_inbreeding", "Compute Wright's F coefficient.", tinderInbreedingCheckSchema.shape, withErrorHandling((input) => tinderInbreedingCheck(identityService, tinderInbreedingCheckSchema.parse(input))));
+if (FEATURE.pairing) server.tool("tinder_cards", "List candidate genomes for breeding.", tinderCardsSchema.shape, withErrorHandling((input) => tinderCards(identityService, tinderCardsSchema.parse(input))));
+if (FEATURE.pairing) server.tool("tinder_population_health", "Diagnose the genome pool.", tinderPopulationHealthSchema.shape, withErrorHandling((input) => tinderPopulationHealth(identityService, tinderPopulationHealthSchema.parse(input))));
+if (FEATURE.pairing) server.tool("tinder_refresh_profile", "Recompute a genome's profile_embedding.", tinderRefreshProfileSchema.shape, withErrorHandling((input) => tinderRefreshProfile(identityService, tinderRefreshProfileSchema.parse(input))));
 
 // --- PKI / signed lineage (Migration 037) -------------------------------
-if (FEATURE.federation) server.tool(
-  "genome_keygen",
-  "Generate an Ed25519 keypair for a genome. Privkey is stored at ~/.openclaw/keys/<id>.key (0600), pubkey goes to the DB. Idempotent — refuses to overwrite unless force=true (which would invalidate all prior signatures).",
-  genomeKeygenSchema.shape,
-  withErrorHandling((input) => genomeKeygen(identityService, genomeKeygenSchema.parse(input)))
-);
-
-if (FEATURE.federation) server.tool(
-  "genome_sign_profile",
-  "Sign the genome's canonical profile payload (values, interests, traits, centroid hash) with its privkey. Run after profile changes (new keygen, refreshed centroid, edited values).",
-  genomeSignProfileSchema.shape,
-  withErrorHandling((input) => genomeSignProfile(identityService, genomeSignProfileSchema.parse(input)))
-);
-
-if (FEATURE.federation) server.tool(
-  "genome_refresh_merkle",
-  "Build a SHA-256 merkle root over all memories owned by this genome (created_by_agent_id). Stores the root + leaf-count for later inclusion-proofs. Skip-able for genomes with no own memories.",
-  genomeRefreshMerkleSchema.shape,
-  withErrorHandling((input) => genomeRefreshMerkle(identityService, genomeRefreshMerkleSchema.parse(input)))
-);
-
-if (FEATURE.federation) server.tool(
-  "genome_verify",
-  "Verify a genome's PKI artefacts: profile self-signature against pubkey, birth-certificate signatures against parent pubkeys, optionally re-build the memory merkle root and compare. Returns per-check verdicts and human-readable notes.",
-  genomeVerifySchema.shape,
-  withErrorHandling((input) => genomeVerify(identityService, genomeVerifySchema.parse(input)))
-);
+if (FEATURE.federation) server.tool("genome_keygen", "Generate an Ed25519 keypair for a genome.", genomeKeygenSchema.shape, withErrorHandling((input) => genomeKeygen(identityService, genomeKeygenSchema.parse(input))));
+if (FEATURE.federation) server.tool("genome_sign_profile", "Sign the genome's canonical profile payload.", genomeSignProfileSchema.shape, withErrorHandling((input) => genomeSignProfile(identityService, genomeSignProfileSchema.parse(input))));
+if (FEATURE.federation) server.tool("genome_refresh_merkle", "Build a SHA-256 merkle root over the genome's memories.", genomeRefreshMerkleSchema.shape, withErrorHandling((input) => genomeRefreshMerkle(identityService, genomeRefreshMerkleSchema.parse(input))));
+if (FEATURE.federation) server.tool("genome_verify", "Verify a genome's PKI artefacts.", genomeVerifySchema.shape, withErrorHandling((input) => genomeVerify(identityService, genomeVerifySchema.parse(input))));
 
 // --- federation Phase 2 (Migration 038) ---------------------------------
-if (FEATURE.federation) server.tool(
-  "trust_add",
-  "Add a Trust-Root to the allowlist. Bundles importing from a foreign source are accepted only if their lineage chain reaches a key on this list (or the source pubkey itself is trusted).",
-  trustAddSchema.shape,
-  withErrorHandling((input) => trustAdd(federationService, trustAddSchema.parse(input)))
-);
-
-if (FEATURE.federation) server.tool(
-  "trust_list",
-  "List configured Trust-Roots (active by default; pass include_revoked=true for the full history).",
-  trustListSchema.shape,
-  withErrorHandling((input) => trustList(federationService, trustListSchema.parse(input)))
-);
-
-if (FEATURE.federation) server.tool(
-  "trust_revoke",
-  "Revoke a key (Trust-Root or any other key). Future imports referencing this key in their lineage will be rejected.",
-  trustRevokeSchema.shape,
-  withErrorHandling((input) => trustRevoke(federationService, trustRevokeSchema.parse(input)))
-);
-
-if (FEATURE.federation) server.tool(
-  "federation_export",
-  "Serialize a genome plus its full lineage chain (with all signatures + birth-certificates) into a portable JSON bundle. Privkeys NEVER leave the host. Memories are NOT included in Phase 2 (Phase 3 will add PoM-verified memory transfer).",
-  federationExportSchema.shape,
-  withErrorHandling((input) => federationExport(federationService, federationExportSchema.parse(input)))
-);
-
-if (FEATURE.federation) server.tool(
-  "federation_import",
-  "Verify and import a foreign genome bundle. Walks the lineage chain (every profile-sig + birth-cert), checks revocation, finds a Trust-Root anchor, runs classify_content on free-text fields, and only then inserts the genome with federated_from set. Every attempt is audited.",
-  federationImportSchema.shape,
-  withErrorHandling((input) => federationImport(federationService, federationImportSchema.parse(input)))
-);
-
-if (FEATURE.federation) server.tool(
-  "federation_recent",
-  "Show the recent federation_imports audit log with decisions and reasons.",
-  federationRecentSchema.shape,
-  withErrorHandling((input) => federationRecent(federationService, federationRecentSchema.parse(input)))
-);
+if (FEATURE.federation) server.tool("trust_add", "Add a Trust-Root to the allowlist.", trustAddSchema.shape, withErrorHandling((input) => trustAdd(federationService, trustAddSchema.parse(input))));
+if (FEATURE.federation) server.tool("trust_list", "List configured Trust-Roots.", trustListSchema.shape, withErrorHandling((input) => trustList(federationService, trustListSchema.parse(input))));
+if (FEATURE.federation) server.tool("trust_revoke", "Revoke a key.", trustRevokeSchema.shape, withErrorHandling((input) => trustRevoke(federationService, trustRevokeSchema.parse(input))));
+if (FEATURE.federation) server.tool("federation_export", "Serialize a genome plus its full lineage chain.", federationExportSchema.shape, withErrorHandling((input) => federationExport(federationService, federationExportSchema.parse(input))));
+if (FEATURE.federation) server.tool("federation_import", "Verify and import a foreign genome bundle.", federationImportSchema.shape, withErrorHandling((input) => federationImport(federationService, federationImportSchema.parse(input))));
+if (FEATURE.federation) server.tool("federation_recent", "Show the recent federation_imports audit log.", federationRecentSchema.shape, withErrorHandling((input) => federationRecent(federationService, federationRecentSchema.parse(input))));
+*/
 
 // --- neurochemistry (Migration 042, ersetzt die 4-Variablen-Engine) -----
 server.tool(
@@ -967,47 +883,14 @@ server.tool(
   withErrorHandling((input) => neurochemReset(neurochemistryService, neurochemResetSchema.parse(input)))
 );
 
-if (FEATURE.federation) server.tool(
-  "federation_pull",
-  "Pull a genome bundle from a peer host over mTLS and import it locally. Requires the peer's host pubkey to be in trust_roots (kind=host).",
-  federationPullSchema.shape,
-  withErrorHandling((input) => federationPull(federationService, federationPullSchema.parse(input)))
-);
-
-if (FEATURE.federation) server.tool(
-  "federation_push",
-  "Export a local genome and push it to a peer's /federation/import endpoint. Peer decides whether to accept based on its own trust roots.",
-  federationPushSchema.shape,
-  withErrorHandling((input) => federationPush(federationService, federationPushSchema.parse(input)))
-);
-
-if (FEATURE.federation) server.tool(
-  "revocation_issue",
-  "Issue a signed revocation certificate (Ed25519). signer_label must have its privkey locally; allowed when signer is the target (self-revoke) or when signer is an active trust-root with kind genome/group. The revocation propagates via federation_sync_revocations.",
-  revocationIssueSchema.shape,
-  withErrorHandling((input) => revocationIssue(identityService, revocationIssueSchema.parse(input)))
-);
-
-if (FEATURE.federation) server.tool(
-  "federation_sync_revocations",
-  "Pull a peer's signed revocation list, verify each signature + signer authority (self-revoke or local trust-root), merge accepted ones into our revoked_keys. Returns counts per verdict category.",
-  federationSyncRevocationsSchema.shape,
-  withErrorHandling((input) => federationSyncRevocations(federationService, federationSyncRevocationsSchema.parse(input)))
-);
-
-if (FEATURE.federation) server.tool(
-  "peer_upsert",
-  "Register or update a federation peer in the local directory. Set auto_sync_enabled=true to include it in the periodic revocation-sync loop running in the dashboard server.",
-  peerUpsertSchema.shape,
-  withErrorHandling((input) => peerUpsert(federationService, peerUpsertSchema.parse(input)))
-);
-
-if (FEATURE.federation) server.tool(
-  "peers_list",
-  "List known federation peers (inbound + outbound directory). Pass only_autosync=true to see just the ones in the auto-sync loop.",
-  peersListSchema.shape,
-  withErrorHandling((input) => peersList(federationService, peersListSchema.parse(input)))
-);
+/* DEFERRED 2026-04-26 — federation Phase 3 (pull/push, revocations, peer registry).
+if (FEATURE.federation) server.tool("federation_pull", "Pull a genome bundle from a peer host over mTLS.", federationPullSchema.shape, withErrorHandling((input) => federationPull(federationService, federationPullSchema.parse(input))));
+if (FEATURE.federation) server.tool("federation_push", "Export a local genome and push it to a peer.", federationPushSchema.shape, withErrorHandling((input) => federationPush(federationService, federationPushSchema.parse(input))));
+if (FEATURE.federation) server.tool("revocation_issue", "Issue a signed revocation certificate.", revocationIssueSchema.shape, withErrorHandling((input) => revocationIssue(identityService, revocationIssueSchema.parse(input))));
+if (FEATURE.federation) server.tool("federation_sync_revocations", "Pull a peer's signed revocation list.", federationSyncRevocationsSchema.shape, withErrorHandling((input) => federationSyncRevocations(federationService, federationSyncRevocationsSchema.parse(input))));
+if (FEATURE.federation) server.tool("peer_upsert", "Register or update a federation peer.", peerUpsertSchema.shape, withErrorHandling((input) => peerUpsert(federationService, peerUpsertSchema.parse(input))));
+if (FEATURE.federation) server.tool("peers_list", "List known federation peers.", peersListSchema.shape, withErrorHandling((input) => peersList(federationService, peersListSchema.parse(input))));
+*/
 
 // --- guard (prompt-injection defence) --------------------------------------
 server.tool(
@@ -1180,16 +1063,16 @@ async function main() {
   }
 
   // Agent event-bus (Migration 047) — ON by default. Set
-  // OPENCLAW_AGENT_BUS=0 to disable (e.g. when running multiple parallel
+  // MYCELIUM_AGENT_BUS=0 to disable (e.g. when running multiple parallel
   // MCP sessions and you want only one to drive Hebbian updates, to
   // avoid double-counting). The CoactivationAgent subscribes to
   // `used_in_response` events and Hebbian-links memories that appeared
   // in the same trace. Without it the substrate stops learning.
-  if ((process.env.OPENCLAW_AGENT_BUS ?? "1") !== "0") {
+  if ((process.env.MYCELIUM_AGENT_BUS ?? "1") !== "0") {
     try {
       const bus = new AgentEventBus(SUPABASE_URL, SUPABASE_KEY, {
-        tickMs:    parseInt(process.env.OPENCLAW_AGENT_BUS_TICK_MS ?? "5000", 10),
-        batchSize: parseInt(process.env.OPENCLAW_AGENT_BUS_BATCH   ?? "100",  10),
+        tickMs:    parseInt(process.env.MYCELIUM_AGENT_BUS_TICK_MS ?? "5000", 10),
+        batchSize: parseInt(process.env.MYCELIUM_AGENT_BUS_BATCH   ?? "100",  10),
       });
       bus.register(new CoactivationAgent(SUPABASE_URL, SUPABASE_KEY));
 
@@ -1197,22 +1080,22 @@ async function main() {
       // events on experiences into bump_salience() calls (Migration 053).
       // Unifies the "heard recently / mattered recently" signal across the
       // non-memory cognitive tables. ON by default with the bus; set
-      // OPENCLAW_AGENT_SALIENCE=0 to disable independently.
-      if ((process.env.OPENCLAW_AGENT_SALIENCE ?? "1") !== "0") {
+      // MYCELIUM_AGENT_SALIENCE=0 to disable independently.
+      if ((process.env.MYCELIUM_AGENT_SALIENCE ?? "1") !== "0") {
         bus.register(new SalienceReactor(SUPABASE_URL, SUPABASE_KEY));
       }
 
       // Conscience: opt-in (routes through the OpenClaw gateway, so only enable
       // on hosts where `openclaw` CLI is installed and `main` agent is ready).
-      if ((process.env.OPENCLAW_AGENT_CONSCIENCE ?? "0") === "1") {
+      if ((process.env.MYCELIUM_AGENT_CONSCIENCE ?? "0") === "1") {
         bus.register(new ConscienceAgent(SUPABASE_URL, SUPABASE_KEY, {
-          agentId:       process.env.OPENCLAW_AGENT_CONSCIENCE_AGENT ?? "main",
-          topK:          parseInt(process.env.OPENCLAW_AGENT_CONSCIENCE_TOP_K    ?? "3", 10),
-          timeoutSec:    parseInt(process.env.OPENCLAW_AGENT_CONSCIENCE_TIMEOUT  ?? "30", 10),
-          minConfidence: parseFloat(process.env.OPENCLAW_AGENT_CONSCIENCE_MIN_CONF ?? "0.6"),
-          thinking:      (process.env.OPENCLAW_AGENT_CONSCIENCE_THINKING as "low") ?? "low",
+          agentId:       process.env.MYCELIUM_AGENT_CONSCIENCE_AGENT ?? "main",
+          topK:          parseInt(process.env.MYCELIUM_AGENT_CONSCIENCE_TOP_K    ?? "3", 10),
+          timeoutSec:    parseInt(process.env.MYCELIUM_AGENT_CONSCIENCE_TIMEOUT  ?? "30", 10),
+          minConfidence: parseFloat(process.env.MYCELIUM_AGENT_CONSCIENCE_MIN_CONF ?? "0.6"),
+          thinking:      (process.env.MYCELIUM_AGENT_CONSCIENCE_THINKING as "low") ?? "low",
         }));
-        console.error("[event-bus] conscience agent registered (OPENCLAW_AGENT_CONSCIENCE=1)");
+        console.error("[event-bus] conscience agent registered (MYCELIUM_AGENT_CONSCIENCE=1)");
       }
 
       bus.start();

@@ -6,7 +6,7 @@
  *   flag_emergence / list_emergence / resolve_emergence — Schicht 5d
  *
  * Breeding is intentionally hard-gated: it requires either
- *   ENV OPENCLAW_ALLOW_BREEDING=1  (persistent opt-in)
+ *   ENV MYCELIUM_ALLOW_BREEDING=1  (persistent opt-in)
  * or an explicit `allow_breeding: true` in the tool input (ephemeral opt-in).
  */
 import { z } from "zod";
@@ -214,7 +214,7 @@ export const breedAgentsSchema = z.object({
     .boolean()
     .optional()
     .describe(
-      "Must be true unless env OPENCLAW_ALLOW_BREEDING=1 is set. Ephemeral explicit consent."
+      "Must be true unless env MYCELIUM_ALLOW_BREEDING=1 is set. Ephemeral explicit consent."
     ),
   bypass_inbreeding_guard: z
     .boolean()
@@ -237,7 +237,7 @@ export async function breedAgents(
   id: IdentityService,
   input: z.infer<typeof breedAgentsSchema>
 ) {
-  const envAllow = process.env.OPENCLAW_ALLOW_BREEDING === "1";
+  const envAllow = process.env.MYCELIUM_ALLOW_BREEDING === "1";
   const explicit = input.allow_breeding === true;
   if (!envAllow && !explicit) {
     return {
@@ -246,7 +246,7 @@ export async function breedAgents(
           type: "text" as const,
           text:
             "REFUSED: breeding new genomes requires either " +
-            "`OPENCLAW_ALLOW_BREEDING=1` in the MCP server env, " +
+            "`MYCELIUM_ALLOW_BREEDING=1` in the MCP server env, " +
             "or explicit `allow_breeding: true` in the call. " +
             "This is the ethical gate — the operator must approve reproduction.",
         },

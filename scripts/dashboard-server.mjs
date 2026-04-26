@@ -1301,9 +1301,9 @@ async function handleMemoryById(req, res) {
 import os from "node:os";
 
 const TEACHER_PLANS_DIR =
-  process.env.OPENCLAW_PLANS_DIR ?? path.join(os.homedir(), ".openclaw", "teacher-plans");
+  process.env.MYCELIUM_PLANS_DIR ?? path.join(os.homedir(), ".mycelium", "teacher-plans");
 const TEACHER_ESCALATIONS_DIR =
-  process.env.OPENCLAW_ESCALATIONS_DIR ?? path.join(os.homedir(), ".openclaw", "teacher-escalations");
+  process.env.MYCELIUM_ESCALATIONS_DIR ?? path.join(os.homedir(), ".mycelium", "teacher-escalations");
 
 async function _readJsonDir(dir, predicate) {
   const out = [];
@@ -1454,7 +1454,7 @@ const server = http.createServer((req, res) => {
   if (req.url.startsWith("/relations-graph"))  return handleRelationsGraph(req, res);
   if (req.url.startsWith("/memory/"))          return handleMemoryById(req, res);
   // Teacher-Mode (claude-code-sessions Plugin):
-  // mycelium liest Files unter ~/.openclaw/teacher-{plans,escalations}/.
+  // mycelium liest Files unter ~/.mycelium/teacher-{plans,escalations}/.
   // Soft-couples mycelium ↔ openClaw via Filesystem; akzeptabel solange
   // Teacher-Mode openClaw-Plugin ist (siehe DESIGN-goal-driven-shutdown.md).
   if (req.url.startsWith("/teacher/")) {
@@ -1491,7 +1491,7 @@ server.listen(PORT, HOST, () => {
 // per Allowlist managen — nicht via CA).
 
 const FED_PORT  = Number(process.env.FEDERATION_PORT || 8788);
-const HOST_LABEL = process.env.OPENCLAW_HOST_ID || "self";
+const HOST_LABEL = process.env.MYCELIUM_HOST_ID || "self";
 
 let hostCert;
 try {
@@ -1755,7 +1755,7 @@ if (hostCert && FEATURE.federation) {
         // its /pom/proof endpoint. We bind the callback cert pubkey to the
         // push cert pubkey so a redirect to a different trusted host fails.
         const callbackHeader = req.headers["x-federation-callback"];
-        const strictPom = process.env.OPENCLAW_FEDERATION_REQUIRE_POM === "1";
+        const strictPom = process.env.MYCELIUM_FEDERATION_REQUIRE_POM === "1";
         let pomVerify;
         if (callbackHeader) {
           const [cbHost, cbPortStr] = String(callbackHeader).split(":");
@@ -1774,7 +1774,7 @@ if (hostCert && FEATURE.federation) {
         } else if (strictPom && (bundle.root?.genome?.memory_merkle_n ?? 0) > 0) {
           return sendJson(res, 400, {
             error: "strict push-PoM required: set X-Federation-Callback header",
-            hint: "configure OPENCLAW_FEDERATION_CALLBACK on the pusher",
+            hint: "configure MYCELIUM_FEDERATION_CALLBACK on the pusher",
           });
         }
 

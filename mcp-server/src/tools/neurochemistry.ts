@@ -1,7 +1,7 @@
 import { z } from "zod";
 import type { NeurochemistryService } from "../services/neurochemistry.js";
 
-const DEFAULT_LABEL = process.env.OPENCLAW_GENOME_LABEL ?? "main";
+const DEFAULT_LABEL = process.env.MYCELIUM_GENOME_LABEL ?? "main";
 
 export const neurochemUpdateSchema = z.object({
   label: z.string().optional().default(DEFAULT_LABEL).describe("Genome label (default = this agent's genome)"),

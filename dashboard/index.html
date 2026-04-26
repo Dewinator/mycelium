@@ -1041,11 +1041,14 @@
       <div id="self-model-body"></div>
     </section>
 
+    <!-- DEFERRED 2026-04-26 — population/fitness/breeding belongs to the swarm phase
+         (later, after the brain core is settled). Self-model above stays.
     <section class="card" style="margin-top:16px">
       <h2>agent-genome (ebene 5c)</h2>
       <div class="sub" style="margin-bottom:8px">persistente identitäten mit values, interests, verhaltens-parametern. fitness = 0.40·avg_outcome + 0.25·growth + 0.20·breadth + 0.15·autonomy. <strong>reproduktion ist approval-gated</strong> — keine automatische züchtung.</div>
       <table class="mem" id="genomes-table"></table>
     </section>
+    -->
   </div><!-- /panel-identity -->
 
   <div class="tab-panel" id="panel-sleep">
@@ -1449,14 +1452,14 @@
       <h2>offene eskalationen <span class="sub" id="tch-esc-count">(0)</span></h2>
       <div class="sub" style="margin-bottom:8px">
         teacher-sessions warten auf eine entscheidung. klick continue / abort / amend.
-        kanal: <code>~/.openclaw/teacher-escalations/</code>.
+        kanal: <code>~/.mycelium/teacher-escalations/</code>.
       </div>
       <div id="tch-esc-list">–</div>
     </section>
     <section class="card">
       <h2>aktive plans <span class="sub" id="tch-plan-count">(0)</span></h2>
       <div class="sub" style="margin-bottom:8px">
-        goal-driven sessions mit checklisten. quelle: <code>~/.openclaw/teacher-plans/</code>.
+        goal-driven sessions mit checklisten. quelle: <code>~/.mycelium/teacher-plans/</code>.
       </div>
       <div id="tch-plan-list">–</div>
     </section>
@@ -2120,7 +2123,7 @@ function renderAgents(agentsData, matchesData) {
 
   // live instances table
   if (!agents.length) {
-    $("agents-table").innerHTML = `<thead><tr><th></th></tr></thead><tbody><tr><td class="empty">noch keine instanzen registriert. starte mcp-server mit <code>OPENCLAW_AGENT_LABEL=main</code> oder provisioniere eine neue instanz.</td></tr></tbody>`;
+    $("agents-table").innerHTML = `<thead><tr><th></th></tr></thead><tbody><tr><td class="empty">noch keine instanzen registriert. starte mcp-server mit <code>MYCELIUM_AGENT_LABEL=main</code> oder provisioniere eine neue instanz.</td></tr></tbody>`;
   } else {
     $("agents-table").innerHTML = `
       <thead><tr><th>label</th><th>genome</th><th>host</th><th>status</th><th>ports</th><th>capabilities</th><th>last heartbeat</th></tr></thead>

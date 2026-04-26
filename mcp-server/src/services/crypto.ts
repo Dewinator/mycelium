@@ -21,7 +21,7 @@ import { mkdir, readFile, stat, writeFile } from "node:fs/promises";
 import { homedir } from "node:os";
 import { join } from "node:path";
 
-const KEYS_DIR = process.env.OPENCLAW_KEYS_DIR ?? join(homedir(), ".openclaw", "keys");
+const KEYS_DIR = process.env.MYCELIUM_KEYS_DIR ?? join(homedir(), ".mycelium", "keys");
 
 export interface Keypair {
   pubkeyRaw: Buffer;       // 32 Byte raw Ed25519 public key
