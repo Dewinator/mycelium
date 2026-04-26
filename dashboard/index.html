@@ -803,7 +803,9 @@
     </section>
   </div><!-- /panel-sleep -->
 
-  <!-- DEFERRED 2026-04-26 — panel re-enabled together with the Pairing/Schwarm direction.
+  <!-- DEFERRED 2026-04-26 — re-enable together with Pairing/Schwarm. Wrapped in a
+       <template> so the inner content is inert (not rendered, IDs not queryable) -->
+  <template data-deferred="population">
   <div class="tab-panel" id="panel-population">
     <section class="card">
       <h2 style="display:flex;align-items:center;justify-content:space-between;gap:12px">
@@ -832,7 +834,7 @@
       <div id="tree-wrap" style="overflow:auto;max-width:100%"></div>
     </section>
   </div><!-- /panel-population -->
-  -->
+  </template>
 
   <div id="breed-modal" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,0.6);z-index:100;align-items:center;justify-content:center">
     <div class="card" style="max-width:640px;width:calc(100% - 32px);max-height:90vh;overflow:auto">
@@ -929,7 +931,8 @@
     </div>
   </div>
 
-  <!-- DEFERRED 2026-04-26
+  <!-- DEFERRED 2026-04-26 — re-enable with Pairing -->
+  <template data-deferred="pairing">
   <div class="tab-panel" id="panel-tinder">
     <section class="card">
       <h2 style="display:flex;align-items:center;justify-content:space-between;gap:12px">
@@ -953,7 +956,7 @@
       <div id="tinder-matches-list"></div>
     </section>
   </div><!-- /panel-tinder -->
-  -->
+  </template>
 
   <div class="tab-panel" id="panel-guard">
     <section class="card">
@@ -989,7 +992,8 @@
     </section>
   </div><!-- /panel-emergence -->
 
-  <!-- DEFERRED 2026-04-26
+  <!-- DEFERRED 2026-04-26 — re-enable with Federation -->
+  <template data-deferred="federation">
   <div class="tab-panel" id="panel-federation">
     <section class="card">
       <h2>föderation (phase 3)</h2>
@@ -1017,7 +1021,7 @@
       <table class="mem" id="federation-audit"></table>
     </section>
   </div><!-- /panel-federation -->
-  -->
+  </template>
 
   <div class="tab-panel" id="panel-neurochemistry">
     <section class="card">
@@ -1168,7 +1172,8 @@
     </div>
   </div><!-- /panel-synapses -->
 
-  <!-- DEFERRED 2026-04-26
+  <!-- DEFERRED 2026-04-26 — re-enable with Teacher -->
+  <template data-deferred="teacher">
   <div class="tab-panel" id="panel-teacher">
     <section class="card">
       <h2>offene eskalationen <span class="sub" id="tch-esc-count">(0)</span></h2>
@@ -1186,7 +1191,7 @@
       <div id="tch-plan-list">–</div>
     </section>
   </div><!-- /panel-teacher -->
-  -->
+  </template>
 
   <!-- Teacher Escalation Modal -->
   <div id="tch-modal" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,0.55);z-index:40;align-items:center;justify-content:center">
