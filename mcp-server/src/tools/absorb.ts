@@ -1,7 +1,6 @@
 import { z } from "zod";
 import type { MemoryService } from "../services/supabase.js";
 import type { ExperienceService } from "../services/experiences.js";
-import type { AffectService } from "../services/affect.js";
 import type { ProjectService } from "../services/projects.js";
 import { scoreEncoding } from "../services/heuristics.js";
 
@@ -162,7 +161,6 @@ function sentimentFromValence(
 export async function absorb(
   memoryService: MemoryService,
   experienceService: ExperienceService,
-  affectService: AffectService,
   projectService: ProjectService,
   agentLabel: string,
   input: z.infer<typeof absorbSchema>
@@ -252,20 +250,6 @@ export async function absorb(
         },
       ],
     };
-  }
-
-  // Affect: novel encoding — small curiosity bump. If the text also carried an
-  // explicit sentiment, map it onto success/failure so the soul-layer and the
-  // regulator stay in sync (failure-shaped text ⇒ frustration ↑, positive text
-  // ⇒ satisfaction ↑). Fire-and-forget with a tail-catch — see remember.ts.
-  const tailCatch = (event: string) => (err: unknown) =>
-    console.error(`[absorb] affect.apply(${event}) tail-failed:`, err);
-  affectService.apply("novel_encoding", 0.3).catch(tailCatch("novel_encoding"));
-  const encoded = scoreEncoding(content);
-  if (encoded.valence <= -0.4) {
-    affectService.apply("failure", Math.min(1, encoded.arousal + 0.3)).catch(tailCatch("failure"));
-  } else if (encoded.valence >= 0.4) {
-    affectService.apply("success", Math.min(1, encoded.arousal + 0.3)).catch(tailCatch("success"));
   }
 
   const errSuffix = experienceError ? ` (experience trigger failed: ${experienceError})` : "";

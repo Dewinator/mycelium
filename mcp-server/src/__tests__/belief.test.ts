@@ -3,7 +3,6 @@ import assert from "node:assert/strict";
 import { inferAction } from "../tools/belief.js";
 import type { BeliefService } from "../services/belief.js";
 import type { MemoryService } from "../services/supabase.js";
-import type { AffectService, AffectEvent, AffectState } from "../services/affect.js";
 import type { NeurochemistryService } from "../services/neurochemistry.js";
 import type { MemorySearchResult } from "../types/memory.js";
 
@@ -25,17 +24,6 @@ import type { MemorySearchResult } from "../types/memory.js";
 
 const UUID = "11111111-2222-3333-4444-555555555555";
 const GENOME = "test-genome";
-
-class FakeAffectService implements Partial<AffectService> {
-  async apply(_e: AffectEvent, _i = 0.1): Promise<AffectState | null> { return null; }
-  async get(): Promise<AffectState> {
-    return {
-      curiosity: 0.5, frustration: 0, satisfaction: 0.5, confidence: 0.5,
-      decay_factor: 1, updated_at: "2026-04-25T00:00:00Z", hours_since: 0, last_event: null,
-    };
-  }
-}
-const fakeAffect = new FakeAffectService() as unknown as AffectService;
 
 // Belief sidecar always unreachable in tests — fallback path is deterministic
 // and exercises the same emission code regardless of which action it returns.
@@ -90,7 +78,7 @@ function makeHit(id: string, score: number): MemorySearchResult {
 test("infer_action emits recalled with hits=0, topScore=0 on empty probe", async () => {
   const svc = new FakeMemoryService({ searchResults: [] });
   const task = "what should I do about the broken trigger?";
-  await inferAction(svc as unknown as MemoryService, fakeBelief, fakeAffect, fakeNeurochem, GENOME, {
+  await inferAction(svc as unknown as MemoryService, fakeBelief, fakeNeurochem, GENOME, {
     task_description: task,
     limit: 5,
   });
@@ -107,7 +95,7 @@ test("infer_action emits recalled with hit count and top score", async () => {
     searchResults: [makeHit(UUID, 0.842), makeHit(id2, 0.612)],
   });
   const task = "two probe hits";
-  await inferAction(svc as unknown as MemoryService, fakeBelief, fakeAffect, fakeNeurochem, GENOME, {
+  await inferAction(svc as unknown as MemoryService, fakeBelief, fakeNeurochem, GENOME, {
     task_description: task,
     limit: 5,
   });
@@ -124,7 +112,7 @@ test("infer_action recalled event uses source=mcp:infer_action (not mcp:recall)"
   // recall tool's emission. The test pins the value so a future refactor
   // can't accidentally collapse the two channels.
   const svc = new FakeMemoryService({ searchResults: [makeHit(UUID, 0.5)] });
-  await inferAction(svc as unknown as MemoryService, fakeBelief, fakeAffect, fakeNeurochem, GENOME, {
+  await inferAction(svc as unknown as MemoryService, fakeBelief, fakeNeurochem, GENOME, {
     task_description: "anything",
     limit: 5,
   });
@@ -137,11 +125,11 @@ test("infer_action emits exactly one recalled event per call", async () => {
   // recall probes. compute_affect()'s `empty_recalls` / `zero_hit_ratio`
   // assume one event per inference call.
   const svc = new FakeMemoryService({ searchResults: [] });
-  await inferAction(svc as unknown as MemoryService, fakeBelief, fakeAffect, fakeNeurochem, GENOME, {
+  await inferAction(svc as unknown as MemoryService, fakeBelief, fakeNeurochem, GENOME, {
     task_description: "single probe",
     limit: 5,
   });
-  await inferAction(svc as unknown as MemoryService, fakeBelief, fakeAffect, fakeNeurochem, GENOME, {
+  await inferAction(svc as unknown as MemoryService, fakeBelief, fakeNeurochem, GENOME, {
     task_description: "another single probe",
     limit: 5,
   });
@@ -156,7 +144,7 @@ test("infer_action queryLength reflects task_description length, not content", a
     searchResults: [makeHit(UUID, 0.7)],
   });
   const task = "x".repeat(123);
-  await inferAction(svc as unknown as MemoryService, fakeBelief, fakeAffect, fakeNeurochem, GENOME, {
+  await inferAction(svc as unknown as MemoryService, fakeBelief, fakeNeurochem, GENOME, {
     task_description: task,
     limit: 5,
   });

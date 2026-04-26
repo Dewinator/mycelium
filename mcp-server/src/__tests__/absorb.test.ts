@@ -3,7 +3,6 @@ import assert from "node:assert/strict";
 import { absorb } from "../tools/absorb.js";
 import type { MemoryService } from "../services/supabase.js";
 import type { ExperienceService, RecordExperienceInput } from "../services/experiences.js";
-import type { AffectService, AffectEvent, AffectState } from "../services/affect.js";
 import type { ProjectService } from "../services/projects.js";
 import type { Memory, CreateMemoryInput } from "../types/memory.js";
 
@@ -67,37 +66,21 @@ class FakeExperienceService implements Partial<ExperienceService> {
   }
 }
 
-class FakeAffectService implements Partial<AffectService> {
-  events: Array<{ event: AffectEvent; intensity: number }> = [];
-  async apply(event: AffectEvent, intensity = 0.1): Promise<AffectState | null> {
-    this.events.push({ event, intensity });
-    return null;
-  }
-  async get(): Promise<AffectState> {
-    return {
-      curiosity: 0.5, frustration: 0, satisfaction: 0.5, confidence: 0.5,
-      decay_factor: 1, updated_at: "2026-04-18T00:00:00Z", hours_since: 0, last_event: null,
-    };
-  }
-}
-
 async function run(
   text: string,
   opts: { duplicate?: boolean; fail?: boolean; context?: string } = {}
 ) {
   const mem = new FakeMemoryService({ duplicate: opts.duplicate });
   const exp = new FakeExperienceService({ fail: opts.fail });
-  const aff = new FakeAffectService();
   const prj = new FakeProjectService();
   const res = await absorb(
     mem as unknown as MemoryService,
     exp as unknown as ExperienceService,
-    aff as unknown as AffectService,
     prj as unknown as ProjectService,
     "main",
     { text, context: opts.context }
   );
-  return { mem, exp, aff, res };
+  return { mem, exp, res };
 }
 
 // ---------------------------------------------------------------------------

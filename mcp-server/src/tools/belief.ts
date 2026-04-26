@@ -2,7 +2,6 @@ import { z } from "zod";
 import type { BeliefService } from "../services/belief.js";
 import { BeliefService as BeliefServiceClass } from "../services/belief.js";
 import type { MemoryService } from "../services/supabase.js";
-import type { AffectService } from "../services/affect.js";
 import type { NeurochemistryService } from "../services/neurochemistry.js";
 
 /**
@@ -12,8 +11,9 @@ import type { NeurochemistryService } from "../services/neurochemistry.js";
  *   1. Cheap recall to measure task familiarity (best effective_score + hit count).
  *   2. Hand those to the PyMDP sidecar which picks between recall / research /
  *      ask_teacher by minimising Expected Free Energy.
- *   3. Project the sidecar's decision back into the agent's affective state:
- *      'unknown' → curiosity↑; recall-heavy outcome → recall_rich; etc.
+ *
+ * The recall probe emits a `recalled` memory_event whose downstream trigger
+ * (migration 062) feeds compute_affect()'s curiosity/frustration terms.
  *
  * Belief inference is *advisory*. If the sidecar is down, `BeliefService.fallback`
  * provides a rule-of-thumb answer so the tool never hard-fails.
@@ -35,7 +35,6 @@ export const inferActionSchema = z.object({
 export async function inferAction(
   memory: MemoryService,
   belief: BeliefService,
-  affect: AffectService,
   neurochem: NeurochemistryService,
   genomeLabel: string,
   input: z.infer<typeof inferActionSchema>
@@ -63,19 +62,6 @@ export async function inferAction(
   const remote = await belief.infer(input.task_description, topScore, hits.length, serotonin);
   const result = remote ?? BeliefServiceClass.fallback(topScore, hits.length);
   const source = remote ? "pymdp" : "fallback";
-
-  // ---- Step 3: affect coupling -----------------------------------------
-  // Empty recall → curiosity↑; unknown state → curiosity↑; known + recall → confirms rich recall.
-  // Fire-and-forget with a tail-catch — see remember.ts.
-  const tailCatch = (event: string) => (err: unknown) =>
-    console.error(`[belief] affect.apply(${event}) tail-failed:`, err);
-  if (hits.length === 0) {
-    affect.apply("recall_empty", 0.4).catch(tailCatch("recall_empty"));
-  } else if (result.state === "known" && result.action === "recall") {
-    affect.apply("recall_rich", 0.3).catch(tailCatch("recall_rich"));
-  } else if (result.state === "unknown") {
-    affect.apply("unknown", 0.5).catch(tailCatch("unknown"));
-  }
 
   const [pK, pP, pU] = result.state_prior;
   const serotoninLine = serotonin != null

@@ -242,7 +242,7 @@ mycelium/
 
 Mycelium ist darauf ausgelegt, **ohne Cloud-LLM** auf einem Mac mini oder Laptop mit 16 GB RAM zu laufen. Damit ein 7-8B-Modell (z.B. `qwen3:8b` via Ollama) nicht an der Tool-Schema-Last erstickt, bietet der MCP-Server ein fokussiertes Profil:
 
-**`MYCELIUM_TOOL_PROFILE=core`** → nur die 6 essentiellen Tools werden registriert (`prime_context`, `recall`, `remember`, `absorb`, `digest`, `update_affect`). Standard `full` registriert alle 90 — für Claude/Codex geeignet, aber ~18k Token reines Schema sind für ein 8B-Modell zu viel.
+**`MYCELIUM_TOOL_PROFILE=core`** → nur die 5 essentiellen Tools werden registriert (`prime_context`, `recall`, `remember`, `absorb`, `digest`). Standard `full` registriert alle ~90 — für Claude/Codex geeignet, aber ~18k Token reines Schema sind für ein 8B-Modell zu viel.
 
 In der MCP-Config (`.mcp.json` oder die Settings deines Clients):
 

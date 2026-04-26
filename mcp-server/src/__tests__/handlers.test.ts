@@ -7,7 +7,7 @@ import { update } from "../tools/update.js";
 import { list } from "../tools/list.js";
 import { markUseful } from "../tools/cognitive.js";
 import type { MemoryService } from "../services/supabase.js";
-import type { AffectService, AffectEvent, AffectState } from "../services/affect.js";
+import type { AffectService, AffectState } from "../services/affect.js";
 import type { ProjectService } from "../services/projects.js";
 import type {
   Memory,
@@ -24,8 +24,9 @@ class FakeProjectService implements Partial<ProjectService> {
 }
 const fakeProjects = new FakeProjectService();
 
+// Recall reads affect via .get() to derive its bias. remember/forget/update/list
+// no longer touch affect at all (since migration 062 + Issue #11 phase 3).
 class FakeAffectService implements Partial<AffectService> {
-  async apply(_e: AffectEvent, _i = 0.1): Promise<AffectState | null> { return null; }
   async get(): Promise<AffectState> {
     return {
       curiosity: 0.5, frustration: 0, satisfaction: 0.5, confidence: 0.5,
@@ -133,7 +134,7 @@ class FakeService implements Partial<MemoryService> {
 
 test("remember returns id and category in text", async () => {
   const svc = new FakeService();
-  const res = await remember(svc as unknown as MemoryService, fakeAffect, fakeProjects as unknown as ProjectService, "main", {
+  const res = await remember(svc as unknown as MemoryService, fakeProjects as unknown as ProjectService, "main", {
     content: "the sky is blue",
     category: "topics",
     tags: [],
@@ -147,7 +148,7 @@ test("remember returns id and category in text", async () => {
 test("remember truncates long content in output", async () => {
   const svc = new FakeService();
   const long = "x".repeat(200);
-  const res = await remember(svc as unknown as MemoryService, fakeAffect, fakeProjects as unknown as ProjectService, "main", {
+  const res = await remember(svc as unknown as MemoryService, fakeProjects as unknown as ProjectService, "main", {
     content: long,
     category: "general",
     tags: [],
