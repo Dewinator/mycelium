@@ -12,7 +12,6 @@ PROMPT_FILE="$SCRIPT_DIR/tick-prompt.md"
 
 MYCELIUM_HOME="${MYCELIUM_HOME:-$HOME/.mycelium}"
 LOG_DIR="$MYCELIUM_HOME/logs"
-LOCK_FILE="$MYCELIUM_HOME/self-tick.lock"
 KILL_SWITCH="$MYCELIUM_HOME/self-tick.disabled"
 SUMMARY_FILE="$LOG_DIR/self-tick.summary"
 
@@ -33,11 +32,37 @@ if [[ -z "$CLAUDE_BIN" ]]; then
   exit 1
 fi
 
-# --- single-instance lock (avoid overlap if a tick runs long) ----------------
-exec 9>"$LOCK_FILE"
-if ! flock -n 9; then
-  printf '%s  abandoned  -  -  previous tick still running (lock held)\n' \
-    "$(date -u +%Y-%m-%dT%H:%M:%SZ)" >> "$SUMMARY_FILE"
+# --- single-instance lock (mkdir is atomic on macOS; flock is Linux-only) ----
+LOCK_DIR="$MYCELIUM_HOME/self-tick.lock.d"
+PID_FILE="$LOCK_DIR/pid"
+
+acquire_lock() {
+  if mkdir "$LOCK_DIR" 2>/dev/null; then
+    echo $$ > "$PID_FILE"
+    trap 'rm -rf "$LOCK_DIR"' EXIT
+    return 0
+  fi
+  # Lock dir exists. Check whether the holder is still alive — if not,
+  # break the stale lock and reclaim. macOS reuses PIDs, but the window
+  # for misattribution here is tiny and the failure mode is benign
+  # (a tick is skipped and the next slot tries again).
+  local oldpid=""
+  [[ -f "$PID_FILE" ]] && oldpid=$(cat "$PID_FILE" 2>/dev/null || true)
+  if [[ -n "$oldpid" ]] && kill -0 "$oldpid" 2>/dev/null; then
+    return 1
+  fi
+  rm -rf "$LOCK_DIR"
+  if mkdir "$LOCK_DIR" 2>/dev/null; then
+    echo $$ > "$PID_FILE"
+    trap 'rm -rf "$LOCK_DIR"' EXIT
+    return 0
+  fi
+  return 1
+}
+
+if ! acquire_lock; then
+  printf '%s  abandoned  -  -  previous tick still running (pid %s)\n' \
+    "$(date -u +%Y-%m-%dT%H:%M:%SZ)" "$(cat "$PID_FILE" 2>/dev/null || echo unknown)" >> "$SUMMARY_FILE"
   exit 0
 fi
 
