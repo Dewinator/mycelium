@@ -12,6 +12,14 @@
   <a href="README.md">🇬🇧 English</a> · 🇩🇪 Deutsch
 </p>
 
+<p align="center">
+  <a href="https://github.com/Dewinator/mycelium/releases/download/v0.4-swarm-phase-1/promo.mp4">
+    <img src="docs/images/promo-poster.png" alt="mycelium-Demo ansehen (ca. 90 Sekunden, MP4)" width="720" />
+  </a>
+  <br />
+  <sub><i>↑ 90-Sekunden-Tour ansehen (MP4, 14 MB)</i></sub>
+</p>
+
 Eine persistente Gedächtnis- und Identitätsschicht für LLM-Agenten, bereitgestellt über MCP. Läuft lokal auf einem Mac mini oder einem bescheidenen Linux-Rechner. Keine Cloud-Abhängigkeit.
 
 📜 [MANIFESTO.de.md](MANIFESTO.de.md) — warum das Gedächtnis dem Nutzer gehört, nicht dem Modell.
@@ -321,17 +329,65 @@ Vollständige Architektur, Env-Knöpfe, Observability-Surface, Failure-Modes: **
 
 ---
 
+## Schwarm — Föderation in Arbeit
+
+Die These: Cloud-Labs trainieren auf dem Durchschnitt. Ein Schwarm lokaler Agenten trainiert eine Population auf die gelebte Spezifik jedes Nutzers — und diese Diversität ist durch keinen GPU-Count reproduzierbar. Föderation ist in mycelium deshalb eine erstklassige Richtung, kein Aufsatz.
+
+**Status:** Phase 1 (kryptografisches Fundament + Wire-Format-Vertrag) zwischen 2026-04-27 und 2026-04-28 gelandet. Offen entwickelt unter dem Label [`swarm`](../../issues?q=label%3Aswarm).
+
+### Bereits gemerged
+
+| Phase | Was | PR |
+|---|---|---|
+| 0 | [`docs/SWARM_SPEC.md`](docs/SWARM_SPEC.md) v1 — Wire-Format-Vertrag zwischen Peers | [#78](../../pull/78) |
+| 1a | Migration 070 — `node_identity`-Tabelle | [#79](../../pull/79) |
+| 1b | `scripts/init-node-identity.mjs` + `node_identity_get` MCP-Tool | [#81](../../pull/81) |
+| 2 | `src/services/signature.ts` — Ed25519 Signieren/Verifizieren über JSON Canonical Form | [#82](../../pull/82) |
+| 3a | `src/services/wire-types.ts` — TypeScript-Types + JCS-Canonicalize | [#85](../../pull/85) |
+| 3b | `src/services/wire-validator.ts` — Ablehnungsregeln 1–13 aus SWARM_SPEC §5 | [#89](../../pull/89) |
+| 3c | `GET /.well-known/mycelium-node` — selbstsignierte `NodeAdvertisement` | [#91](../../pull/91) |
+| 3d | Migration 071 — Peer- und Signed-Record-Storage | [#92](../../pull/92) |
+
+### Discovery-Endpoint (jetzt live)
+
+Wenn der Dashboard-Server läuft, stellt mycelium einen unauthentifizierten, idempotenten Endpoint bereit, über den ein Peer die Identität dieses Knotens ohne vorheriges Vertrauen verifizieren kann:
+
+| Endpoint | Spec | Zweck |
+|---|---|---|
+| `GET /.well-known/mycelium-node` | [SWARM_SPEC §4.1](docs/SWARM_SPEC.md) | Liefert die selbstsignierte `NodeAdvertisement` dieses Knotens. |
+
+Zwei Umgebungsvariablen steuern die Antwort:
+
+- **`MYCELIUM_PUBLIC_URL`** *(für Schwarm-Teilnahme erforderlich)* — die absolute `https://`-URL, unter der die Schwarm-Endpoints dieses Knotens für Peers erreichbar sind (nicht `localhost`). Landet im `endpoint_url` der Advertisement. Ohne Variable liefert der Endpoint **503**, der Rest von mycelium bleibt unbeeinflusst.
+- **`MYCELIUM_DISPLAY_NAME`** *(optional, ≤ 64 Zeichen)* — ein menschenlesbares Label für den Knoten, erscheint als `display_name` in der Advertisement. Längere Namen werden vorab abgewiesen statt veröffentlicht.
+
+Der Signing-Key (`MYCELIUM_NODE_KEY`, Default `~/.mycelium/node.key`) wird von `scripts/init-node-identity.mjs` initialisiert und verlässt den Host nie. Der Endpoint legt im Live-Betrieb keinen Key neu an: eine fehlende Self-Row wird als **503** sichtbar, nie als stilles Re-Bootstrap.
+
+### Was als nächstes ansteht
+
+Das kryptografische Fundament steht. Offene Arbeit, getrackt unter [`swarm`](../../issues?q=label%3Aswarm):
+
+- **Peer-Verifikation und Konsens** — bevor Peer A auf Peer Bs Aussage handelt, prüfen weitere Peers sie.
+- **Reputations-Gewichtung** — Antworten, die sich bewähren, bekommen höheres Gewicht; das Netz kann den richtigen Spezialisten für eine Frage empfehlen.
+- **Bann durch Konsens** — destruktive Peers werden per signiertem Revocation-Ticket ausgeschlossen, durch Peer-Mehrheit, nicht durch einen Admin.
+- **Sybil-Resistenz** — Identitäten an Genome + Lineage gebunden, teuer zu fälschen.
+- **Mikrotransaktions-Verdrahtung** — ehrliches Preissignal für Expertise (Architektur lässt es zu, Protokoll noch nicht fertig).
+
+[`docs/SWARM_SPEC.md`](docs/SWARM_SPEC.md) ist die Source of Truth — jeder Peer, der sie spricht, ist interoperabel, egal wer ihn gebaut hat.
+
+---
+
 ## Roadmap
 
-mycelium = **ein simuliertes Gehirn** (Wissen, Erfahrung, Motivation, Stimmung, Neugier, Vergessen, Schlafen, Vertiefen, Emergenz). Mehrere Gehirne = mehrere mycelium-Instanzen, vom Anwender selbst gewählt. Phasen:
+mycelium = **ein simuliertes Gehirn** (Wissen, Erfahrung, Motivation, Stimmung, Neugier, Vergessen, Schlafen, Vertiefen, Emergenz). Mehrere Gehirne, von ihren Nutzern föderiert, ergeben einen Schwarm. Phasen:
 
-1. Gehirn perfektionieren.
-2. Installation so einfach wie möglich, mit allen Abhängigkeiten.
-3. Dashboard verbessern.
-4. Paarung.
-5. Schwarm + Vererbung + Föderation.
+1. **Gehirn-Kern** — Memory, Affekt, Schlaf, Motivation, Identität-Layer in Produktion.
+2. **One-Shot-Install** — `install.sh` mit allen Abhängigkeiten (Docker, Ollama, MCP-Server). Wird laufend politisiert.
+3. **Dashboard** — Synapsen, Affekt, Identität, Schlaf, Stammbaum. Iterativ.
+4. **Paarung** — UI + Inzucht-Check gelandet; das Wire-Protokoll ist in den Schwarm-Pfad konsolidiert.
+5. **Schwarm + Föderation** — **Phase 1 ausgeliefert (kryptografische Identität + Wire-Format-Spec).** Vollständiger Status oben im Abschnitt *Schwarm — Föderation in Arbeit*.
 
-Der Pairing-/Schwarm-/Federation-Code ist unter `mcp-server/src/deferred/`, `supabase/migrations.deferred/` und im Branch `archive/swarm-deferred` geparkt — wird reaktiviert, wenn der Kern stabil ist.
+Der Pre-Rebrand-Pairing-/Population-Code bleibt unter `mcp-server/src/deferred/`, `supabase/migrations.deferred/` und auf Branch `archive/swarm-deferred` als historische Referenz geparkt — die aktive Schwarm-Arbeit findet auf `main` unter SWARM_SPEC v1 statt.
 
 ---
 

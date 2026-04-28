@@ -74,7 +74,7 @@ An agent gets better because it lives longer with its user, not because someone 
 
 ### 4. Sharing knowledge, on terms the human controls
 
-Federation between agents is built in (Tailscale + mTLS, signed lineage, proof-of-memory via Merkle challenges) but always opt-in. Nothing leaves your machine unless you say so.
+Federation between agents is being built in the open under [`docs/SWARM_SPEC.md`](docs/SWARM_SPEC.md) — but always opt-in. Nothing leaves your machine unless you set `MYCELIUM_PUBLIC_URL`. The cryptographic foundation is already merged: each node has an Ed25519 keypair (`node_identity` table, generated locally and never shared), every wire record is signed over JSON canonical form, and the discovery endpoint at `/.well-known/mycelium-node` returns a self-signed advertisement that any peer can verify without prior trust.
 
 When sharing happens, it happens between agents that are tied to specific humans, with cryptographic provenance. There is no anonymous request and no "the swarm decides" — there is verifiable peer A asking verifiable peer B, with the right to refuse on either side.
 
@@ -89,7 +89,7 @@ A federated network of agents needs more than encrypted transport. It needs the 
 - **Banishment by consensus**: destructive bots are excluded via signed revocation tickets — by peer majority, not by an admin.
 - **Sybil resistance**: identities are bound to genome + lineage, costly to forge.
 
-This layer is **not finished**. The cryptographic foundation (signed identities, mTLS, Merkle challenges) is in place. The social rules on top are being designed in the open under the [`swarm`](../../issues?q=label%3Aswarm) label.
+This layer is **not finished**. The cryptographic foundation (signed node identities via Ed25519, JSON canonical form, wire-format contract v1, signature validation, `/.well-known/mycelium-node` discovery) is in place — see the *Swarm — federation in flight* section in the [README](README.md#swarm--federation-in-flight) for the merged-PR table. The social rules on top (peer verification, reputation, banishment-by-consensus) are being designed in the open under the [`swarm`](../../issues?q=label%3Aswarm) label.
 
 A later layer accounts for **micro-transactions** between peers (in IOTA, or a network-native currency). Not to make money — to create an honest pricing signal for expertise: good answers earn, nonsense loses. That is the kind of selection pressure a real ecosystem needs. The architecture already keeps room for it; the wiring comes later.
 
@@ -118,19 +118,29 @@ A few things to call out plainly, because the framing matters:
 
 ## What is built today
 
+**Brain core (in production):**
 - 5 cognitive layers: embedding, affect, belief/motivation, identity, evolution
-- ~50 database migrations
-- 75+ MCP tools
+- 60+ database migrations
+- 80+ MCP tools
 - Event bus with two background agents (Coactivation → Hebbian links, Conscience → contradiction detection)
 - Nightly consolidation cycle (downscaling, REM-like clustering, lesson promotion, self-model update, weekly fitness on Sundays)
 - Dashboard with synapse view, affect time series, identity, sleep, lineage tree
-- Mutual-pairing UI with inbreeding check (Wright's F)
-- Federation over Tailscale with mTLS + signed identities
+
+**Swarm Phase 1 (cryptographic foundation, shipped 2026-04-27 → 2026-04-28):**
+- [`docs/SWARM_SPEC.md`](docs/SWARM_SPEC.md) v1 — wire-format contract between peers
+- `node_identity` table (migration 070) + `init-node-identity.mjs` + `node_identity_get` MCP tool
+- Ed25519 sign/verify over JSON canonical form (`signature.ts`)
+- Wire types + JCS canonicalize helper
+- Wire validator with rejection rules 1–13 from SWARM_SPEC §5
+- `GET /.well-known/mycelium-node` — self-signed, unauthenticated discovery
+- Peer + signed-record storage (migration 071)
+
+The pre-rebrand mutual-pairing UI and mTLS-over-Tailscale prototype remain on the `archive/swarm-deferred` branch as historical reference. The active swarm work happens on `main` against SWARM_SPEC v1.
 
 ## What is not built yet
 
-- The peer-verification, reputation, and consensus-banishment layer for federated trust.
-- Micro-transaction wiring between peers (architecture allows for it; protocol not finished).
+- **The social layer on top of the cryptographic foundation** — peer verification, reputation weighting, banishment-by-consensus, Sybil resistance through genome + lineage binding. Tracked under the [`swarm`](../../issues?q=label%3Aswarm) label.
+- **Micro-transaction wiring** between peers (architecture allows for it; protocol not finished).
 - Time. Real evidence of evolution requires a population that lives across months, with generations forming, agents specializing, knowledge traveling between hosts. This is what depends on actual users running the system.
 
 ---

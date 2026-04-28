@@ -12,6 +12,14 @@
   🇬🇧 English · <a href="README.de.md">🇩🇪 Deutsch</a>
 </p>
 
+<p align="center">
+  <a href="https://github.com/Dewinator/mycelium/releases/download/v0.4-swarm-phase-1/promo.mp4">
+    <img src="docs/images/promo-poster.png" alt="Watch the mycelium demo (≈90 seconds, MP4)" width="720" />
+  </a>
+  <br />
+  <sub><i>↑ click to watch the 90-second tour (MP4, 14 MB)</i></sub>
+</p>
+
 A persistent memory and identity layer for LLM agents, served over MCP. Runs locally on a Mac mini or a modest Linux box. No cloud dependency.
 
 📜 [MANIFESTO.md](MANIFESTO.md) — why memory belongs to the user, not the model.
@@ -337,14 +345,32 @@ Full architecture, configuration knobs, observability surface, and failure modes
 
 ---
 
-## Swarm endpoints
+## Swarm — federation in flight
 
-When the dashboard server is running, mycelium exposes a discovery endpoint
-that lets a peer verify this node's identity without any prior trust:
+The thesis: cloud labs train on the average. A swarm of local agents trains a population on the lived specifics of each user — and that diversity isn't reproducible by any GPU count. Federation in mycelium is therefore a first-class direction, not a bolt-on.
+
+**Status:** Phase 1 (cryptographic foundation + wire-format contract) shipped between 2026-04-27 and 2026-04-28. Working in the open under the [`swarm`](../../issues?q=label%3Aswarm) label.
+
+### Already merged
+
+| Phase | What | PR |
+|---|---|---|
+| 0 | [`docs/SWARM_SPEC.md`](docs/SWARM_SPEC.md) v1 — wire-format contract between peers | [#78](../../pull/78) |
+| 1a | Migration 070 — `node_identity` table | [#79](../../pull/79) |
+| 1b | `scripts/init-node-identity.mjs` + `node_identity_get` MCP tool | [#81](../../pull/81) |
+| 2 | `src/services/signature.ts` — Ed25519 sign/verify over JSON canonical form | [#82](../../pull/82) |
+| 3a | `src/services/wire-types.ts` — TypeScript types + JCS canonicalize helper | [#85](../../pull/85) |
+| 3b | `src/services/wire-validator.ts` — rejection rules 1–13 from SWARM_SPEC §5 | [#89](../../pull/89) |
+| 3c | `GET /.well-known/mycelium-node` — self-signed `NodeAdvertisement` | [#91](../../pull/91) |
+| 3d | Migration 071 — peer + signed-record storage | [#92](../../pull/92) |
+
+### Discovery endpoint (live now)
+
+When the dashboard server is running, mycelium exposes one unauthenticated, idempotent endpoint that lets a peer verify this node's identity without any prior trust:
 
 | Endpoint | Spec | Purpose |
 |---|---|---|
-| `GET /.well-known/mycelium-node` | [SWARM_SPEC §4.1](docs/SWARM_SPEC.md) | Returns this node's self-signed `NodeAdvertisement`. Unauthenticated and idempotent. |
+| `GET /.well-known/mycelium-node` | [SWARM_SPEC §4.1](docs/SWARM_SPEC.md) | Returns this node's self-signed `NodeAdvertisement`. |
 
 Two environment variables control the response:
 
@@ -353,19 +379,31 @@ Two environment variables control the response:
 
 The signing key (`MYCELIUM_NODE_KEY`, default `~/.mycelium/node.key`) is bootstrapped by `scripts/init-node-identity.mjs` and never leaves the host. The endpoint refuses to mint a key on the fly: a missing self-row surfaces as **503**, never as a silent re-bootstrap.
 
+### What is next
+
+The cryptographic foundation is in place. The remaining work, tracked under the [`swarm`](../../issues?q=label%3Aswarm) label:
+
+- **Peer verification & consensus** — before peer A acts on peer B's claim, additional peers verify it.
+- **Reputation weighting** — outputs that prove correct over time get higher weight; the network can recommend the right specialist for a question.
+- **Banishment by consensus** — destructive peers excluded via signed revocation tickets, by peer majority, not by an admin.
+- **Sybil resistance** — identities bound to genome + lineage, costly to forge.
+- **Micro-transaction wiring** — honest pricing signal for expertise (architecture leaves room; protocol not finished).
+
+[`docs/SWARM_SPEC.md`](docs/SWARM_SPEC.md) is the source of truth — any peer that speaks it interoperates, regardless of who built it.
+
 ---
 
 ## Roadmap
 
-mycelium = **one simulated brain** (memory, neurochemistry, sleep, motivation, curiosity, forgetting, deepening, emergence). Multiple brains = multiple mycelium instances chosen by the user. Phases:
+mycelium = **one simulated brain** (memory, neurochemistry, sleep, motivation, curiosity, forgetting, deepening, emergence). Multiple brains, federated by their users, become a swarm. Phases:
 
-1. Perfect the brain core.
-2. One-shot install with all dependencies.
-3. Polish the dashboard.
-4. Pairing.
-5. Swarm + inheritance + federation.
+1. **Brain core** — memory, affect, sleep, motivation, identity layer in production.
+2. **One-shot install** — `install.sh` with all dependencies (Docker, Ollama, MCP server). Ongoing polish.
+3. **Dashboard** — synapses, affect, identity, sleep, lineage tabs. Iterating.
+4. **Pairing** — UI + inbreeding check landed; the wire-level protocol has been consolidated into the swarm path.
+5. **Swarm + federation** — **Phase 1 shipped (cryptographic identity + wire-format spec).** See the *Swarm — federation in flight* section above for the full status table.
 
-The pairing/swarm/federation code is parked under `mcp-server/src/deferred/`, `supabase/migrations.deferred/`, and on the `archive/swarm-deferred` branch — revived once the core is stable.
+The pre-rebrand pairing/population code remains parked under `mcp-server/src/deferred/`, `supabase/migrations.deferred/`, and on the `archive/swarm-deferred` branch as historical reference — the active swarm work happens against `main` under SWARM_SPEC v1.
 
 ---
 
