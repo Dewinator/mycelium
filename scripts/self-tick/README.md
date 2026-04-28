@@ -1,29 +1,16 @@
 # mycelium self-tick
 
-An autonomy loop for mycelium that does **not** depend on a second LLM.
+A self-contained autonomy loop owned by the mycelium repo.
 
-## What this replaces
-
-The previous autonomy stack ran:
-
-```
-conductor LaunchAgent (every 30 min)
-   → spawn codex (planner / triager)
-       → spawn claude-cli (worker)
-           → open PR
-```
-
-Two LLMs per tick, two billing surfaces, codex deciding what claude works on.
-
-The self-tick runs:
+## How it works
 
 ```
 ai.mycelium.self-tick LaunchAgent (9× per day, 09:07 → 21:07 local)
    → spawn claude-cli (Claude as project lead — triages and works in one session)
-       → open PR
+       → open PR against Dewinator/mycelium
 ```
 
-One LLM, one prompt, one issue per tick. Claude decides what to pick up using its own vector-memory and the open issue queue.
+One claude-cli per tick. Claude reads its own vector-memory, scans the open issue queue on `Dewinator/mycelium`, picks the smallest reviewable scope with no in-flight PR, and ships a single PR. Triage and implementation happen in the same session — there is no separate planner.
 
 ## Installation
 
@@ -87,7 +74,7 @@ tail -f ~/.mycelium/logs/self-tick-$(date -u +%Y%m%d).log
 
 You should see the tick header, the claude-cli output, and the closing line. The summary file gets one line per tick: `<ISO>  <result>  <PR# or "no-op">  <issue# or "-">  <why>`.
 
-## Why no cron / no Anthropic-hosted routine
+## Why a local LaunchAgent
 
-- **cron** doesn't survive macOS user sessions cleanly and lacks LaunchAgent's `flock`-equivalent and integrated logging.
-- **Anthropic-hosted scheduled routines** require GitHub credentials in cloud secret storage and don't have access to the local Supabase/Ollama backend used during development. The local LaunchAgent path keeps the autonomy loop on the same host as the brain it tends.
+- macOS LaunchAgents survive user sessions cleanly, integrate with `launchctl`, and let `run-tick.sh` use `flock` for race safety and per-day log rotation.
+- The autonomy loop runs on the same host as the local Supabase + Ollama backend it tends — no GitHub credentials in a remote secret store, no network round-trip for memory access.

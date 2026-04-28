@@ -3,8 +3,7 @@
   mycelium self-tick LaunchAgent
 
   Fires the run-tick.sh script on a calendar schedule during waking hours,
-  Europe/Berlin time. No external LLM, no conductor, no codex — one fresh
-  claude-cli per tick.
+  Europe/Berlin time. One fresh claude-cli per tick.
 
   Install:
     1. Edit the absolute paths below (REPO_ROOT_PLACEHOLDER) to match your

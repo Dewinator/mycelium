@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 # mycelium self-tick runner
 # Invoked by LaunchAgent ai.mycelium.self-tick on a calendar schedule.
-# No second LLM in the loop — one fresh claude-cli per tick, that's it.
+# One fresh claude-cli per tick — Claude triages and works in the same session.
 
 set -euo pipefail
 
