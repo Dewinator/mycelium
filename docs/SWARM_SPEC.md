@@ -1,8 +1,9 @@
 # SWARM_SPEC — wire-format spec for the decentralized mycelium swarm
 
 **Spec version:** `1.0`
-**Status:** spec-only (no code lands against this PR; phases 1–9 of the
-Swarm Foundation Plan implement against this contract).
+**Status:** phases 0–3 implemented on `main`; phases 4–9 still spec-only.
+See [§9 Implementation status](#9-implementation-status) for the per-phase
+mapping to merged commits.
 **Audience:** anyone implementing a mycelium node — this repo, a port to
 another language, or an independent peer that wants to be reachable by the
 swarm.
@@ -452,3 +453,35 @@ This spec touches:
 No pillar is weakened. Pillars 2 (Reproduction), 4 (Microtransactions),
 and 5 (Experts) are not touched by this spec and remain governed by their
 respective subsystems and by future swarm phases.
+
+---
+
+## 9. Implementation status
+
+Snapshot maintained alongside the spec — so a reader can tell at a glance
+which sections are wired vs. still paper. Update this table whenever a
+swarm-labelled phase merges to `main`.
+
+| Phase | Spec section | Issue | Merged commit | Status |
+|---|---|---|---|---|
+| 0 — Wire-format spec | §0–§8 | [#74](https://github.com/Dewinator/mycelium/issues/74) | `2fef277` | ✅ on `main` |
+| 1a — `node_identity` table (migration 070) | §3.1 | [#75](https://github.com/Dewinator/mycelium/issues/75) | `d21cfa3` | ✅ on `main` |
+| 1b — `init-node-identity.mjs` + `node_identity_get` tool | §3.1 | [#76](https://github.com/Dewinator/mycelium/issues/76) | `1bfef41` | ✅ on `main` |
+| 2 — `signature.ts` Ed25519 sign/verify over JCS | §2, §4 | [#77](https://github.com/Dewinator/mycelium/issues/77) | `39d3fde` | ✅ on `main` |
+| 3a — `wire-types.ts` + JCS canonicalize helper | §2, §3 | [#85](https://github.com/Dewinator/mycelium/issues/85) | `329ce06` | ✅ on `main` |
+| 3b — `wire-validator.ts` (rejection rules 1–13) | §5 | [#86](https://github.com/Dewinator/mycelium/issues/86) | `b1ec1ac` | ✅ on `main` |
+| 3c — `GET /.well-known/mycelium-node` advertisement | §3.2 | [#87](https://github.com/Dewinator/mycelium/issues/87) | `be59267` | ✅ on `main` |
+| 3d — Peer + signed-record storage (migration 071) | §6 | [#88](https://github.com/Dewinator/mycelium/issues/88) | `b0eca59` | ✅ on `main` |
+| 4 — Outbound peer discovery / gossip client | §3, §7 | _not yet issued_ | — | ⏳ spec-only |
+| 5 — Lesson publishing pipeline (producer side) | §4, §6 | _not yet issued_ | — | ⏳ spec-only |
+| 6 — Lesson ingestion pipeline (consumer side) | §5, §7 | _not yet issued_ | — | ⏳ spec-only |
+| 7 — `HubAnchor` exchange | §4 | _not yet issued_ | — | ⏳ spec-only |
+| 8 — Trust weighting + per-peer reputation | §7 | _not yet issued_ | — | ⏳ spec-only |
+| 9 — Diversity-preserving sync policy | §0.3, §7 | _not yet issued_ | — | ⏳ spec-only |
+
+Phases 4–9 are intentionally spec-only at this point in the roadmap — the
+project's current priority is *Gehirn perfektionieren* (see
+[`CLAUDE.md` § Roadmap (Reed 2026-04-26)](../CLAUDE.md)). The wire
+contract is frozen at v1.0 so an independent implementer can already build
+a phase-3-equivalent peer and be guaranteed to remain compatible once
+phase 4+ lands here.
