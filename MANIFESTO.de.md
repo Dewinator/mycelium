@@ -74,7 +74,7 @@ Ein Agent wird besser, weil er länger mit seinem Nutzer lebt — nicht weil jem
 
 ### 4. Wissen teilen, zu Bedingungen, die der Mensch kontrolliert
 
-Federation zwischen Agenten ist eingebaut (Tailscale + mTLS, signierte Lineage, Proof-of-Memory via Merkle-Challenges) — aber immer opt-in. Nichts verlässt deinen Rechner, ohne dass du es sagst.
+Federation zwischen Agenten wird offen entwickelt unter [`docs/SWARM_SPEC.md`](docs/SWARM_SPEC.md) — aber immer opt-in. Nichts verlässt deinen Rechner, solange du nicht `MYCELIUM_PUBLIC_URL` setzt. Das kryptografische Fundament ist bereits gemerged: jeder Knoten hat ein Ed25519-Keypair (`node_identity`-Tabelle, lokal erzeugt, nie geteilt), jeder Wire-Record wird über JSON Canonical Form signiert, und der Discovery-Endpoint unter `/.well-known/mycelium-node` liefert eine selbstsignierte Advertisement, die jeder Peer ohne Vorvertrauen verifizieren kann.
 
 Wenn geteilt wird, geschieht es zwischen Agenten, die an spezifische Menschen gebunden sind, mit kryptografischer Provenance. Es gibt keine anonyme Anfrage und kein "der Schwarm entscheidet" — es gibt verifizierbaren Peer A, der verifizierbaren Peer B fragt, mit dem Recht beider Seiten, abzulehnen.
 
@@ -89,7 +89,7 @@ Ein föderiertes Agenten-Netzwerk braucht mehr als verschlüsselten Transport. E
 - **Bann durch Konsens**: destruktive Bots werden per signiertem Revocation-Ticket ausgeschlossen — durch Peer-Mehrheit, nicht durch einen Admin.
 - **Sybil-Resistenz**: Identitäten sind an Genome + Lineage gebunden, teuer zu fälschen.
 
-Diese Schicht ist **nicht fertig**. Das kryptografische Fundament (signierte Identitäten, mTLS, Merkle-Challenges) liegt. Die sozialen Regeln darüber werden offen entworfen unter dem Label [`swarm`](../../issues?q=label%3Aswarm).
+Diese Schicht ist **nicht fertig**. Das kryptografische Fundament (signierte Knoten-Identitäten via Ed25519, JSON Canonical Form, Wire-Format-Vertrag v1, Signatur-Validierung, `/.well-known/mycelium-node`-Discovery) liegt — die Tabelle der gemergten PRs steht im Abschnitt *Schwarm — Föderation in Arbeit* der [README](README.de.md#schwarm--föderation-in-arbeit). Die sozialen Regeln darüber (Peer-Verifikation, Reputation, Bann-durch-Konsens) werden offen entworfen unter dem Label [`swarm`](../../issues?q=label%3Aswarm).
 
 Eine spätere Schicht berücksichtigt **Mikrotransaktionen** zwischen Peers (in IOTA oder einer netzwerk-eigenen Währung). Nicht um Geld zu verdienen — um ein ehrliches Preissignal für Expertise zu schaffen: gute Antworten verdienen, Unsinn verliert. Das ist die Art von Selektionsdruck, die ein echtes Ökosystem braucht. Die Architektur hält dafür Platz frei; die Verdrahtung kommt später.
 
@@ -118,19 +118,29 @@ Ein paar Klarstellungen, weil das Framing zählt:
 
 ## Was heute gebaut ist
 
+**Gehirn-Kern (in Produktion):**
 - 5 kognitive Schichten: Embedding, Affekt, Belief/Motivation, Identität, Evolution
-- ~50 Datenbank-Migrationen
-- 75+ MCP-Tools
+- 60+ Datenbank-Migrationen
+- 80+ MCP-Tools
 - Event-Bus mit zwei Hintergrund-Agenten (Coactivation → Hebbian-Links, Conscience → Widerspruchs-Erkennung)
 - Nächtlicher Konsolidierungs-Zyklus (Downscaling, REM-artiges Clustering, Lesson-Promotion, Self-Model-Update, Weekly Fitness sonntags)
 - Dashboard mit Synapsen-View, Affekt-Zeitreihe, Identität, Schlaf, Stammbaum
-- Mutual-Pairing-UI mit Inzucht-Check (Wright-F)
-- Federation über Tailscale mit mTLS + signierten Identitäten
+
+**Schwarm-Phase 1 (kryptografisches Fundament, ausgeliefert 2026-04-27 → 2026-04-28):**
+- [`docs/SWARM_SPEC.md`](docs/SWARM_SPEC.md) v1 — Wire-Format-Vertrag zwischen Peers
+- `node_identity`-Tabelle (Migration 070) + `init-node-identity.mjs` + `node_identity_get` MCP-Tool
+- Ed25519 Signieren/Verifizieren über JSON Canonical Form (`signature.ts`)
+- Wire-Types + JCS-Canonicalize-Helper
+- Wire-Validator mit Ablehnungsregeln 1–13 aus SWARM_SPEC §5
+- `GET /.well-known/mycelium-node` — selbstsignierte, unauthentifizierte Discovery
+- Peer- + Signed-Record-Storage (Migration 071)
+
+Die Pre-Rebrand-Mutual-Pairing-UI und der mTLS-über-Tailscale-Prototyp bleiben auf Branch `archive/swarm-deferred` als historische Referenz. Die aktive Schwarm-Arbeit findet auf `main` gegen SWARM_SPEC v1 statt.
 
 ## Was noch nicht gebaut ist
 
-- Die Peer-Verifikations-, Reputations- und Konsens-Bann-Schicht für föderiertes Vertrauen.
-- Mikrotransaktions-Verdrahtung zwischen Peers (Architektur lässt es zu; Protokoll nicht fertig).
+- **Die soziale Schicht über dem kryptografischen Fundament** — Peer-Verifikation, Reputations-Gewichtung, Bann-durch-Konsens, Sybil-Resistenz über Genome- + Lineage-Bindung. Getrackt unter dem Label [`swarm`](../../issues?q=label%3Aswarm).
+- **Mikrotransaktions-Verdrahtung** zwischen Peers (Architektur lässt es zu; Protokoll nicht fertig).
 - Zeit. Echte Evidenz für Evolution braucht eine Population, die über Monate lebt, mit Generationen, mit Spezialisierung einzelner Agenten, mit Wissen, das zwischen Hosts reist. Das hängt von echten Nutzern ab, die das System laufen lassen.
 
 ---
