@@ -70,11 +70,14 @@ const exampleTrustEdge = {
 // WIRE_SPEC_VERSION
 // ---------------------------------------------------------------------------
 
-test("WIRE_SPEC_VERSION is the spec-defined string '1.0' (SWARM_SPEC §1)", () => {
+test("WIRE_SPEC_VERSION is the spec-defined string '1.1' (SWARM_SPEC §1, §3.7)", () => {
   // Pinned literal: a typo or accidental bump here would mis-stamp every
   // record produced by the node, and v1 negotiation is strict-equal on
   // the major component. Catch the mistake at the unit-test boundary.
-  assert.equal(WIRE_SPEC_VERSION, "1.0");
+  // v1.1 (sub-phase 4a, PR #101) added the Proof-of-Knowledge fields on
+  // Lesson; the major component remains "1" so v1.0 nodes stay
+  // negotiation-compatible per SWARM_SPEC §1.
+  assert.equal(WIRE_SPEC_VERSION, "1.1");
 });
 
 // ---------------------------------------------------------------------------
@@ -162,6 +165,97 @@ test("kindOf: returns null on garbage and on partial records", () => {
   const partialLesson = { ...exampleLesson } as Record<string, unknown>;
   delete partialLesson.synthesized_from_cluster_size;
   assert.equal(kindOf(partialLesson), null);
+});
+
+// ---------------------------------------------------------------------------
+// v1.1 Proof-of-Knowledge field shape — SWARM_SPEC §3.1, §3.7
+//
+// These tests pin the type-shape contract for the five new optional fields.
+// They do NOT assert validation rules (those are rules 16–20 in §5, owned
+// by the validator); they only prove that:
+//   (a) a v1.0 Lesson without the new fields still satisfies the interface,
+//   (b) a v1.1 Lesson with all five fields populated also satisfies it,
+//   (c) the discriminator (kindOf) classifies both shapes as "lesson".
+// ---------------------------------------------------------------------------
+
+test("Lesson interface still accepts a v1.0-shaped record (no PoK fields)", () => {
+  // A literal v1.0 Lesson — spec_version "1.0", no evidence_* fields.
+  // SWARM_SPEC §1 says minor bumps are additive, so v1.1 nodes ingest
+  // v1.0 records (with evidence_unverifiable=true marking, per §3.1
+  // compatibility note). At the type-level that means the five v1.1
+  // fields MUST be optional — if they were required, this `satisfies
+  // Lesson` annotation would stop compiling.
+  const v10Lesson = {
+    id: "11111111-2222-3333-4444-555555555555",
+    content: "Pre-PoK lesson, valid under v1.0.",
+    embedding: [0.1, 0.2, 0.3],
+    synthesized_from_cluster_size: 3,
+    origin_node_id: "QmV10Node",
+    signed_at: "2026-04-22T00:00:00.000Z",
+    signature: "AAAA",
+    created_at: "2026-04-20T00:00:00.000Z",
+    spec_version: "1.0",
+  } satisfies Lesson;
+
+  assert.equal(v10Lesson.spec_version, "1.0");
+  assert.ok(!("evidence_root" in v10Lesson));
+  assert.ok(!("evidence_count" in v10Lesson));
+  assert.ok(!("prev_lesson_hash" in v10Lesson));
+  assert.ok(!("maturity_age_days" in v10Lesson));
+  assert.ok(!("useful_count" in v10Lesson));
+  assert.equal(kindOf(v10Lesson), "lesson");
+});
+
+test("Lesson interface accepts a v1.1-shaped record (all PoK fields populated)", () => {
+  // Pin the type shape for every PoK field declared in SWARM_SPEC §3.1
+  // (v1.1+). The `satisfies Lesson` annotation is the compile-time half;
+  // the runtime presence checks are the regression guard.
+  const examplePokLesson = {
+    id: "aaaaaaaa-bbbb-cccc-dddd-eeeeeeeeeeee",
+    content: "Lessons in v1.1 carry provenance commitments, not just signatures.",
+    embedding: [0.1, 0.2, 0.3],
+    synthesized_from_cluster_size: 5,
+    origin_node_id: "QmExampleNodeId",
+    signed_at: "2026-04-30T01:00:00.000Z",
+    signature: "AAAA",
+    created_at: "2026-04-23T00:00:00.000Z",
+    tags: ["pok", "swarm-v1.1"],
+    spec_version: WIRE_SPEC_VERSION,
+    evidence_root: "QmEvidenceRootMultihash",
+    evidence_count: 5,
+    prev_lesson_hash: "QmPreviousLessonHash",
+    maturity_age_days: 7,
+    useful_count: 3,
+  } satisfies Lesson;
+
+  assert.equal(examplePokLesson.evidence_count, 5);
+  assert.equal(examplePokLesson.maturity_age_days, 7);
+  assert.equal(examplePokLesson.prev_lesson_hash, "QmPreviousLessonHash");
+  assert.equal(kindOf(examplePokLesson), "lesson");
+});
+
+test("Lesson interface accepts prev_lesson_hash=null (first-published lesson)", () => {
+  // SWARM_SPEC §3.1 v1.1 row: "prev_lesson_hash null only for the very
+  // first lesson a node ever publishes." Pin the null variant so the
+  // type stays `string | null`, not just `string`.
+  const firstEverLesson = {
+    id: "ffffffff-1111-2222-3333-444444444444",
+    content: "First lesson this node ever publishes.",
+    embedding: [0.5, 0.5, 0.5],
+    synthesized_from_cluster_size: 2,
+    origin_node_id: "QmFreshNode",
+    signed_at: "2026-04-30T01:00:00.000Z",
+    signature: "AAAA",
+    created_at: "2026-04-29T00:00:00.000Z",
+    spec_version: WIRE_SPEC_VERSION,
+    evidence_root: "QmEvidenceRootMultihash",
+    evidence_count: 2,
+    prev_lesson_hash: null,
+    maturity_age_days: 1,
+    useful_count: 0,
+  } satisfies Lesson;
+
+  assert.equal(firstEverLesson.prev_lesson_hash, null);
 });
 
 test("kindOf: does not confuse Lesson with HubAnchor (both carry embedding)", () => {

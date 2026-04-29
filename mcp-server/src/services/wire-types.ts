@@ -22,8 +22,14 @@ import { canonicalize } from "./signature.js";
  * (here `"1"`) is the v1 negotiation rule. Producers SHOULD stamp records
  * with this constant rather than a free-form string so a major bump is
  * a single edit, not a search-and-replace.
+ *
+ * v1.1 (sub-phase 4a, merged in PR #101) adds the Proof-of-Knowledge
+ * fields on `Lesson` (`evidence_root`, `evidence_count`,
+ * `prev_lesson_hash`, `maturity_age_days`, `useful_count`). The bump is
+ * additive — minor bumps are reserved for backward-compatible additions
+ * per §1, so v1.0 records remain ingestable on v1.1 nodes.
  */
-export const WIRE_SPEC_VERSION = "1.0";
+export const WIRE_SPEC_VERSION = "1.1";
 
 // ---------------------------------------------------------------------------
 // Wire interfaces — SWARM_SPEC §3
@@ -41,6 +47,21 @@ export const WIRE_SPEC_VERSION = "1.0";
  * Producers MUST satisfy `synthesized_from_cluster_size >= 2` OR document
  * an abstracting synthesis step; on-wire, the cluster-size floor is what
  * the validator (Phase 3b, rule 11) enforces.
+ *
+ * v1.1 fields (Proof-of-Knowledge — SWARM_SPEC §3.7):
+ *   - `evidence_root`     Merkle root over hashed experience IDs (multihash).
+ *   - `evidence_count`    Number of underlying experiences (≥ 1).
+ *   - `prev_lesson_hash`  Multihash of this node's previous lesson, or null
+ *                         for the first lesson a node ever publishes.
+ *   - `maturity_age_days` Whole days between local `created_at` and `signed_at`.
+ *   - `useful_count`      How often this lesson was reinforced before signing.
+ *
+ * The five v1.1 fields are typed `?` (optional) here so a v1.0 record
+ * — which omits them — still satisfies the interface. The validator
+ * (sub-phase 4b runtime, future PR; rules 16–20 in SWARM_SPEC §5) is
+ * the place that enforces "MUST be present when spec_version >= 1.1"
+ * and "MUST be absent when spec_version == 1.0" (cross-version field
+ * smuggling is rule 20).
  */
 export interface Lesson {
   id: string;
@@ -53,6 +74,12 @@ export interface Lesson {
   created_at: string;
   tags?: string[];
   spec_version: string;
+  // v1.1 Proof-of-Knowledge fields (SWARM_SPEC §3.1, §3.7)
+  evidence_root?: string;
+  evidence_count?: number;
+  prev_lesson_hash?: string | null;
+  maturity_age_days?: number;
+  useful_count?: number;
 }
 
 /**
