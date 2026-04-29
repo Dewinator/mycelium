@@ -1,0 +1,68 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!--
+  mycelium self-tick LaunchAgent
+
+  Fires the run-tick.sh script on a calendar schedule during waking hours,
+  Europe/Berlin time. One fresh claude-cli per tick.
+
+  Install:
+    1. Edit the absolute paths below (REPO_ROOT_PLACEHOLDER) to match your
+       checkout — or run scripts/self-tick/install.sh, which substitutes them.
+    2. cp scripts/self-tick/ai.mycelium.self-tick.plist \
+         ~/Library/LaunchAgents/ai.mycelium.self-tick.plist
+    3. launchctl load ~/Library/LaunchAgents/ai.mycelium.self-tick.plist
+    4. To pause without unloading: touch ~/.mycelium/self-tick.disabled
+    5. To stop: launchctl unload ~/Library/LaunchAgents/ai.mycelium.self-tick.plist
+
+  Times below are *local* time on the host. Tick cadence: 9 ticks per day,
+  every 90 minutes from 09:07 to 21:07. Off-hour minutes (07, 37) instead of
+  the :00/:30 marks so this fleet doesn't pile up on cache-cold edges.
+-->
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+  <key>Label</key>
+  <string>ai.mycelium.self-tick</string>
+
+  <key>ProgramArguments</key>
+  <array>
+    <string>/bin/bash</string>
+    <string>REPO_ROOT_PLACEHOLDER/scripts/self-tick/run-tick.sh</string>
+  </array>
+
+  <key>EnvironmentVariables</key>
+  <dict>
+    <key>PATH</key>
+    <string>HOME_PLACEHOLDER/.local/bin:/opt/homebrew/bin:/usr/local/bin:/usr/bin:/bin</string>
+    <key>HOME</key>
+    <string>HOME_PLACEHOLDER</string>
+  </dict>
+
+  <key>StartCalendarInterval</key>
+  <array>
+    <dict><key>Hour</key><integer>9</integer><key>Minute</key><integer>7</integer></dict>
+    <dict><key>Hour</key><integer>10</integer><key>Minute</key><integer>37</integer></dict>
+    <dict><key>Hour</key><integer>12</integer><key>Minute</key><integer>7</integer></dict>
+    <dict><key>Hour</key><integer>13</integer><key>Minute</key><integer>37</integer></dict>
+    <dict><key>Hour</key><integer>15</integer><key>Minute</key><integer>7</integer></dict>
+    <dict><key>Hour</key><integer>16</integer><key>Minute</key><integer>37</integer></dict>
+    <dict><key>Hour</key><integer>18</integer><key>Minute</key><integer>7</integer></dict>
+    <dict><key>Hour</key><integer>19</integer><key>Minute</key><integer>37</integer></dict>
+    <dict><key>Hour</key><integer>21</integer><key>Minute</key><integer>7</integer></dict>
+  </array>
+
+  <key>RunAtLoad</key>
+  <false/>
+
+  <key>StandardOutPath</key>
+  <string>HOME_PLACEHOLDER/.mycelium/logs/self-tick.launchd.out</string>
+  <key>StandardErrorPath</key>
+  <string>HOME_PLACEHOLDER/.mycelium/logs/self-tick.launchd.err</string>
+
+  <key>ProcessType</key>
+  <string>Background</string>
+
+  <key>Nice</key>
+  <integer>5</integer>
+</dict>
+</plist>
