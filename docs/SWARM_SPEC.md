@@ -619,15 +619,15 @@ swarm-labelled phase merges to `main`.
 | 3b — `wire-validator.ts` (rejection rules 1–13) | §5 | [#86](https://github.com/Dewinator/mycelium/issues/86) | `b1ec1ac` | ✅ on `main` |
 | 3c — `GET /.well-known/mycelium-node` advertisement | §3.2 | [#87](https://github.com/Dewinator/mycelium/issues/87) | `be59267` | ✅ on `main` |
 | 3d — Peer + signed-record storage (migration 071) | §6 | [#88](https://github.com/Dewinator/mycelium/issues/88) | `b0eca59` | ✅ on `main` |
-| 4a — PoK + self-healing spec (this revision, v1.1) | §3.1, §3.7, §4.6, §5 (16–20), §10 | [#100](https://github.com/Dewinator/mycelium/issues/100) | _this PR_ | ⏳ docs-only |
-| 4b — `wire-types.ts` v1.1 fields + JCS validator update | §3.1 | _not yet issued_ | — | ⏳ spec-only |
-| 4c — Evidence Merkle builder service | §3.7.1 | _not yet issued_ | — | ⏳ spec-only |
-| 4d — `prev_lesson_hash` chain table (migration 074) | §3.7.2 | _not yet issued_ | — | ⏳ spec-only |
-| 4e — `/swarm/lessons/{id}/proof` endpoint | §4.6 | _not yet issued_ | — | ⏳ spec-only |
-| 4f — TrustEdge auto-tuning + quarantine (migration 075) | §10.1, §10.2 | _not yet issued_ | — | ⏳ spec-only |
-| 4g — ConscienceAgent contradicts-trigger | §10.3 | _not yet issued_ | — | ⏳ spec-only |
-| 4h — REM self-audit pass | §10.5 | _not yet issued_ | — | ⏳ spec-only |
-| 4i — Two-tier pinning + diversity policy (migration 076) | §10.4, §10.6 | _not yet issued_ | — | ⏳ spec-only |
+| 4a — PoK + self-healing spec (v1.1) | §3.1, §3.7, §4.6, §5 (16–20), §10 | [#100](https://github.com/Dewinator/mycelium/issues/100) | `3292bd6` | ✅ on `main` |
+| 4b — `wire-types.ts` v1.1 fields + JCS validator update | §3.1 | [#102](https://github.com/Dewinator/mycelium/issues/102) | — | ⏳ spec-only |
+| 4c — Evidence Merkle builder service | §3.7.1 | [#103](https://github.com/Dewinator/mycelium/issues/103) | — | ⏳ spec-only |
+| 4d — `prev_lesson_hash` chain table (migration 074) | §3.7.2 | [#104](https://github.com/Dewinator/mycelium/issues/104) | — | ⏳ spec-only |
+| 4e — `/swarm/lessons/{id}/proof` endpoint | §4.6 | [#105](https://github.com/Dewinator/mycelium/issues/105) | — | ⏳ spec-only |
+| 4f — TrustEdge auto-tuning + quarantine (migration 075) | §10.1, §10.2 | [#107](https://github.com/Dewinator/mycelium/issues/107) | — | ⏳ spec-only |
+| 4g — ConscienceAgent contradicts-trigger | §10.3 | [#108](https://github.com/Dewinator/mycelium/issues/108) | — | ⏳ spec-only |
+| 4h — REM self-audit pass | §10.5 | [#109](https://github.com/Dewinator/mycelium/issues/109) | — | ⏳ spec-only |
+| 4i — Two-tier pinning + diversity policy (migration 076) | §10.4, §10.6 | [#114](https://github.com/Dewinator/mycelium/issues/114) | — | ⏳ spec-only |
 | 5 — Outbound peer discovery / gossip client | §3, §7 | _not yet issued_ | — | ⏳ spec-only |
 | 6 — Lesson publishing pipeline (producer side) | §4, §6 | _not yet issued_ | — | ⏳ spec-only |
 | 7 — Lesson ingestion pipeline (consumer side) | §5, §7 | _not yet issued_ | — | ⏳ spec-only |
