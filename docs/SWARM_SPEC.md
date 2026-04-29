@@ -1,9 +1,20 @@
 # SWARM_SPEC — wire-format spec for the decentralized mycelium swarm
 
-**Spec version:** `1.0`
-**Status:** phases 0–3 implemented on `main`; phases 4–9 still spec-only.
+**Spec version:** `1.1`
+**Status:** phases 0–3 implemented on `main`; phase 4a (this doc) introduces
+the Proof-of-Knowledge layer + self-healing immunity (§3.7, §4.6, §10);
+phases 4b–9 still spec-only.
 See [§9 Implementation status](#9-implementation-status) for the per-phase
 mapping to merged commits.
+
+**v1.1 additions (this revision):** five new signed fields on `Lesson` for
+provenance commitment (`evidence_root`, `evidence_count`, `prev_lesson_hash`,
+`maturity_age_days`, `useful_count`); a new `/swarm/lessons/{id}/proof`
+endpoint for Merkle-inclusion verification without leaking raw episodes; a
+new §10 specifying six consumer-side self-healing mechanisms that protect
+the swarm against poisoned, plagiarized, and echo-chamber-amplified content.
+All additions are backward-compatible per §1: v1.0 producers remain valid;
+v1.1 producers are v1.0-readable but offer stronger guarantees.
 **Audience:** anyone implementing a mycelium node — this repo, a port to
 another language, or an independent peer that wants to be reachable by the
 swarm.
@@ -161,11 +172,22 @@ shareable. Lessons are the primary unit of swarm sync.
 | `created_at` | `iso8601` | yes | When the lesson was first synthesized locally. May be earlier than `signed_at`. |
 | `tags` | `string[]` | no | Free-form classification hints. Producers SHOULD keep ≤ 16 tags, each ≤ 64 chars. |
 | `spec_version` | `string` | yes | Spec version this record conforms to (§1). |
+| `evidence_root` | `string` (multihash) | yes (v1.1+) | Merkle root over the producer-local hashed experience IDs that ground this lesson. See §3.7. |
+| `evidence_count` | `int` | yes (v1.1+) | Number of underlying experiences ≥ 1. MUST equal the count of leaves in the Merkle tree whose root is `evidence_root`. Verifiable via §4.6. |
+| `prev_lesson_hash` | `string` (multihash) \| `null` | yes (v1.1+) | Multihash of this node's previous published lesson, forming a per-node commitment chain. `null` only for the very first lesson a node ever publishes. See §3.7. |
+| `maturity_age_days` | `int` | yes (v1.1+) | Whole days between local `created_at` and `signed_at`. Receivers MAY use this as a producer-side "difficulty knob" (§3.7). |
+| `useful_count` | `int` | yes (v1.1+) | How often this lesson was reinforced locally before this signing. ≥ 0. |
 
 **Generalization rule.** A `Lesson` MUST NOT be a verbatim copy of a single
 episode. Producers MUST satisfy `synthesized_from_cluster_size ≥ 2` OR
 have a documented synthesis step that demonstrably abstracts (e.g. a REM
 synthesizer call). This is the on-wire enforcement of Designprinzip 2.
+
+**v1.0 → v1.1 compatibility.** A v1.0 receiver consuming a v1.1 record
+MUST tolerate the five new fields (per §1, minor bumps are additive).
+A v1.1 receiver MAY downgrade-accept v1.0 records but MUST mark them
+internally as `evidence_unverifiable=true`; such records MUST NOT be
+re-broadcast under §10.6 two-tier pinning.
 
 ### 3.2 `HubAnchor`
 
@@ -246,6 +268,70 @@ geometrically incomparable and would silently degrade `HubAnchor`
 matching. Mixing models is out of scope for v1; v2 will define a
 `embedding_model_id` field and per-model index segregation.
 
+### 3.7 Proof-of-Knowledge — provenance commitment for `Lesson` (v1.1)
+
+The five v1.1 `Lesson` fields (`evidence_root`, `evidence_count`,
+`prev_lesson_hash`, `maturity_age_days`, `useful_count`) implement a
+**Proof-of-Knowledge** layer analogous to Bitcoin's Proof-of-Work — but
+with *lived experience over time* as the scarce resource instead of CPU
+hashpower. The goals:
+
+1. **Forge-resistance.** A node cannot produce a valid v1.1 lesson
+   without backing it with experience-IDs it actually holds locally.
+2. **Plagiarism-detection.** Re-signing another node's lesson under your
+   own key requires a fake `evidence_root`, which fails the §4.6 challenge.
+3. **Sybil-cost.** Spinning up N fake nodes does not give you N nodes'
+   worth of valid lessons — each fake node would still need real local
+   experience clusters to produce provable evidence.
+4. **Tamper-evident history.** `prev_lesson_hash` chains a node's lessons
+   into an append-only sequence; rewriting lesson N invalidates every
+   subsequent hash for that node.
+
+#### 3.7.1 Evidence Merkle tree
+
+Producers compute `evidence_root` as the root of a binary Merkle tree
+whose leaves are `multihash(sha2-256, experience_id_canonical_bytes)`,
+sorted ascending. The tree uses RFC 6962 conventions:
+
+- Leaf hash: `H(0x00 || hashed_experience_id)`
+- Inner node hash: `H(0x01 || left_child || right_child)`
+- Odd levels: the trailing leaf is duplicated (Bitcoin convention).
+
+Because only **hashes** of experience IDs ever enter the tree, the
+`evidence_root` field on the wire leaks zero raw episode content. This
+is the cryptographic enforcement of Designprinzip 2.
+
+#### 3.7.2 Per-node commitment chain
+
+Every node maintains, locally, a strictly-ordered list of all lessons it
+has ever published. The `prev_lesson_hash` of lesson L_n is
+`multihash(sha2-256, JCS(L_{n-1} including its signature))`. The very
+first lesson a node ever publishes has `prev_lesson_hash = null`.
+
+Receivers MAY (but are not required to) reconstruct a producer's chain
+by paginating `/swarm/lessons` ordered by `signed_at ASC` — peers
+exposing a v1.1-compliant `/swarm/lessons` MUST emit chain-consistent
+results (no gaps, no out-of-order hashes). Receivers that detect a
+broken chain MUST treat all subsequent lessons from that origin as
+`untrusted` until a signed re-anchor lesson appears.
+
+#### 3.7.3 Difficulty knob (receiver-side, local policy)
+
+A v1.1 receiver MAY enforce per-origin acceptance thresholds, e.g.:
+
+```yaml
+swarm.lesson_acceptance:
+  min_evidence_count: 3
+  min_maturity_age_days: 7
+  min_useful_count: 2
+  require_inclusion_proof_for_untrusted: true
+```
+
+This is **local policy**, not part of the wire contract. Two nodes with
+different policies remain interoperable; they just accept different
+fractions of each other's output. This mirrors Bitcoin's adjustable
+difficulty target — no global consensus needed.
+
 ---
 
 ## 4. Endpoints
@@ -310,6 +396,46 @@ Returns signed `HubAnchor` records produced by this node.
 - Auth between peers: TLS only in v1. Per-request auth (HTTP Signatures,
   capabilities, etc.) is out of scope.
 
+### 4.6 `GET /swarm/lessons/{id}/proof` (v1.1)
+
+Returns Merkle-inclusion proofs for the `evidence_root` of a previously
+served `Lesson`. Used by receivers to verify the §3.7 commitment
+without ever seeing raw episode content.
+
+- **200**: body is
+
+  ```json
+  {
+    "lesson_id": "uuid-of-the-lesson",
+    "evidence_count": 17,
+    "evidence_root": "<multihash repeated from the lesson>",
+    "inclusion_proofs": [
+      {
+        "hashed_experience_id": "<multihash sha2-256>",
+        "merkle_path": ["<sibling_hash>", "..."]
+      }
+    ],
+    "spec_version": "1.1",
+    "signed_at": "2026-04-30T01:00:00Z",
+    "signature": "<envelope signed by origin_node_id>"
+  }
+  ```
+
+- The number of `inclusion_proofs` MUST equal `evidence_count` from the
+  lesson body. Each `merkle_path` MUST reconstruct `evidence_root` when
+  combined with `hashed_experience_id` per the §3.7.1 hashing rules.
+- **404**: lesson with that `id` is not held by this node. Receivers
+  may try another peer.
+- **410**: lesson with that `id` was published by this node but has
+  since been forgotten or superseded. Treated as authoritative — do
+  not retry against this peer for this id.
+- The envelope is signed by the **producing node** (`origin_node_id` of
+  the lesson), not the relay. Receivers MUST verify both the lesson
+  signature and the proof envelope signature against the same key.
+- Receivers MAY treat absence of a `/swarm/lessons/{id}/proof` response
+  (404 from origin, not relay) as a §10.1 reputation-decay event for
+  that origin.
+
 ---
 
 ## 5. Rejection rules
@@ -353,9 +479,28 @@ of the following holds. All implementations MUST agree on this list.
     treated as a transport error, not a content-rejection — the receiver
     SHOULD retry with a smaller `limit`.
 
-Records dropped under rules 1–13 SHOULD be counted in a local metric so
+**v1.1 additions (Proof-of-Knowledge — apply only to records with
+`spec_version >= "1.1"`):**
+
+16. **`evidence_count < 1`** for a `Lesson`. → drop. (Rule 11 still
+    applies as the floor; rule 16 is the additional integrity check
+    that the count is sane.)
+17. **`evidence_count` does not match the leaf count** when a
+    `/swarm/lessons/{id}/proof` response is fetched and validated. → drop
+    the lesson, log the discrepancy, mark origin for §10.1 decay.
+18. **Merkle root mismatch.** Reconstructing `evidence_root` from any
+    fetched proof yields a different value. → drop, log, §10.1.
+19. **Broken commitment chain.** `prev_lesson_hash` does not match
+    `multihash(JCS(L_{n-1}))` when the receiver has L_{n-1} cached. →
+    drop the new lesson AND quarantine the origin per §10.2 (this is a
+    history-rewrite signal, treated as severe).
+20. **`maturity_age_days < 0`** or `useful_count < 0` or any of the
+    five v1.1 fields present on a `spec_version="1.0"` record. → drop.
+    (Cross-version field smuggling is forbidden.)
+
+Records dropped under rules 1–20 SHOULD be counted in a local metric so
 the operator can see when a peer is misbehaving. Trust adjustments based
-on rejection counts are a v2 concern.
+on rejection counts are no longer "a v2 concern" — see §10.1.
 
 ---
 
@@ -375,7 +520,9 @@ they are reserved for v2.
 - **Encrypted transport beyond HTTPS** — no end-to-end record encryption,
   no per-record secrecy. Records are signed, not encrypted.
 - **Differential privacy / k-anonymity** on shared lessons — out of
-  scope. The Generalization rule (§3.1) is the v1 privacy posture.
+  scope. The Generalization rule (§3.1) plus the §10 self-healing
+  layer are the v1.1 privacy/integrity posture; differential privacy
+  for lesson bodies is a v2 concern.
 - **Per-request authentication** — TLS pins identity to endpoint, signed
   records pin identity to content. No bearer tokens, no HTTP Signatures.
 - **Microtransactions** — Constitution Pillar 4 applies, but the v1
@@ -472,16 +619,155 @@ swarm-labelled phase merges to `main`.
 | 3b — `wire-validator.ts` (rejection rules 1–13) | §5 | [#86](https://github.com/Dewinator/mycelium/issues/86) | `b1ec1ac` | ✅ on `main` |
 | 3c — `GET /.well-known/mycelium-node` advertisement | §3.2 | [#87](https://github.com/Dewinator/mycelium/issues/87) | `be59267` | ✅ on `main` |
 | 3d — Peer + signed-record storage (migration 071) | §6 | [#88](https://github.com/Dewinator/mycelium/issues/88) | `b0eca59` | ✅ on `main` |
-| 4 — Outbound peer discovery / gossip client | §3, §7 | _not yet issued_ | — | ⏳ spec-only |
-| 5 — Lesson publishing pipeline (producer side) | §4, §6 | _not yet issued_ | — | ⏳ spec-only |
-| 6 — Lesson ingestion pipeline (consumer side) | §5, §7 | _not yet issued_ | — | ⏳ spec-only |
-| 7 — `HubAnchor` exchange | §4 | _not yet issued_ | — | ⏳ spec-only |
-| 8 — Trust weighting + per-peer reputation | §7 | _not yet issued_ | — | ⏳ spec-only |
-| 9 — Diversity-preserving sync policy | §0.3, §7 | _not yet issued_ | — | ⏳ spec-only |
+| 4a — PoK + self-healing spec (this revision, v1.1) | §3.1, §3.7, §4.6, §5 (16–20), §10 | [#100](https://github.com/Dewinator/mycelium/issues/100) | _this PR_ | ⏳ docs-only |
+| 4b — `wire-types.ts` v1.1 fields + JCS validator update | §3.1 | _not yet issued_ | — | ⏳ spec-only |
+| 4c — Evidence Merkle builder service | §3.7.1 | _not yet issued_ | — | ⏳ spec-only |
+| 4d — `prev_lesson_hash` chain table (migration 074) | §3.7.2 | _not yet issued_ | — | ⏳ spec-only |
+| 4e — `/swarm/lessons/{id}/proof` endpoint | §4.6 | _not yet issued_ | — | ⏳ spec-only |
+| 4f — TrustEdge auto-tuning + quarantine (migration 075) | §10.1, §10.2 | _not yet issued_ | — | ⏳ spec-only |
+| 4g — ConscienceAgent contradicts-trigger | §10.3 | _not yet issued_ | — | ⏳ spec-only |
+| 4h — REM self-audit pass | §10.5 | _not yet issued_ | — | ⏳ spec-only |
+| 4i — Two-tier pinning + diversity policy (migration 076) | §10.4, §10.6 | _not yet issued_ | — | ⏳ spec-only |
+| 5 — Outbound peer discovery / gossip client | §3, §7 | _not yet issued_ | — | ⏳ spec-only |
+| 6 — Lesson publishing pipeline (producer side) | §4, §6 | _not yet issued_ | — | ⏳ spec-only |
+| 7 — Lesson ingestion pipeline (consumer side) | §5, §7 | _not yet issued_ | — | ⏳ spec-only |
+| 8 — `HubAnchor` exchange | §4 | _not yet issued_ | — | ⏳ spec-only |
+| 9 — Diversity-preserving sync policy | §0.3, §10.4 | _not yet issued_ | — | ⏳ spec-only |
 
-Phases 4–9 are intentionally spec-only at this point in the roadmap — the
-project's current priority is *Gehirn perfektionieren* (see
-[`CLAUDE.md` § Roadmap (Reed 2026-04-26)](../CLAUDE.md)). The wire
-contract is frozen at v1.0 so an independent implementer can already build
-a phase-3-equivalent peer and be guaranteed to remain compatible once
-phase 4+ lands here.
+Phases 4b–9 are spec-only after this revision lands — the project's
+current priority remains *Gehirn perfektionieren* (see [`CLAUDE.md` §
+Roadmap (Reed 2026-04-26)](../CLAUDE.md)). The wire contract is frozen
+at v1.1 so an independent implementer can already build a v1.1-equivalent
+peer with full PoK and self-healing semantics, and be guaranteed to
+remain compatible once 4b+ lands here.
+
+---
+
+## 10. Self-healing immunity (v1.1)
+
+The §3.7 Proof-of-Knowledge layer establishes **provenance** — a lesson
+is cryptographically traceable to a node that holds matching local
+evidence. Provenance alone does not protect against:
+
+- **Adversarial-but-valid lessons** — a node with real experiences may
+  still publish maliciously framed conclusions.
+- **Echo-chamber amplification** — multiple nodes re-publishing the
+  same fabricated lesson make it look like consensus truth.
+- **Slow-poisoning** — an attacker who accumulates real experiences
+  over months and then publishes biased generalizations.
+
+§10 specifies six **consumer-side** mechanisms that every v1.1 node MUST
+implement. They run locally, never require central authority, and
+together form the swarm's self-healing immune system. No mechanism
+relies on any other node behaving correctly.
+
+### 10.1 Reputation decay (TrustEdge auto-tuning)
+
+A v1.1 node MUST maintain, for every `origin_node_id` it has ever
+ingested from, a rolling **reputation score** updated nightly during
+the existing REM cycle:
+
+```
+trust_edge.weight(origin) ←
+    base_weight
+  × successful_inclusion_proof_rate(origin, last_30d)
+  × clamp(0, 1, avg_local_useful_count(origin) / threshold)
+  × age_factor(origin)
+```
+
+`base_weight` defaults to 0.5 for new origins, 1.0 for operator-pinned
+origins. The product is clamped to `[0, 1]`. Weight = 0 is effective
+ignore. Weight changes MUST be recorded with a `reason` string in
+`TrustEdge` (§3.4) so the operator can audit.
+
+### 10.2 Quarantine
+
+After **N consecutive rejections** under §5 rules 1–20 from the same
+`origin_node_id`, the receiver MUST quarantine the origin for **K days**.
+Quarantined origins are skipped on subsequent `/swarm/lessons` polls.
+Default: `N = 5, K = 30`. Operator-overridable.
+
+§5 rule 19 (broken commitment chain) is a **single-strike** trigger —
+one occurrence quarantines the origin immediately, regardless of N,
+because chain-rewriting is a definitionally adversarial act.
+
+### 10.3 Contradicts-trigger (ConscienceAgent gate)
+
+When two ingested lessons `L_a` (origin A) and `L_b` (origin B) satisfy
+all of:
+
+- `cosine_similarity(L_a.embedding, L_b.embedding) > 0.85` (same topic),
+- the receiver detects polarity inversion in their content
+  (implementation-defined — typically a small classifier or a
+  contradiction-relation lookup), and
+- both pass §5 rejection rules,
+
+…the receiver MUST mark both as `tentative` and emit a
+`memory_relations.type='contradicts'` edge. Neither lesson is eligible
+for §10.6 Tier-A pinning until the conflict is resolved (by new
+evidence, by an operator decision, or by REM-audit §10.5 falsifying one
+of them).
+
+### 10.4 Anti-echo-chamber (diversity policy)
+
+Within any topic cohort the receiver tracks across its peer set, if the
+**same lesson** (`id` match, OR `cosine_similarity > 0.95` AND
+`evidence_count` similar AND `signed_at` within 7 days) is held by
+**>80% of the cohort**, the receiver MUST decrease its local weight by
+a factor of `(1 − over_concentration)` rather than increase it.
+
+Rationale: high cross-cohort agreement on a v1.1 lesson without
+independent evidence chains is more consistent with re-broadcast of a
+plagiarized lesson than with independent corroboration. True
+corroboration looks like *different* lessons reaching *similar*
+conclusions through *different* `evidence_root`s.
+
+### 10.5 REM self-audit
+
+During each REM cycle (the existing nightly synthesis pass), every
+swarm-imported lesson held in `tentative` state MUST be checked against
+the local node's own experiences:
+
+```
+for each tentative L from origin O:
+    local_evidence = recall(L.topic, scope='local-experiences-only')
+    if local_evidence has high-confidence contradicting cluster:
+        forget(L, reason='local-falsification')
+        trust_edge.decrement(O, magnitude=local_confidence,
+                             reason='audit-falsification')
+        record_lesson(local-falsifying lesson, source_ids=local_evidence)
+```
+
+This makes lived experience the ultimate ground-truth filter. The
+swarm cannot teach the node something its own life has falsified. The
+falsifying lesson the node records becomes itself eligible for v1.1
+publication, completing the self-correcting feedback loop.
+
+### 10.6 Two-tier pinning policy
+
+Every v1.1 receiver MUST classify each held lesson into exactly one tier:
+
+- **Tier A — pinned.** Eligible for re-broadcast on this node's
+  `/swarm/lessons`. Required: lesson was either generated locally by
+  this node, OR ingested from the swarm AND independently corroborated
+  by ≥ 2 of this node's local experiences via §10.5 self-audit.
+- **Tier B — tentative.** Used at lower local weight. Includes
+  contested lessons (§10.3) and freshly-ingested swarm lessons before
+  audit. **MUST NOT be re-broadcast.** This is the firebreak that
+  prevents the node from amplifying un-vetted content.
+
+Tier transitions are append-only: a Tier-B lesson promoted to Tier-A
+records the local evidence that justified the promotion. A Tier-A
+lesson demoted by §10.5 falsification cannot be re-promoted without
+new evidence.
+
+### 10.7 Constitution mapping for §10
+
+- **Pillar 1** (decentralized) — strengthened: every immune mechanism
+  runs purely on local state, no peer-vouching required.
+- **Pillar 3** (swarm intelligence) — strengthened: §10.4 actively
+  preserves cohort diversity, the swarm-thesis-defining property.
+- **Pillar 6** (cyber security) — strengthened: every documented
+  attack class (forgery, plagiarism, sybil flood, echo-chamber,
+  slow-poisoning) is now addressed by either §3.7 or §10 or both.
+- Pillars 2, 4, 5 — untouched.
