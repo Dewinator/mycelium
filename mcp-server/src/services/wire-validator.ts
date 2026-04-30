@@ -167,14 +167,34 @@ function checkEmbedding(value: unknown): ValidationErr | null {
 }
 
 /** Parse `<major>.<minor>` per SWARM_SPEC §1. Returns null if malformed. */
-function parseSpecMajor(specVersion: string): number | null {
+function parseSpec(specVersion: string): { major: number; minor: number } | null {
   // Spec §1: decimal integers, no leading zeros, no whitespace. Single-digit
   // majors are common ("1.0"), multi-digit minors are valid ("1.10"); we
   // accept any non-leading-zero decimal pair.
   const m = specVersion.match(/^(0|[1-9]\d*)\.(0|[1-9]\d*)$/);
   if (!m) return null;
-  return Number(m[1]);
+  return { major: Number(m[1]), minor: Number(m[2]) };
 }
+
+// v1.1 Proof-of-Knowledge field set on Lesson (SWARM_SPEC §3.1, §3.7).
+// `prev_lesson_hash` is intentionally absent here because its type is
+// `string | null` (first-ever-published lesson uses null) — the generic
+// string-or-array typing pass cannot express that union, so it is checked
+// inline below.
+const LESSON_V11_REQUIRED: readonly FieldSpec[] = [
+  { name: "evidence_root", type: "string" },
+  { name: "evidence_count", type: "number" },
+  { name: "maturity_age_days", type: "number" },
+  { name: "useful_count", type: "number" },
+];
+
+const LESSON_V11_FIELD_NAMES = [
+  "evidence_root",
+  "evidence_count",
+  "prev_lesson_hash",
+  "maturity_age_days",
+  "useful_count",
+] as const;
 
 /** Parse an ISO-8601 timestamp into ms-epoch, or null if unparseable. */
 function parseTimestamp(s: string): number | null {
@@ -232,17 +252,17 @@ export async function validateWireRecord(
   // Rule 1: spec_version major. Done after presence/type so we know the
   // field is at least a string before we try to parse it.
   const specVersion = record.spec_version as string;
-  const major = parseSpecMajor(specVersion);
-  if (major === null) {
+  const spec = parseSpec(specVersion);
+  if (spec === null) {
     // A string that isn't a valid <major>.<minor> is a type-shape problem
     // for that field — it can't pass spec-version negotiation but it isn't
     // a major mismatch in the rule-1 sense either. Surface as rule 3.
     return fail(3, `spec_version "${specVersion}" is not a valid <major>.<minor>`);
   }
-  if (major !== opts.ourSpecMajor) {
+  if (spec.major !== opts.ourSpecMajor) {
     return fail(
       1,
-      `spec_version major ${major} != receiver's major ${opts.ourSpecMajor}`
+      `spec_version major ${spec.major} != receiver's major ${opts.ourSpecMajor}`
     );
   }
 
@@ -316,6 +336,75 @@ export async function validateWireRecord(
         11,
         `Lesson.synthesized_from_cluster_size must be >= 2, got ${n}`
       );
+    }
+  }
+
+  // SWARM_SPEC §5 v1.1 additions for Lesson — rules 16 and 20 (rules
+  // 17/18/19 are out-of-band: 17/18 require a fetched proof, 19 requires
+  // the receiver's prev-lesson cache).
+  //
+  // The minor-version split is: v1.0 records MUST NOT carry the five
+  // PoK fields (rule 20 third leg, the cross-version smuggling guard);
+  // v1.1+ records MUST carry all five (rule 2 — required-field presence)
+  // and satisfy the count floors (rules 16 + 20 first/second legs).
+  if (kind === "lesson") {
+    const v11FieldsPresent = LESSON_V11_FIELD_NAMES.filter(
+      (f) => f in record && record[f] !== undefined
+    );
+
+    if (spec.major === 1 && spec.minor === 0) {
+      // Rule 20 (third leg): v1.0 records MUST NOT carry v1.1 fields.
+      // Even one PoK field on a "1.0" record is forbidden — this is the
+      // cross-version smuggling check, not a "best-effort additive" path.
+      if (v11FieldsPresent.length > 0) {
+        return fail(
+          20,
+          `v1.1 fields present on spec_version="1.0" record: ${v11FieldsPresent.join(", ")}`
+        );
+      }
+    } else if (spec.major === 1 && spec.minor >= 1) {
+      // Rule 2 / 3 for the four typed v1.1 required fields.
+      const v11Err = checkPresentAndTyped(record, LESSON_V11_REQUIRED);
+      if (v11Err) return v11Err;
+
+      // prev_lesson_hash: required, but typed `string | null`. The generic
+      // helper above does not encode the union, so handle it inline.
+      // Presence is the absence of the JS-undefined sentinel; explicit
+      // `null` is allowed (first-ever-published lesson, §3.1).
+      if (!("prev_lesson_hash" in record) || record.prev_lesson_hash === undefined) {
+        return fail(2, `missing required field: prev_lesson_hash`);
+      }
+      const prevHash = record.prev_lesson_hash;
+      if (prevHash !== null && typeof prevHash !== "string") {
+        return fail(
+          3,
+          `prev_lesson_hash must be string or null, got ${typeof prevHash}`
+        );
+      }
+
+      // Rule 16: evidence_count must be a positive integer.
+      const evCount = record.evidence_count as number;
+      if (!Number.isInteger(evCount) || evCount < 1) {
+        return fail(16, `Lesson.evidence_count must be an integer >= 1, got ${evCount}`);
+      }
+
+      // Rule 20 (first leg): maturity_age_days >= 0.
+      const maturity = record.maturity_age_days as number;
+      if (!Number.isInteger(maturity) || maturity < 0) {
+        return fail(
+          20,
+          `Lesson.maturity_age_days must be a non-negative integer, got ${maturity}`
+        );
+      }
+
+      // Rule 20 (second leg): useful_count >= 0.
+      const useful = record.useful_count as number;
+      if (!Number.isInteger(useful) || useful < 0) {
+        return fail(
+          20,
+          `Lesson.useful_count must be a non-negative integer, got ${useful}`
+        );
+      }
     }
   }
 
