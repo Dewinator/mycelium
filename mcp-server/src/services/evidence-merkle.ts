@@ -259,6 +259,65 @@ export function buildInclusionProof(
 }
 
 /**
+ * Compute the evidence root over an already-hashed, already-sorted leaf
+ * set. Same algorithm as `buildEvidenceRoot`, but skips the input
+ * hash-and-sort step — used by the §4.6 proof endpoint, which reads
+ * leaves out of `lesson_evidence_origin` (already canonical) and would
+ * corrupt them if the producer's hash function were called a second time.
+ *
+ * The leaf order is taken AS-GIVEN. Callers MUST pass leaves in the same
+ * canonical order the producer signed over (ascending lex on the base58btc
+ * multihash form, per §3.7.1) — passing an unsorted array silently
+ * produces a different root, which would fail every receiver's rule 18
+ * check. The migration-077 substrate stores leaves in `position` order and
+ * the proof endpoint reads them ORDER BY position ASC, so the contract
+ * holds end-to-end without an extra sort here.
+ */
+export function computeRootFromHashedLeaves(sortedHashedLeaves: string[]): string {
+  if (!Array.isArray(sortedHashedLeaves) || sortedHashedLeaves.length === 0) {
+    throw new Error(
+      "computeRootFromHashedLeaves: at least one hashed leaf is required"
+    );
+  }
+  return computeRoot(sortedHashedLeaves);
+}
+
+/**
+ * Build an inclusion proof from already-hashed leaves. Companion to
+ * `computeRootFromHashedLeaves`: caller supplies the same canonical leaf
+ * list the producer committed and the multihash of the leaf to prove
+ * (`looksLikeMultihashLeaf`-shaped). Throws if `target` is not present
+ * — that's a producer-side substrate inconsistency, not a quietly-empty
+ * proof.
+ */
+export function buildInclusionProofFromHashedLeaves(
+  sortedHashedLeaves: string[],
+  target: string
+): InclusionProof {
+  if (!Array.isArray(sortedHashedLeaves) || sortedHashedLeaves.length === 0) {
+    throw new Error(
+      "buildInclusionProofFromHashedLeaves: at least one hashed leaf is required"
+    );
+  }
+  if (!looksLikeMultihashLeaf(target)) {
+    throw new Error(
+      `buildInclusionProofFromHashedLeaves: target ${target} is not a base58btc sha2-256 multihash`
+    );
+  }
+  const idx = sortedHashedLeaves.indexOf(target);
+  if (idx < 0) {
+    throw new Error(
+      `buildInclusionProofFromHashedLeaves: target leaf not found among ${sortedHashedLeaves.length} hashed leaves`
+    );
+  }
+  const path = collectAuditPath(sortedHashedLeaves, idx);
+  return {
+    hashed_experience_id: target,
+    merkle_path: path.map(multihashFromDigest),
+  };
+}
+
+/**
  * Verify an inclusion proof against `root`. Stateless and position-less:
  * sorted-pair inner hashing means the proof reconstructs the root without
  * any leaf-index argument (see module-top design notes).
