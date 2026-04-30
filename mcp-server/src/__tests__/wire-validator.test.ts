@@ -60,6 +60,11 @@ function attachSignature(
 // ---------------------------------------------------------------------------
 
 function buildValidLesson(producer: Identity): Record<string, unknown> {
+  // WIRE_SPEC_VERSION is "1.1", so the fixture MUST carry the five PoK
+  // fields specified in SWARM_SPEC §3.1 — otherwise rule 2 (presence)
+  // would reject. The values are minimal but spec-shaped: a 32-byte-ish
+  // multihash placeholder, evidence_count >= 1, prev_lesson_hash=null
+  // (this lesson stands as if it were the producer's very first).
   const unsigned = {
     id: "11111111-2222-3333-4444-555555555555",
     content: "Lessons must be generalized before they leave a node.",
@@ -70,6 +75,30 @@ function buildValidLesson(producer: Identity): Record<string, unknown> {
     created_at: "2026-04-27T10:00:00.000Z",
     tags: ["test", "swarm"],
     spec_version: WIRE_SPEC_VERSION,
+    evidence_root: "1220" + "ab".repeat(32),
+    evidence_count: 4,
+    prev_lesson_hash: null,
+    maturity_age_days: 1,
+    useful_count: 0,
+  };
+  return attachSignature(unsigned, producer.pem);
+}
+
+/**
+ * Backward-compat fixture: a v1.0 record served by an older producer to a
+ * v1.1 receiver. Per SWARM_SPEC §1, minor bumps are additive — a v1.1
+ * receiver MUST keep accepting v1.0 records (without PoK fields).
+ */
+function buildValidV10Lesson(producer: Identity): Record<string, unknown> {
+  const unsigned = {
+    id: "11111111-2222-3333-4444-666666666666",
+    content: "Old-style lesson without PoK fields.",
+    embedding: full768Embedding(2),
+    synthesized_from_cluster_size: 3,
+    origin_node_id: producer.nodeId,
+    signed_at: "2026-04-28T11:00:00.000Z",
+    created_at: "2026-04-27T10:00:00.000Z",
+    spec_version: "1.0",
   };
   return attachSignature(unsigned, producer.pem);
 }
@@ -416,4 +445,196 @@ test("rule 5: unknown origin_node_id (no pubkey resolver hit) is rejected", asyn
     getPubkeyForNode: () => null,
   });
   expectErr(result, 5);
+});
+
+// ---------------------------------------------------------------------------
+// v1.1 PoK rules — sub-phase 4b (issue #102)
+//
+// Rules 16 + 20 plus the rule-2 presence checks for the five new fields.
+// Rules 17/18/19 are out-of-band (they require a fetched proof or a
+// receiver-side prev-lesson cache) and live in their own sub-phases.
+// ---------------------------------------------------------------------------
+
+test("backward-compat: a v1.0 Lesson is still accepted by a v1.1 receiver", async () => {
+  const producer = freshIdentity();
+  const record = buildValidV10Lesson(producer);
+  const result = await validateWireRecord(record, "lesson", {
+    ourSpecMajor: 1,
+    now: FIXED_NOW,
+    getPubkeyForNode: makePubkeyResolver(
+      new Map([[producer.nodeId, producer.pubkeyRaw]])
+    ),
+  });
+  assert.equal(result.ok, true);
+});
+
+test("rule 16: v1.1 Lesson with evidence_count = 0 is rejected", async () => {
+  const producer = freshIdentity();
+  const valid = buildValidLesson(producer);
+  const { signature: _omit, ...unsigned } = valid;
+  const broken = attachSignature(
+    { ...unsigned, evidence_count: 0 },
+    producer.pem
+  );
+  const result = await validateWireRecord(broken, "lesson", {
+    ourSpecMajor: 1,
+    now: FIXED_NOW,
+    getPubkeyForNode: makePubkeyResolver(
+      new Map([[producer.nodeId, producer.pubkeyRaw]])
+    ),
+  });
+  expectErr(result, 16);
+});
+
+test("rule 16: v1.1 Lesson with non-integer evidence_count is rejected", async () => {
+  const producer = freshIdentity();
+  const valid = buildValidLesson(producer);
+  const { signature: _omit, ...unsigned } = valid;
+  const broken = attachSignature(
+    { ...unsigned, evidence_count: 2.5 },
+    producer.pem
+  );
+  const result = await validateWireRecord(broken, "lesson", {
+    ourSpecMajor: 1,
+    now: FIXED_NOW,
+    getPubkeyForNode: makePubkeyResolver(
+      new Map([[producer.nodeId, producer.pubkeyRaw]])
+    ),
+  });
+  expectErr(result, 16);
+});
+
+test("rule 20: v1.1 Lesson with maturity_age_days < 0 is rejected", async () => {
+  const producer = freshIdentity();
+  const valid = buildValidLesson(producer);
+  const { signature: _omit, ...unsigned } = valid;
+  const broken = attachSignature(
+    { ...unsigned, maturity_age_days: -1 },
+    producer.pem
+  );
+  const result = await validateWireRecord(broken, "lesson", {
+    ourSpecMajor: 1,
+    now: FIXED_NOW,
+    getPubkeyForNode: makePubkeyResolver(
+      new Map([[producer.nodeId, producer.pubkeyRaw]])
+    ),
+  });
+  expectErr(result, 20);
+});
+
+test("rule 20: v1.1 Lesson with useful_count < 0 is rejected", async () => {
+  const producer = freshIdentity();
+  const valid = buildValidLesson(producer);
+  const { signature: _omit, ...unsigned } = valid;
+  const broken = attachSignature(
+    { ...unsigned, useful_count: -3 },
+    producer.pem
+  );
+  const result = await validateWireRecord(broken, "lesson", {
+    ourSpecMajor: 1,
+    now: FIXED_NOW,
+    getPubkeyForNode: makePubkeyResolver(
+      new Map([[producer.nodeId, producer.pubkeyRaw]])
+    ),
+  });
+  expectErr(result, 20);
+});
+
+test("rule 20: v1.0 Lesson carrying a v1.1 field (cross-version smuggling) is rejected", async () => {
+  const producer = freshIdentity();
+  const v10 = buildValidV10Lesson(producer);
+  const { signature: _omit, ...unsigned } = v10;
+  // Sneak a single PoK field into an otherwise-valid v1.0 record. Rule 20's
+  // third leg fires on ANY v1.1 field, not just all five.
+  const broken = attachSignature(
+    { ...unsigned, evidence_root: "1220" + "cd".repeat(32) },
+    producer.pem
+  );
+  const result = await validateWireRecord(broken, "lesson", {
+    ourSpecMajor: 1,
+    now: FIXED_NOW,
+    getPubkeyForNode: makePubkeyResolver(
+      new Map([[producer.nodeId, producer.pubkeyRaw]])
+    ),
+  });
+  expectErr(result, 20);
+});
+
+test("rule 20: v1.0 Lesson carrying useful_count alone is rejected (single-field smuggle)", async () => {
+  const producer = freshIdentity();
+  const v10 = buildValidV10Lesson(producer);
+  const { signature: _omit, ...unsigned } = v10;
+  const broken = attachSignature(
+    { ...unsigned, useful_count: 7 },
+    producer.pem
+  );
+  const result = await validateWireRecord(broken, "lesson", {
+    ourSpecMajor: 1,
+    now: FIXED_NOW,
+    getPubkeyForNode: makePubkeyResolver(
+      new Map([[producer.nodeId, producer.pubkeyRaw]])
+    ),
+  });
+  expectErr(result, 20);
+});
+
+test("rule 2: v1.1 Lesson missing evidence_root is rejected", async () => {
+  const producer = freshIdentity();
+  const valid = buildValidLesson(producer) as Record<string, unknown>;
+  delete valid.evidence_root;
+  const result = await validateWireRecord(valid, "lesson", {
+    ourSpecMajor: 1,
+    now: FIXED_NOW,
+    getPubkeyForNode: makePubkeyResolver(
+      new Map([[producer.nodeId, producer.pubkeyRaw]])
+    ),
+  });
+  expectErr(result, 2);
+});
+
+test("rule 2: v1.1 Lesson missing prev_lesson_hash (not even null) is rejected", async () => {
+  const producer = freshIdentity();
+  const valid = buildValidLesson(producer) as Record<string, unknown>;
+  delete valid.prev_lesson_hash;
+  const result = await validateWireRecord(valid, "lesson", {
+    ourSpecMajor: 1,
+    now: FIXED_NOW,
+    getPubkeyForNode: makePubkeyResolver(
+      new Map([[producer.nodeId, producer.pubkeyRaw]])
+    ),
+  });
+  expectErr(result, 2);
+});
+
+test("rule 3: v1.1 Lesson with prev_lesson_hash typed as number is rejected", async () => {
+  const producer = freshIdentity();
+  const valid = buildValidLesson(producer);
+  const { signature: _omit, ...unsigned } = valid;
+  const broken = attachSignature(
+    { ...unsigned, prev_lesson_hash: 42 },
+    producer.pem
+  );
+  const result = await validateWireRecord(broken, "lesson", {
+    ourSpecMajor: 1,
+    now: FIXED_NOW,
+    getPubkeyForNode: makePubkeyResolver(
+      new Map([[producer.nodeId, producer.pubkeyRaw]])
+    ),
+  });
+  expectErr(result, 3);
+});
+
+test("v1.1 Lesson with prev_lesson_hash = null (first-ever-published) is accepted", async () => {
+  // Already covered implicitly by buildValidLesson, but pinned explicitly so
+  // a future tightening that demands a non-null hash trips this guard.
+  const producer = freshIdentity();
+  const record = buildValidLesson(producer);
+  const result = await validateWireRecord(record, "lesson", {
+    ourSpecMajor: 1,
+    now: FIXED_NOW,
+    getPubkeyForNode: makePubkeyResolver(
+      new Map([[producer.nodeId, producer.pubkeyRaw]])
+    ),
+  });
+  assert.equal(result.ok, true);
 });
