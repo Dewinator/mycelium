@@ -46,6 +46,26 @@ export interface ValidateOptions {
    * is not consulted for that kind.
    */
   getPubkeyForNode: (nodeId: string) => Uint8Array | null;
+  /**
+   * Optional. Lookup the lesson_hash this receiver expects to see in
+   * `prev_lesson_hash` for the next Lesson from `originId`, given the
+   * receiver's local cache of that origin's chain. Returns null when the
+   * receiver holds no prior lesson from this origin (the fresh-peer
+   * case — rule 19 cannot fire because there is no L_{n-1} to chain
+   * against).
+   *
+   * Typical implementation: query the most recent cached lesson for
+   * `originId` from `swarm_lessons` (migration 071) and recompute
+   * `multihash(sha2-256, JCS(signed_lesson))`. The recompute MUST run
+   * inside the callback — the validator stays pure and never reads the
+   * DB. SWARM_SPEC §5 rule 19, §3.7.2.
+   *
+   * Omit (or return null) and rule 19 is silently skipped — that's the
+   * v1.0 / fresh-peer regime. Rule 19 is intentionally side-channel
+   * because the prev-hash invariant only holds when the receiver has
+   * actually cached the predecessor.
+   */
+  getExpectedPrevLessonHashForOrigin?: (originId: string) => string | null;
 }
 
 // ---------------------------------------------------------------------------
@@ -487,6 +507,34 @@ export async function validateWireRecord(
   const sig = record.signature as string;
   if (!verify(record, sig, verifierPubkey)) {
     return fail(5, `Ed25519 signature verification failed`);
+  }
+
+  // Rule 19: broken commitment chain. SWARM_SPEC §3.7.2 / §5 rule 19.
+  // Only meaningful for Lesson, and only when the receiver actually has
+  // L_{n-1} cached (callback returns non-null). The callback is the
+  // receiver's responsibility — typically it queries the most recent
+  // cached lesson for `origin_node_id` from swarm_lessons and recomputes
+  // multihash(JCS(L_{n-1})). A mismatch is treated as a history-rewrite
+  // signal — the issue body and §10.2 mark this as a single-strike
+  // quarantine trigger, but quarantine bookkeeping is the receiver's
+  // job (4f) — here we only emit the rule-19 rejection.
+  if (kind === "lesson" && opts.getExpectedPrevLessonHashForOrigin) {
+    const originId = record.origin_node_id as string;
+    const expected = opts.getExpectedPrevLessonHashForOrigin(originId);
+    if (expected !== null && expected !== undefined) {
+      // `prev_lesson_hash` is a v1.1+ Lesson field. A v1.0 record that
+      // omits it AND chains against a cached predecessor is also a
+      // chain break (the producer cannot escape the chain by claiming
+      // to be on the older spec version). `record.prev_lesson_hash`
+      // being undefined OR not equal to expected both fail.
+      const actual = record.prev_lesson_hash;
+      if (actual !== expected) {
+        return fail(
+          19,
+          `prev_lesson_hash ${JSON.stringify(actual)} does not match cached chain tip ${expected} for origin ${originId}`,
+        );
+      }
+    }
   }
 
   return { ok: true };

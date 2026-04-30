@@ -860,3 +860,121 @@ test("validateLessonProof rule 18: wrong evidence_root is rejected", async () =>
   });
   expectErr(result, 18);
 });
+
+// ---------------------------------------------------------------------------
+// Rule 19 — broken commitment chain (SWARM_SPEC §3.7.2 / §5 rule 19)
+//
+// Rule 19 is side-channel: it only fires when the receiver has already
+// cached L_{n-1} for the origin. The validator stays pure and never
+// touches the DB — the cache lookup + multihash recompute live in the
+// injected `getExpectedPrevLessonHashForOrigin` callback.
+// ---------------------------------------------------------------------------
+
+function buildValidV11Lesson(
+  producer: Identity,
+  prevLessonHash: string | null,
+): Record<string, unknown> {
+  const unsigned = {
+    id: "11111111-2222-3333-4444-666666666666",
+    content: "v1.1 lesson with PoK envelope.",
+    embedding: full768Embedding(3),
+    synthesized_from_cluster_size: 4,
+    origin_node_id: producer.nodeId,
+    signed_at: "2026-04-28T11:00:00.000Z",
+    created_at: "2026-04-27T10:00:00.000Z",
+    spec_version: WIRE_SPEC_VERSION,
+    // Five v1.1 fields — present in the signed bytes per §3.7.
+    evidence_root: "QmFakeRootForTest",
+    evidence_count: 4,
+    prev_lesson_hash: prevLessonHash,
+    maturity_age_days: 1,
+    useful_count: 0,
+  };
+  return attachSignature(unsigned, producer.pem);
+}
+
+test("rule 19: prev_lesson_hash matches cached tip → accepted", async () => {
+  const producer = freshIdentity();
+  const expectedTip = "QmExpectedPrevLessonHash";
+  const record = buildValidV11Lesson(producer, expectedTip);
+  const result = await validateWireRecord(record, "lesson", {
+    ourSpecMajor: 1,
+    now: FIXED_NOW,
+    getPubkeyForNode: makePubkeyResolver(
+      new Map([[producer.nodeId, producer.pubkeyRaw]]),
+    ),
+    getExpectedPrevLessonHashForOrigin: () => expectedTip,
+  });
+  assert.equal(result.ok, true);
+});
+
+test("rule 19: prev_lesson_hash mismatch against cached tip is rejected", async () => {
+  const producer = freshIdentity();
+  const record = buildValidV11Lesson(producer, "QmActualPrev");
+  const result = await validateWireRecord(record, "lesson", {
+    ourSpecMajor: 1,
+    now: FIXED_NOW,
+    getPubkeyForNode: makePubkeyResolver(
+      new Map([[producer.nodeId, producer.pubkeyRaw]]),
+    ),
+    // Receiver's cache says the previous tip should have been DIFFERENT
+    // — that's the history-rewrite signal §3.7.2 / §10.2 calls out.
+    getExpectedPrevLessonHashForOrigin: () => "QmDifferentExpectedPrev",
+  });
+  expectErr(result, 19);
+});
+
+test("rule 19: empty receiver cache (callback returns null) skips the check", async () => {
+  // Fresh-peer regime — receiver has no L_{n-1} for this origin, so
+  // there's nothing to chain against. Spec §3.7.2 explicitly allows
+  // this: receivers MAY (but are not required to) reconstruct chains.
+  const producer = freshIdentity();
+  const record = buildValidV11Lesson(producer, "QmAnyPrevTheProducerClaims");
+  const result = await validateWireRecord(record, "lesson", {
+    ourSpecMajor: 1,
+    now: FIXED_NOW,
+    getPubkeyForNode: makePubkeyResolver(
+      new Map([[producer.nodeId, producer.pubkeyRaw]]),
+    ),
+    getExpectedPrevLessonHashForOrigin: () => null,
+  });
+  assert.equal(result.ok, true);
+});
+
+test("rule 19: callback omitted entirely → no enforcement (back-compat)", async () => {
+  // Existing v1.0 callers that have not adopted the new opts field MUST
+  // keep validating without rule-19 checks. This is the back-compat
+  // contract for the validator's optional surface.
+  const producer = freshIdentity();
+  const record = buildValidV11Lesson(producer, "QmWhatever");
+  const result = await validateWireRecord(record, "lesson", {
+    ourSpecMajor: 1,
+    now: FIXED_NOW,
+    getPubkeyForNode: makePubkeyResolver(
+      new Map([[producer.nodeId, producer.pubkeyRaw]]),
+    ),
+  });
+  assert.equal(result.ok, true);
+});
+
+test("rule 19: v1.0 producer escaping the chain (no prev_lesson_hash field) while cache has a tip is rejected", async () => {
+  // A producer that drops back to spec_version="1.0" to escape the chain
+  // — v1.0 records legitimately lack prev_lesson_hash (rule 20 third leg
+  // even forbids them from carrying it), so the rule-2 presence check
+  // does NOT fire. But if the receiver still has L_{n-1} cached for this
+  // origin from earlier v1.1 lessons, the missing field is itself the
+  // chain break: undefined !== expected → rule 19. Validator code:
+  // "the producer cannot escape the chain by claiming to be on the older
+  // spec version" (wire-validator.ts §rule 19).
+  const producer = freshIdentity();
+  const v10 = buildValidV10Lesson(producer);
+  const result = await validateWireRecord(v10, "lesson", {
+    ourSpecMajor: 1,
+    now: FIXED_NOW,
+    getPubkeyForNode: makePubkeyResolver(
+      new Map([[producer.nodeId, producer.pubkeyRaw]]),
+    ),
+    getExpectedPrevLessonHashForOrigin: () => "QmExpectedTip",
+  });
+  expectErr(result, 19);
+});
