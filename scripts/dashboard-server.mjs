@@ -60,6 +60,12 @@ const SWARM_ENDPOINTS_DIST = path.join(ROOT, "mcp-server", "dist", "swarm", "end
 const { buildNodeAdvertisementResponse } = await import(
   path.join(SWARM_ENDPOINTS_DIST, "node-advertisement.js")
 );
+// Swarm sub-phase 4e (issue #105): GET /swarm/lessons/{id}/proof. The
+// handler module shipped in PR #128 but never got wired into an HTTP host,
+// so the endpoint was unreachable. Wiring it here closes that gap.
+const { buildLessonProofResponse } = await import(
+  path.join(SWARM_ENDPOINTS_DIST, "lesson-proof.js")
+);
 
 // --- load JWT_SECRET from docker/.env so we can mint a service_role JWT ---
 async function loadEnv() {
@@ -1803,6 +1809,77 @@ async function handleNodeAdvertisement(_req, res) {
   res.end(result.body);
 }
 
+// --- Swarm sub-phase 4e: GET /swarm/lessons/{id}/proof ------------------
+// SWARM_SPEC §4.6 Merkle-inclusion proof envelope. The handler is pure;
+// the loaders below adapt PostgREST table reads to its async surface.
+//
+// Loaders read directly from the substrate tables rather than the
+// `get_lesson_evidence` RPC: that RPC is broken on PG16 until migration
+// 084 lands (issue #135 / PR #140) — the table read works regardless.
+const PROOF_PATH_RE =
+  /^\/swarm\/lessons\/([0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12})\/proof$/i;
+
+async function pgSelect(query) {
+  const r = await fetch(new URL(`/${query}`, UPSTREAM), {
+    method: "GET",
+    headers: {
+      "Accept":        "application/json",
+      "Authorization": `Bearer ${SERVICE_JWT}`,
+      "apikey":        SERVICE_JWT,
+    },
+  });
+  if (!r.ok) {
+    throw new Error(`postgrest GET /${query} failed: HTTP ${r.status}`);
+  }
+  return r.json();
+}
+
+async function handleLessonProof(_req, res, lessonId) {
+  try {
+    const result = await buildLessonProofResponse({
+      lessonId,
+      loadSelf: async () => {
+        const self = await nodeIdentityService.getSelf();
+        if (!self) return null;
+        return { node_id: self.node_id, pubkey_b64: self.pubkey_b64 };
+      },
+      loadLesson: async (id) => {
+        const rows = await pgSelect(
+          `swarm_lessons?select=origin_node_id,signed_at,spec_version&id=eq.${encodeURIComponent(id)}&limit=1`,
+        );
+        if (!Array.isArray(rows) || rows.length === 0) return null;
+        const r = rows[0];
+        return {
+          origin_node_id: r.origin_node_id,
+          signed_at: r.signed_at,
+          spec_version: r.spec_version,
+        };
+      },
+      loadLeaves: async (id) => {
+        const rows = await pgSelect(
+          `lesson_evidence_origin?select=hashed_experience_id,position&lesson_id=eq.${encodeURIComponent(id)}&order=position.asc`,
+        );
+        if (!Array.isArray(rows)) return [];
+        return rows.map((r) => r.hashed_experience_id);
+      },
+      wasPublishedByThisNode: async (id) => {
+        const rows = await pgSelect(
+          `lesson_chain?select=lesson_id&lesson_id=eq.${encodeURIComponent(id)}&limit=1`,
+        );
+        return Array.isArray(rows) && rows.length > 0;
+      },
+    });
+    res.writeHead(result.status, result.headers);
+    res.end(result.body);
+  } catch (e) {
+    res.writeHead(503, { "Content-Type": "application/json; charset=utf-8" });
+    res.end(JSON.stringify({
+      error: "lesson-proof handler failed",
+      detail: String(e?.message || e),
+    }));
+  }
+}
+
 const server = http.createServer((req, res) => {
   // Tiny access log.
   const t = new Date().toISOString();
@@ -1817,6 +1894,11 @@ const server = http.createServer((req, res) => {
   if (req.url === "/swarm/contradict-resolve")  return handleSwarmContradictResolve(req, res);
   if (req.url === "/swarm/peer-trust-override") return handleSwarmPeerTrustOverride(req, res);
   if (req.url === "/swarm/lesson-pin")          return handleSwarmLessonPin(req, res);
+  // Swarm sub-phase 4e (issue #105): inclusion-proof endpoint.
+  if (req.method === "GET" && req.url) {
+    const proofMatch = req.url.match(PROOF_PATH_RE);
+    if (proofMatch) return handleLessonProof(req, res, proofMatch[1]);
+  }
   if (req.url.startsWith("/api/"))            return proxyApi(req, res);
   if (req.url.startsWith("/belief"))          return proxyBelief(req, res);
   if (req.url.startsWith("/guard"))           return proxyGuard(req, res);
