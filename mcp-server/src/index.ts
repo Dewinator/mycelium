@@ -25,6 +25,7 @@ import {
   dedup,
 } from "./tools/cognitive.js";
 import { ExperienceService } from "./services/experiences.js";
+import { RemAuditService } from "./services/rem-audit.js";
 import {
   recordExperienceSchema,
   recordExperience,
@@ -223,6 +224,7 @@ const guardService = new GuardService(
 const neurochemistryService = new NeurochemistryService(SUPABASE_URL, SUPABASE_KEY);
 const relationsService      = new RelationsService(SUPABASE_URL, SUPABASE_KEY);
 const nodeIdentityService   = new NodeIdentityService(SUPABASE_URL, SUPABASE_KEY);
+const remAuditService       = new RemAuditService(SUPABASE_URL, SUPABASE_KEY);
 // DEFERRED 2026-04-26 — federation service parked until federation phase.
 // const federationService = new FederationService(
 //   SUPABASE_URL,
@@ -616,7 +618,19 @@ server.tool(
   "digest",
   "END-OF-CONVERSATION soul development. Call this ONCE at the end of every conversation. It automatically: (1) records the experience, (2) stores extracted facts, (3) runs REM-sleep reflection to find patterns, (4) creates or reinforces lessons, (5) promotes mature lessons to soul traits, (6) consolidates memories, (7) tracks skill performance per task_type from tools_used, (8) auto-ingests plausible causal edges to prior experiences. Pass a first-person summary, outcome, optional facts, and especially `tools_used` + `task_type` so the learning loop fills up. Affect is no longer pushed from here — it's recomputed from the experience+memory_event triggers (migration 062).",
   digestSchema.shape,
-  withErrorHandling((input) => digest(experienceService, memoryService, causalService, skillsService, neurochemistryService, getGenomeLabel(), digestSchema.parse(input)))
+  withErrorHandling((input) => digest(
+    experienceService,
+    memoryService,
+    causalService,
+    skillsService,
+    neurochemistryService,
+    getGenomeLabel(),
+    digestSchema.parse(input),
+    {
+      service: remAuditService,
+      deps: remAuditService.defaultDeps((text) => embeddings.embed(text)),
+    }
+  ))
 );
 
 // --- affective state layer --------------------------------------------------
