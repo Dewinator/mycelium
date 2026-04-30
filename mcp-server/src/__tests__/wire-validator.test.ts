@@ -4,11 +4,17 @@ import { generateKeyPairSync } from "node:crypto";
 
 import {
   validateWireRecord,
+  validateLessonProof,
   type ValidationResult,
 } from "../services/wire-validator.js";
 import { sign } from "../services/signature.js";
 import { computeNodeId } from "../services/node-identity.js";
 import { WIRE_SPEC_VERSION } from "../services/wire-types.js";
+import {
+  buildEvidenceRoot,
+  buildInclusionProofFromHashedLeaves,
+  type InclusionProof,
+} from "../services/evidence-merkle.js";
 
 // ---------------------------------------------------------------------------
 // Test fixtures
@@ -637,4 +643,220 @@ test("v1.1 Lesson with prev_lesson_hash = null (first-ever-published) is accepte
     ),
   });
   assert.equal(result.ok, true);
+});
+
+// ---------------------------------------------------------------------------
+// validateLessonProof — §5 rules 17 + 18 on /swarm/lessons/{id}/proof
+// envelopes (sub-phase 4e, issue #105).
+// ---------------------------------------------------------------------------
+
+interface ProofFixture {
+  producer: Identity;
+  envelope: Record<string, unknown>;
+  evidenceRoot: string;
+  leaves: string[];
+}
+
+function buildValidProofEnvelope(opts: { leafCount?: number } = {}): ProofFixture {
+  const producer = freshIdentity();
+  // Synthesize `leafCount` raw experience IDs and build a real evidence tree
+  // — so the proofs are mathematically valid against the root, not just
+  // shape-correct. 4e callers want an end-to-end "produce → validate" loop.
+  const n = opts.leafCount ?? 4;
+  const rawIds = Array.from({ length: n }, (_, i) => `exp-${i}-abcdefghij`);
+  const { root, leaves } = buildEvidenceRoot(rawIds);
+  const proofs: InclusionProof[] = leaves.map((leaf) =>
+    buildInclusionProofFromHashedLeaves(leaves, leaf)
+  );
+  const unsigned = {
+    lesson_id: "11111111-2222-3333-4444-555555555555",
+    evidence_count: leaves.length,
+    evidence_root: root,
+    inclusion_proofs: proofs,
+    spec_version: WIRE_SPEC_VERSION,
+    signed_at: "2026-04-28T11:30:00.000Z",
+  };
+  const envelope = attachSignature(unsigned, producer.pem);
+  return { producer, envelope, evidenceRoot: root, leaves };
+}
+
+test("validateLessonProof: a fresh round-trip envelope is accepted", async () => {
+  const { producer, envelope } = buildValidProofEnvelope();
+  const result = await validateLessonProof(envelope, {
+    ourSpecMajor: 1,
+    now: FIXED_NOW,
+    producerPubkey: producer.pubkeyRaw,
+  });
+  assert.equal(result.ok, true);
+});
+
+test("validateLessonProof rule 2: missing inclusion_proofs is rejected", async () => {
+  const { producer, envelope } = buildValidProofEnvelope();
+  const { inclusion_proofs: _omit, signature: _sig, ...rest } = envelope;
+  const broken = attachSignature(rest, producer.pem);
+  const result = await validateLessonProof(broken, {
+    ourSpecMajor: 1,
+    now: FIXED_NOW,
+    producerPubkey: producer.pubkeyRaw,
+  });
+  expectErr(result, 2);
+});
+
+test("validateLessonProof rule 3: evidence_count typed as string is rejected", async () => {
+  const { producer, envelope } = buildValidProofEnvelope();
+  const { signature: _sig, ...rest } = envelope;
+  const broken = attachSignature(
+    { ...rest, evidence_count: "4" },
+    producer.pem
+  );
+  const result = await validateLessonProof(broken, {
+    ourSpecMajor: 1,
+    now: FIXED_NOW,
+    producerPubkey: producer.pubkeyRaw,
+  });
+  expectErr(result, 3);
+});
+
+test("validateLessonProof rule 1: spec_version major mismatch is rejected", async () => {
+  const { producer, envelope } = buildValidProofEnvelope();
+  const { signature: _sig, ...rest } = envelope;
+  const broken = attachSignature(
+    { ...rest, spec_version: "2.0" },
+    producer.pem
+  );
+  const result = await validateLessonProof(broken, {
+    ourSpecMajor: 1,
+    now: FIXED_NOW,
+    producerPubkey: producer.pubkeyRaw,
+  });
+  expectErr(result, 1);
+});
+
+test("validateLessonProof rule 5: wrong producer pubkey is rejected", async () => {
+  const { envelope } = buildValidProofEnvelope();
+  const someoneElse = freshIdentity();
+  const result = await validateLessonProof(envelope, {
+    ourSpecMajor: 1,
+    now: FIXED_NOW,
+    producerPubkey: someoneElse.pubkeyRaw,
+  });
+  expectErr(result, 5);
+});
+
+test("validateLessonProof rule 7: signed_at >5 minutes in the future is rejected", async () => {
+  const { producer, envelope } = buildValidProofEnvelope();
+  const { signature: _sig, ...rest } = envelope;
+  // FIXED_NOW + 6 minutes; envelope must re-sign over the new signed_at so
+  // the rejection actually trips on rule 7 not on rule 5.
+  const future = new Date(FIXED_NOW.getTime() + 6 * 60 * 1000).toISOString();
+  const broken = attachSignature(
+    { ...rest, signed_at: future },
+    producer.pem
+  );
+  const result = await validateLessonProof(broken, {
+    ourSpecMajor: 1,
+    now: FIXED_NOW,
+    producerPubkey: producer.pubkeyRaw,
+  });
+  expectErr(result, 7);
+});
+
+test("validateLessonProof rule 16: evidence_count = 0 is rejected", async () => {
+  const { producer } = buildValidProofEnvelope();
+  // Rule 16 fires after rule 17 in the validator order, but a 0/0 envelope
+  // would slip past rule 17 (0 == 0). The shape pin catches it.
+  const unsigned = {
+    lesson_id: "11111111-2222-3333-4444-555555555555",
+    evidence_count: 0,
+    evidence_root: "Qm" + "1".repeat(44),
+    inclusion_proofs: [] as InclusionProof[],
+    spec_version: WIRE_SPEC_VERSION,
+    signed_at: "2026-04-28T11:30:00.000Z",
+  };
+  const envelope = attachSignature(unsigned, producer.pem);
+  const result = await validateLessonProof(envelope, {
+    ourSpecMajor: 1,
+    now: FIXED_NOW,
+    producerPubkey: producer.pubkeyRaw,
+  });
+  expectErr(result, 16);
+});
+
+test("validateLessonProof rule 17: inclusion_proofs.length != evidence_count is rejected", async () => {
+  const { producer, envelope, evidenceRoot, leaves } = buildValidProofEnvelope({
+    leafCount: 5,
+  });
+  const { signature: _sig, inclusion_proofs: _drop, ...rest } = envelope;
+  // Drop one proof — the envelope still claims evidence_count=5 but only
+  // ships 4 proofs.
+  const tooFew = leaves
+    .slice(0, 4)
+    .map((leaf) => buildInclusionProofFromHashedLeaves(leaves, leaf));
+  const broken = attachSignature(
+    {
+      ...rest,
+      evidence_count: 5,
+      evidence_root: evidenceRoot,
+      inclusion_proofs: tooFew,
+    },
+    producer.pem
+  );
+  const result = await validateLessonProof(broken, {
+    ourSpecMajor: 1,
+    now: FIXED_NOW,
+    producerPubkey: producer.pubkeyRaw,
+  });
+  expectErr(result, 17);
+});
+
+test("validateLessonProof rule 18: tampered merkle_path is rejected", async () => {
+  const { producer, envelope, leaves, evidenceRoot } = buildValidProofEnvelope({
+    leafCount: 5,
+  });
+  const { signature: _sig, inclusion_proofs: validProofs, ...rest } = envelope;
+  // Swap a single sibling in proof[0].merkle_path with one byte different.
+  const tampered = (validProofs as InclusionProof[]).map((p, i) => {
+    if (i !== 0) return p;
+    const newPath = [...p.merkle_path];
+    if (newPath.length === 0) return p;
+    // Replace the first sibling with a fresh sha2-256 multihash that
+    // definitely is NOT the real sibling.
+    newPath[0] = "Qm" + "2".repeat(44);
+    return { ...p, merkle_path: newPath };
+  });
+  void leaves;
+  const broken = attachSignature(
+    {
+      ...rest,
+      evidence_root: evidenceRoot,
+      inclusion_proofs: tampered,
+    },
+    producer.pem
+  );
+  const result = await validateLessonProof(broken, {
+    ourSpecMajor: 1,
+    now: FIXED_NOW,
+    producerPubkey: producer.pubkeyRaw,
+  });
+  expectErr(result, 18);
+});
+
+test("validateLessonProof rule 18: wrong evidence_root is rejected", async () => {
+  const { producer, envelope } = buildValidProofEnvelope({ leafCount: 4 });
+  const { signature: _sig, ...rest } = envelope;
+  // Replace evidence_root with a different (well-formed) multihash. Every
+  // proof.merkle_path will fail to reconstruct it.
+  const broken = attachSignature(
+    {
+      ...rest,
+      evidence_root: "Qm" + "3".repeat(44),
+    },
+    producer.pem
+  );
+  const result = await validateLessonProof(broken, {
+    ourSpecMajor: 1,
+    now: FIXED_NOW,
+    producerPubkey: producer.pubkeyRaw,
+  });
+  expectErr(result, 18);
 });

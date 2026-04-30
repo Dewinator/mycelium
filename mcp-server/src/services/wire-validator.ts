@@ -21,6 +21,7 @@
  */
 import { verify } from "./signature.js";
 import { computeNodeId } from "./node-identity.js";
+import { verifyInclusionProof } from "./evidence-merkle.js";
 
 // ---------------------------------------------------------------------------
 // Public surface
@@ -486,6 +487,187 @@ export async function validateWireRecord(
   const sig = record.signature as string;
   if (!verify(record, sig, verifierPubkey)) {
     return fail(5, `Ed25519 signature verification failed`);
+  }
+
+  return { ok: true };
+}
+
+// ---------------------------------------------------------------------------
+// validateLessonProof — receiver-side §5 rules 17 + 18 on a fetched
+// /swarm/lessons/{id}/proof envelope (sub-phase 4e, issue #105).
+//
+// The proof envelope is a different shape than a Lesson record — it is the
+// answer to a §4.6 challenge, not a thing that gets ingested into
+// `swarm_lessons`. So it gets its own validator entry point rather than
+// being squeezed into `validateWireRecord`'s `WireKind` discriminator.
+// The §5 rule numbering is the SAME ledger though: rules 17 and 18 both
+// fire on the proof, not on the lesson row itself.
+//
+// What this function checks:
+//
+//   - Required-field presence and JSON-type shape (rule 2 / 3 leverage)
+//   - Rule 5: Ed25519 envelope signature against the producing node's
+//     pubkey (per §4.6 the envelope is signed by `origin_node_id`'s key,
+//     not the relay's). The receiver MUST already know `origin_node_id`
+//     in order to have asked for this proof — so the pubkey lookup is
+//     supplied by the caller as `producerPubkey`, not by a callback.
+//   - Rule 17: `inclusion_proofs.length === evidence_count`
+//   - Rule 18: every `merkle_path` reconstructs `evidence_root` via
+//     `verifyInclusionProof` (4c module — same algorithm the producer
+//     used at sign time)
+//
+// What this function does NOT check (out of scope for 4e):
+//
+//   - Cross-reference against the lesson's own `evidence_root` /
+//     `evidence_count` — that lives in the caller's ingest path, which
+//     pairs the proof with the previously-stored lesson row.
+//   - Reputation decay arithmetic on rule 17/18 failure — sub-phase 4f.
+//   - Rule 19 (broken commitment chain) — already enforced inside
+//     `validateWireRecord` for incoming lessons, not for proofs.
+// ---------------------------------------------------------------------------
+
+const PROOF_REQUIRED: readonly FieldSpec[] = [
+  { name: "lesson_id", type: "string" },
+  { name: "evidence_count", type: "number" },
+  { name: "evidence_root", type: "string" },
+  { name: "inclusion_proofs", type: "array" },
+  { name: "spec_version", type: "string" },
+  { name: "signed_at", type: "string" },
+  { name: "signature", type: "string" },
+];
+
+export interface ValidateProofOptions {
+  /** Major component of the receiver's spec version (e.g. 1 for v1.x). */
+  ourSpecMajor: number;
+  /** Current time. Injected so tests are clock-independent. */
+  now: Date;
+  /**
+   * Raw 32-byte Ed25519 pubkey of the producing node (`origin_node_id`
+   * of the lesson the proof is for). The receiver already knows this
+   * — they had to in order to verify the lesson signature in the first
+   * place — so a callback indirection would be ceremony without value.
+   */
+  producerPubkey: Uint8Array;
+}
+
+export async function validateLessonProof(
+  envelope: unknown,
+  opts: ValidateProofOptions
+): Promise<ValidationResult> {
+  if (!isObject(envelope)) {
+    return fail(
+      3,
+      `proof envelope must be a JSON object, got ${
+        Array.isArray(envelope) ? "array" : typeof envelope
+      }`
+    );
+  }
+
+  // Required fields + JSON type. Same rule 2 / 3 mapping as wire records.
+  const presenceErr = checkPresentAndTyped(envelope, PROOF_REQUIRED);
+  if (presenceErr) return presenceErr;
+
+  // Rule 1: spec_version major. Done after presence/type so we know the
+  // field is at least a string.
+  const specVersion = envelope.spec_version as string;
+  const spec = parseSpec(specVersion);
+  if (spec === null) {
+    return fail(3, `spec_version "${specVersion}" is not a valid <major>.<minor>`);
+  }
+  if (spec.major !== opts.ourSpecMajor) {
+    return fail(
+      1,
+      `spec_version major ${spec.major} != receiver's major ${opts.ourSpecMajor}`
+    );
+  }
+
+  // Rule 7: signed_at must not be too far in the future. Rule 8 (90-day
+  // staleness) intentionally NOT applied — a proof is a live answer to a
+  // live challenge; an old envelope simply means the producer's clock
+  // skewed at sign time. The receiver should still verify the math.
+  const signedAtMs = parseTimestamp(envelope.signed_at as string);
+  if (signedAtMs === null) {
+    return fail(3, `signed_at is not a parseable ISO-8601 timestamp`);
+  }
+  if (signedAtMs > opts.now.getTime() + FUTURE_TOLERANCE_MS) {
+    return fail(
+      7,
+      `signed_at ${envelope.signed_at} is more than 5 minutes in the future`
+    );
+  }
+
+  // Rule 5: envelope signature verifies against the producing node's key.
+  // The receiver already holds `producerPubkey` (they verified the lesson
+  // signature with it earlier); failing here means either the wrong key
+  // was supplied or the envelope was tampered with in transit.
+  if (
+    opts.producerPubkey.length !== ED25519_PUBKEY_LEN
+  ) {
+    return fail(
+      5,
+      `producerPubkey is ${opts.producerPubkey.length} bytes; expected ${ED25519_PUBKEY_LEN} (Ed25519)`
+    );
+  }
+  const envSig = envelope.signature as string;
+  if (!verify(envelope, envSig, opts.producerPubkey)) {
+    return fail(5, `envelope Ed25519 signature verification failed`);
+  }
+
+  // Rule 16-shape pin on the proof envelope — evidence_count must be a
+  // positive integer to even meaningfully fold a Merkle tree. Without this
+  // a malformed `evidence_count: 0` would slip past rule 17 (0 == 0).
+  const evCount = envelope.evidence_count as number;
+  if (!Number.isInteger(evCount) || evCount < 1) {
+    return fail(
+      16,
+      `proof envelope evidence_count must be an integer >= 1, got ${evCount}`
+    );
+  }
+
+  // Rule 17: inclusion_proofs.length === evidence_count.
+  // Per §4.6 the producer MUST emit one proof per leaf the lesson
+  // committed to; a mismatch is the receiver's signal that the producer
+  // is either (a) buggy or (b) dropping leaves to hide some — both are
+  // §10.1 reputation-decay events at the caller layer (out of scope here).
+  const proofs = envelope.inclusion_proofs as unknown[];
+  if (proofs.length !== evCount) {
+    return fail(
+      17,
+      `inclusion_proofs.length (${proofs.length}) != evidence_count (${evCount})`
+    );
+  }
+
+  // Rule 18: every merkle_path reconstructs evidence_root.
+  // verifyInclusionProof is the exact algorithm the producer used at
+  // sign time (4c module) — sorted-pair inner hashing means the proof
+  // verifies position-less. A single failure here means the producer's
+  // commitment was either broken or doctored.
+  const evidenceRoot = envelope.evidence_root as string;
+  for (let i = 0; i < proofs.length; i++) {
+    const proof = proofs[i];
+    if (!isObject(proof)) {
+      return fail(18, `inclusion_proofs[${i}] is not an object`);
+    }
+    const leaf = proof.hashed_experience_id;
+    const path = proof.merkle_path;
+    if (typeof leaf !== "string") {
+      return fail(
+        18,
+        `inclusion_proofs[${i}].hashed_experience_id must be string, got ${typeof leaf}`
+      );
+    }
+    if (!Array.isArray(path) || path.some((p) => typeof p !== "string")) {
+      return fail(
+        18,
+        `inclusion_proofs[${i}].merkle_path must be an array of strings`
+      );
+    }
+    if (!verifyInclusionProof(evidenceRoot, leaf, path as string[])) {
+      return fail(
+        18,
+        `inclusion_proofs[${i}] does not reconstruct evidence_root`
+      );
+    }
   }
 
   return { ok: true };
