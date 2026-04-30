@@ -620,8 +620,8 @@ swarm-labelled phase merges to `main`.
 | 3c — `GET /.well-known/mycelium-node` advertisement | §3.2 | [#87](https://github.com/Dewinator/mycelium/issues/87) | `be59267` | ✅ on `main` |
 | 3d — Peer + signed-record storage (migration 071) | §6 | [#88](https://github.com/Dewinator/mycelium/issues/88) | `b0eca59` | ✅ on `main` |
 | 4a — PoK + self-healing spec (v1.1) | §3.1, §3.7, §4.6, §5 (16–20), §10 | [#100](https://github.com/Dewinator/mycelium/issues/100) | `3292bd6` | ✅ on `main` |
-| 4b — `wire-types.ts` v1.1 fields + JCS validator update | §3.1 | [#102](https://github.com/Dewinator/mycelium/issues/102) | — | ⏳ spec-only |
-| 4c — Evidence Merkle builder service | §3.7.1 | [#103](https://github.com/Dewinator/mycelium/issues/103) | — | ⏳ spec-only |
+| 4b — `wire-types.ts` v1.1 fields + JCS validator update | §3.1 | [#102](https://github.com/Dewinator/mycelium/issues/102) | `a33a5e5` | ✅ on `main` |
+| 4c — Evidence Merkle builder service | §3.7.1 | [#103](https://github.com/Dewinator/mycelium/issues/103) | _PR pending_ | 🟡 implemented |
 | 4d — `prev_lesson_hash` chain table (migration 074) | §3.7.2 | [#104](https://github.com/Dewinator/mycelium/issues/104) | — | ⏳ spec-only |
 | 4e — `/swarm/lessons/{id}/proof` endpoint | §4.6 | [#105](https://github.com/Dewinator/mycelium/issues/105) | — | ⏳ spec-only |
 | 4f — TrustEdge auto-tuning + quarantine (migration 075) | §10.1, §10.2 | [#107](https://github.com/Dewinator/mycelium/issues/107) | — | ⏳ spec-only |
