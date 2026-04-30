@@ -9,11 +9,11 @@
  *   2. polarity inversion in their content                      (mutually exclusive)
  *   3. both already passed §5 rejection rules                   (caller's invariant)
  *
- * On detection the gate marks both as `tier='tentative'` (idempotent),
- * inserts a row in `swarm_lesson_contradictions` via the `chain_swarm_-
- * lesson_contradicts` RPC from migration 076, and returns a structured
- * report so the caller can record an experience for §10.5 REM-audit
- * rediscovery.
+ * On detection the gate marks both as `lesson_tier='B'` (idempotent;
+ * the §10.6 firebreak column from migration 078), inserts a row in
+ * `swarm_lesson_contradictions` via the `chain_swarm_lesson_contradicts`
+ * RPC from migration 080, and returns a structured report so the caller
+ * can record an experience for §10.5 REM-audit rediscovery.
  *
  * Design discipline (mirrors wire-validator.ts):
  *   - The pure detection layer (`detectContradictionsAgainst`) takes only
@@ -68,8 +68,8 @@ export interface SwarmLessonRow {
   id:        string;
   content:   string;
   embedding: number[];
-  /** Optional tier — gate may demote pinned → tentative. */
-  tier?:     "tentative" | "pinned";
+  /** Optional §10.6 lesson tier (migration 078) — gate may demote A → B. */
+  lesson_tier?: "A" | "B";
 }
 
 export interface ContradictionFinding {
@@ -86,7 +86,7 @@ export interface ContradictionFinding {
 export interface ApplyDeps {
   /**
    * Idempotent UPSERT into `swarm_lesson_contradictions` + tier demotion.
-   * Wraps the `chain_swarm_lesson_contradicts(...)` RPC from migration 076.
+   * Wraps the `chain_swarm_lesson_contradicts(...)` RPC from migration 080.
    * Returns the JSONB row the RPC produced. Throws on DB error so the
    * caller can decide to swallow vs. abort the ingest batch.
    */
@@ -296,7 +296,7 @@ export async function applyContradictionGate(
     if (deps.recordExperience) {
       try {
         await deps.recordExperience({
-          summary: `§10.3 contradiction detected between swarm lessons ${f.new_lesson_id.slice(0,8)} and ${f.prior_lesson_id.slice(0,8)} (cosine=${f.cosine.toFixed(3)}). Both demoted to tentative.`,
+          summary: `§10.3 contradiction detected between swarm lessons ${f.new_lesson_id.slice(0,8)} and ${f.prior_lesson_id.slice(0,8)} (cosine=${f.cosine.toFixed(3)}). Both demoted to lesson_tier='B' (§10.6 firebreak).`,
           tags:    ["swarm", "contradiction", "phase-4g"],
           metadata: {
             new_lesson_id:   f.new_lesson_id,

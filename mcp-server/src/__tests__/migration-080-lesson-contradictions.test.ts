@@ -5,24 +5,28 @@ import { fileURLToPath } from "node:url";
 import { dirname, resolve } from "node:path";
 
 // ---------------------------------------------------------------------------
-// Migration 076 — §10.3 Contradicts-trigger storage floor (Swarm Phase 4g,
+// Migration 080 — §10.3 Contradicts-trigger storage floor (Swarm Phase 4g,
 // issue #108)
 //
 // Why this guard exists: the §10.3 gate (lesson-contradiction-gate.ts)
 // depends on three on-disk contracts. If any one drifts silently the gate
 // becomes a no-op or, worse, demotes the wrong rows:
 //
-//   1. `swarm_lessons.tier` exists with a 'tentative' default and a
-//      whitelist CHECK; without it the freshly-ingested lessons stay
-//      whatever the prior schema defaulted them to and §10.3's "MUST
-//      mark both as tentative" silently fails.
-//   2. `lessons.tier` mirrors the same column on locally-generated
-//      lessons but defaults to 'pinned' (§10.6 Tier-A by construction).
-//      A reversed default would publish un-vetted lessons.
-//   3. `swarm_lesson_contradictions` exists with the §10.3 unique
+//   1. `lessons.tier` mirrors §10.6 on locally-generated lessons but
+//      defaults to 'pinned' (Tier-A by construction). A reversed default
+//      would force every reflect-pass output through the tentative pool.
+//   2. `swarm_lesson_contradictions` exists with the §10.3 unique
 //      ordered-pair constraint (a_id < b_id) and the cosine_similarity
 //      range CHECK. The orchestrator relies on the canonical ordering
 //      to dedup re-detections from either ingest direction.
+//   3. The RPC `chain_swarm_lesson_contradicts` writes the §10.6
+//      canonical column `swarm_lessons.lesson_tier = 'B'` (from
+//      migration 078) — NOT a 4g-private `tier` column. The earlier
+//      076 draft of this migration carried its own `swarm_lessons.tier`
+//      column that silently bypassed the broadcast firewall view; that
+//      column was deleted and the RPC now writes the firewall column
+//      directly. These tests pin the corrected behaviour so a future
+//      edit can never reintroduce the divergence.
 //
 // We can't run the migration here (the autonomy loop is forbidden from
 // executing migrations, Reed runs them by hand after merge), but we CAN
@@ -36,7 +40,7 @@ const __dirname = dirname(fileURLToPath(import.meta.url));
 const MIGRATION_PATH = resolve(
   __dirname,
   "../../..",
-  "supabase/migrations/076_lesson_contradictions.sql",
+  "supabase/migrations/080_lesson_contradictions.sql",
 );
 const SQL_RAW = readFileSync(MIGRATION_PATH, "utf8");
 // Strip line and block comments BEFORE keyword checks so a phrase like
@@ -51,44 +55,10 @@ const SQL_NO_COMMENTS = SQL_RAW.replace(/--[^\n]*/g, "").replace(
 const SQL = SQL_NO_COMMENTS.toLowerCase().replace(/\s+/g, " ");
 
 // ---------------------------------------------------------------------------
-// (1) swarm_lessons.tier — §10.6 Tier-B default for ingested lessons
+// (1) lessons.tier — §10.6 Tier-A default for locally-generated lessons
 // ---------------------------------------------------------------------------
 
-test("migration 076 adds swarm_lessons.tier with 'tentative' default", () => {
-  // The default is load-bearing: every freshly-ingested swarm lesson is
-  // Tier-B until §10.5 REM-audit corroborates it. A wrong default
-  // silently puts un-vetted content in the re-broadcast pool.
-  assert.match(
-    SQL,
-    /alter table swarm_lessons\s+add column if not exists tier\s+text\s+not null\s+default\s+'tentative'/,
-  );
-});
-
-test("swarm_lessons.tier whitelist CHECK pins valid values", () => {
-  // The whitelist must accept exactly 'tentative' and 'pinned' (the
-  // §10.6 two-tier alphabet). A typo'd value would let agents create
-  // an unbounded set of tier names.
-  assert.match(
-    SQL,
-    /alter table swarm_lessons\s+add constraint swarm_lessons_tier_whitelist\s+check\s*\(\s*tier in\s*\(\s*'tentative'\s*,\s*'pinned'\s*\)\s*\)/,
-  );
-  // VALIDATE so the constraint applies to existing rows on day-1, not
-  // just new inserts.
-  assert.match(SQL, /alter table swarm_lessons validate constraint swarm_lessons_tier_whitelist/);
-});
-
-test("swarm_lessons.tier has an index for the §10.5 REM scan", () => {
-  // 4h's REM self-audit will scan tier='tentative' rows. An index
-  // here keeps that scan from triggering a sequential read of every
-  // ingested lesson on every nightly cycle.
-  assert.match(SQL, /create index if not exists swarm_lessons_tier_idx\s+on swarm_lessons\s*\(\s*tier\s*\)/);
-});
-
-// ---------------------------------------------------------------------------
-// (2) lessons.tier — §10.6 Tier-A default for locally-generated lessons
-// ---------------------------------------------------------------------------
-
-test("migration 076 adds lessons.tier with 'pinned' default", () => {
+test("migration 080 adds lessons.tier with 'pinned' default", () => {
   // Locally-generated lessons are Tier-A by §10.6 construction (the
   // local node is, definitionally, its own ground truth). Reversing
   // this default would force every reflect-pass output through the
@@ -109,6 +79,31 @@ test("lessons.tier whitelist CHECK pins valid values", () => {
 
 test("lessons.tier has an index for cross-source REM audits", () => {
   assert.match(SQL, /create index if not exists lessons_tier_idx\s+on lessons\s*\(\s*tier\s*\)/);
+});
+
+// ---------------------------------------------------------------------------
+// (2) swarm_lessons firebreak: 080 must NOT add its own tier column.
+// The §10.6 canonical column is `swarm_lessons.lesson_tier` from migration
+// 078. A regression that re-introduces a parallel `tier` column would
+// silently bypass the broadcast firewall view in 078, and the §10.3
+// demotion would never reach the broadcast pool. Pin the absence.
+// ---------------------------------------------------------------------------
+
+test("migration 080 does NOT add a parallel swarm_lessons.tier column", () => {
+  // Negative test guarding against the 076-draft regression. If a future
+  // edit re-introduces `ALTER TABLE swarm_lessons ADD COLUMN ... tier`,
+  // this catches it before the silent firebreak collision returns.
+  assert.doesNotMatch(
+    SQL,
+    /alter table swarm_lessons\s+add column[^;]*\btier\b(?!_)/,
+  );
+  // Index on a 4g-private column is also forbidden — 078 owns the
+  // firebreak index `swarm_lessons_lesson_tier_idx` (or equivalent) on
+  // the canonical column.
+  assert.doesNotMatch(
+    SQL,
+    /create index[^;]*on swarm_lessons\s*\(\s*tier\s*\)/,
+  );
 });
 
 // ---------------------------------------------------------------------------
@@ -186,25 +181,41 @@ test("RPC sorts (a,b) into canonical (a_id < b_id) order before insert", () => {
   assert.match(SQL, /if p_lesson_a_id\s*<\s*p_lesson_b_id then/);
 });
 
-test("RPC demotes both endpoints to tier='tentative' atomically", () => {
-  // §10.3 "MUST mark both as tentative". The UPDATE runs after the edge
-  // upsert in the same SQL function — they share an implicit transaction.
-  // A future edit that splits this into two RPCs would create a window
-  // where the edge exists but the demotion hasn't happened yet.
+test("RPC reads prior lesson_tier from swarm_lessons (the §10.6 firebreak column)", () => {
+  // The RPC must read `lesson_tier` (migration 078) — NOT a 4g-private
+  // `tier` column. This is the assertion that prevents the silent
+  // firebreak regression: if a future edit changes `lesson_tier` back
+  // to `tier`, the demotion no longer reaches the broadcast view.
   assert.match(
     SQL,
-    /update swarm_lessons set tier\s*=\s*'tentative' where id in\s*\(\s*v_a_id\s*,\s*v_b_id\s*\)/,
+    /select lesson_tier into v_prior_a from swarm_lessons where id\s*=\s*v_a_id/,
+  );
+  assert.match(
+    SQL,
+    /select lesson_tier into v_prior_b from swarm_lessons where id\s*=\s*v_b_id/,
   );
 });
 
-test("RPC reports prior tiers + a `demoted` flag", () => {
+test("RPC demotes both endpoints to lesson_tier='B' atomically", () => {
+  // §10.3 "MUST mark both as tentative" maps to §10.6 Tier-B. The UPDATE
+  // runs after the edge upsert in the same SQL function — they share an
+  // implicit transaction. A future edit that splits this into two RPCs
+  // would create a window where the edge exists but the demotion hasn't
+  // happened yet.
+  assert.match(
+    SQL,
+    /update swarm_lessons set lesson_tier\s*=\s*'b' where id in\s*\(\s*v_a_id\s*,\s*v_b_id\s*\)/,
+  );
+});
+
+test("RPC reports prior lesson tiers + a `demoted` flag", () => {
   // The orchestrator records an experience that captures the demotion
-  // delta — knowing whether either side was previously 'pinned' (i.e.
-  // a previously-corroborated lesson is now contested) is the §10.5
+  // delta — knowing whether either side was previously 'A' (i.e. a
+  // previously-broadcast-eligible lesson is now contested) is the §10.5
   // REM-audit signal that matters most. Pin the JSONB output keys.
-  assert.match(SQL, /'prior_tier_a',\s*v_prior_a/);
-  assert.match(SQL, /'prior_tier_b',\s*v_prior_b/);
-  assert.match(SQL, /'demoted',\s*\(v_prior_a\s*=\s*'pinned'\s+or\s+v_prior_b\s*=\s*'pinned'\)/);
+  assert.match(SQL, /'prior_lesson_tier_a',\s*v_prior_a/);
+  assert.match(SQL, /'prior_lesson_tier_b',\s*v_prior_b/);
+  assert.match(SQL, /'demoted',\s*\(v_prior_a\s*=\s*'a'\s+or\s+v_prior_b\s*=\s*'a'\)/);
 });
 
 test("RPC rejects self-contradiction and out-of-range cosine", () => {
@@ -222,7 +233,7 @@ test("RPC rejects self-contradiction and out-of-range cosine", () => {
 // (5) No DROP, no DELETE, no data backfill — Reed's standing migration rule
 // ---------------------------------------------------------------------------
 
-test("migration 076 contains no DROP / DELETE / TRUNCATE statements", () => {
+test("migration 080 contains no DROP / DELETE / TRUNCATE statements", () => {
   // Verfassung pillar 4: data is sacred. Schema migrations may add or
   // alter, never remove silently. The autonomy loop is also explicitly
   // forbidden from executing data-destructive SQL.
