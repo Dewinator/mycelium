@@ -623,6 +623,7 @@ swarm-labelled phase merges to `main`.
 | 4b — `wire-types.ts` v1.1 fields + JCS validator update | §3.1 | [#102](https://github.com/Dewinator/mycelium/issues/102) | `a33a5e5`, `dd68ab0` | ✅ on `main` |
 | 4c — Evidence Merkle builder service | §3.7.1 | [#103](https://github.com/Dewinator/mycelium/issues/103) | `289ac96` | ✅ on `main` |
 | 4d — `prev_lesson_hash` chain table (migration 074) | §3.7.2 | [#104](https://github.com/Dewinator/mycelium/issues/104) | `09c64b8` | ✅ on `main` |
+| 4d follow-up — Producer-side `lesson_chain` hook (`signLessonAndAppendToChain`) | §3.7.2 | [#136](https://github.com/Dewinator/mycelium/issues/136) | — | 🟡 PR [#146](https://github.com/Dewinator/mycelium/pull/146) open |
 | 4e — `/swarm/lessons/{id}/proof` endpoint | §4.6 | [#105](https://github.com/Dewinator/mycelium/issues/105) | `a78f436` (substrate), `170d7cc` (endpoint) | ✅ on `main` |
 | 4f — TrustEdge auto-tuning + quarantine (migration 075) | §10.1, §10.2 | [#107](https://github.com/Dewinator/mycelium/issues/107) | `25bf3a8` | ✅ on `main` |
 | 4g — ConscienceAgent contradicts-trigger (migration 080) | §10.3 | [#108](https://github.com/Dewinator/mycelium/issues/108) | `6d59674` | ✅ on `main` |
