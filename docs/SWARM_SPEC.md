@@ -625,9 +625,9 @@ swarm-labelled phase merges to `main`.
 | 4d — `prev_lesson_hash` chain table (migration 074) | §3.7.2 | [#104](https://github.com/Dewinator/mycelium/issues/104) | — | ⏳ spec-only |
 | 4e — `/swarm/lessons/{id}/proof` endpoint | §4.6 | [#105](https://github.com/Dewinator/mycelium/issues/105) | — | ⏳ spec-only |
 | 4f — TrustEdge auto-tuning + quarantine (migration 075) | §10.1, §10.2 | [#107](https://github.com/Dewinator/mycelium/issues/107) | — | ⏳ spec-only |
-| 4g — ConscienceAgent contradicts-trigger | §10.3 | [#108](https://github.com/Dewinator/mycelium/issues/108) | — | ⏳ spec-only |
+| 4g — ConscienceAgent contradicts-trigger (migration 076) | §10.3 | [#108](https://github.com/Dewinator/mycelium/issues/108) | _PR pending_ | 🟡 in review |
 | 4h — REM self-audit pass | §10.5 | [#109](https://github.com/Dewinator/mycelium/issues/109) | — | ⏳ spec-only |
-| 4i — Two-tier pinning + diversity policy (migration 076) | §10.4, §10.6 | [#114](https://github.com/Dewinator/mycelium/issues/114) | — | ⏳ spec-only |
+| 4i — Two-tier pinning + diversity policy (migration 077) | §10.4, §10.6 | [#114](https://github.com/Dewinator/mycelium/issues/114) | — | ⏳ spec-only |
 | 5 — Outbound peer discovery / gossip client | §3, §7 | _not yet issued_ | — | ⏳ spec-only |
 | 6 — Lesson publishing pipeline (producer side) | §4, §6 | _not yet issued_ | — | ⏳ spec-only |
 | 7 — Lesson ingestion pipeline (consumer side) | §5, §7 | _not yet issued_ | — | ⏳ spec-only |
