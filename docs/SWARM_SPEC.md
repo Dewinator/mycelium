@@ -629,7 +629,7 @@ swarm-labelled phase merges to `main`.
 | 4h — REM self-audit pass (§10.5 falsification arrow) | §10.5 | [#109](https://github.com/Dewinator/mycelium/issues/109) | `8cad92f` | ✅ on `main` |
 | 4i.1 — Two-tier pinning + broadcast firewall (migration 078) | §10.4, §10.6 | [#114](https://github.com/Dewinator/mycelium/issues/114) | `db98ea0` | ✅ on `main` |
 | 4i.2 — REM promotion-audit Tier-B → Tier-A (migration 081, §10.6 promote arrow) | §10.6 | [#114](https://github.com/Dewinator/mycelium/issues/114) | — | 🟡 PR [#129](https://github.com/Dewinator/mycelium/pull/129) open |
-| 4i.3 — Anti-echo-chamber receiver-cohort diversity pass | §10.4 | _not yet issued_ | — | ⏳ spec-only |
+| 4i.3 — Anti-echo-chamber receiver-cohort diversity pass (migration 082) | §10.4 | [#114](https://github.com/Dewinator/mycelium/issues/114) | — | 🟡 PR [#131](https://github.com/Dewinator/mycelium/pull/131) open |
 | 4i.4 — Producer-side Tier-A tagging on local-lesson insert | §10.6 | _not yet issued_ | — | ⏳ spec-only |
 | 5 — Outbound peer discovery / gossip client | §3, §7 | _not yet issued_ | — | ⏳ spec-only |
 | 6 — Lesson publishing pipeline (producer side) | §4, §6 | _not yet issued_ | — | ⏳ spec-only |
@@ -638,8 +638,8 @@ swarm-labelled phase merges to `main`.
 | 9 — Diversity-preserving sync policy | §0.3, §10.4 | _not yet issued_ | — | ⏳ spec-only |
 
 Phase 4 is now substantially landed: 4a–4c, 4f–4h, and 4i.1 are on `main`;
-4d, 4e (endpoint), and 4i.2 are open PRs awaiting Reed's manual merge;
-4i.3 and 4i.4 are the residual sub-phases scoped out of 4i.2 (PR #129).
+4d, 4e (endpoint), 4i.2, and 4i.3 are open PRs awaiting Reed's manual merge;
+4i.4 is the residual producer-side tagging sub-phase, still spec-only.
 Phases 5–9 remain spec-only — the project's current priority stays
 *Gehirn perfektionieren* (see [`CLAUDE.md` § Roadmap (Reed 2026-04-26)](../CLAUDE.md)).
 The wire contract is frozen at v1.1 so an independent implementer can
