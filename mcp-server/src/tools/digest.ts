@@ -9,6 +9,10 @@ import type {
   RemPromotionService,
   RemPromotionDeps,
 } from "../services/rem-promotion.js";
+import type {
+  RemDiversityService,
+  RemDiversityDeps,
+} from "../services/rem-diversity.js";
 
 /**
  * `digest` — the end-of-conversation soul development pipeline.
@@ -80,7 +84,8 @@ export async function digest(
   genomeLabel: string,
   input: z.infer<typeof digestSchema>,
   remAudit?: { service: RemAuditService; deps: RemAuditDeps },
-  remPromotion?: { service: RemPromotionService; deps: RemPromotionDeps }
+  remPromotion?: { service: RemPromotionService; deps: RemPromotionDeps },
+  remDiversity?: { service: RemDiversityService; deps: RemDiversityDeps }
 ) {
   const report: string[] = [];
   report.push("# Digest Report\n");
@@ -307,6 +312,50 @@ export async function digest(
       // Non-fatal — the promotion pipeline must never poison the digest cycle.
       report.push(
         `**REM promotion-audit:** skipped — ${err instanceof Error ? err.message : String(err)}`
+      );
+    }
+  }
+
+  // =========================================================================
+  // Step 3.7: REM diversity pass on swarm-imported lessons (SWARM_SPEC §10.4)
+  //
+  // Third arrow of the §10 immune system, paired with 3.5 (forget) and 3.6
+  // (promote): cohort over-concentration multiplicatively decrements
+  // swarm_lessons.local_weight when ≥ p_over_concentration of a topic
+  // cohort holds the same near-duplicate. Runs AFTER promotion so a freshly
+  // promoted Tier-A lesson that is also a cohort echo still gets its weight
+  // pulled — the firewall covers visibility, §10.4 covers recall scoring,
+  // and the two are intentionally orthogonal. Skipped silently when no
+  // remDiversity deps are injected (tests / minimal client builds).
+  // =========================================================================
+  if (remDiversity) {
+    try {
+      const outcomes = await remDiversity.service.runDiversityPass(
+        {},
+        remDiversity.deps,
+      );
+      if (outcomes.length > 0) {
+        const applied = outcomes.filter((o) => o.applied).length;
+        const failed = outcomes.filter((o) => o.error).length;
+        const decrementParts = outcomes
+          .filter((o) => o.applied)
+          .map(
+            (o) =>
+              `${o.origin_node_id}(${o.near_dup_origin_count}/${o.topic_cohort_size}, ` +
+              `${o.prev_weight.toFixed(2)}→${o.new_weight.toFixed(2)})`,
+          );
+        const decrementSummary = decrementParts.length > 0
+          ? ` — decrements: ${decrementParts.join(", ")}`
+          : "";
+        const failedSummary = failed > 0 ? ` (${failed} failed)` : "";
+        report.push(
+          `**REM diversity:** ${applied} swarm lesson(s) decremented by §10.4 echo-chamber check${decrementSummary}${failedSummary}`
+        );
+      }
+    } catch (err) {
+      // Non-fatal — the diversity pipeline must never poison the digest cycle.
+      report.push(
+        `**REM diversity:** skipped — ${err instanceof Error ? err.message : String(err)}`
       );
     }
   }

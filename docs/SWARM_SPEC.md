@@ -630,6 +630,7 @@ swarm-labelled phase merges to `main`.
 | 4i.1 — Two-tier pinning + broadcast firewall (migration 078) | §10.4, §10.6 | [#114](https://github.com/Dewinator/mycelium/issues/114) | `db98ea0` | ✅ on `main` |
 | 4i.2 — REM promotion-audit Tier-B → Tier-A (migration 081, §10.6 promote arrow) | §10.6 | [#114](https://github.com/Dewinator/mycelium/issues/114) | `69dd87c` | ✅ on `main` |
 | 4i.3 — Anti-echo-chamber receiver-cohort diversity pass (migration 082) | §10.4 | [#114](https://github.com/Dewinator/mycelium/issues/114) | `dc88488` | ✅ on `main` |
+| 4i.3 follow-up — digest.ts step 3.7 wiring of §10.4 diversity pass | §10.4 | [#114](https://github.com/Dewinator/mycelium/issues/114) | — | 🟡 PR [#132](https://github.com/Dewinator/mycelium/pull/132) open |
 | 4i.4 — Producer-side Tier-A tagging on local-lesson insert | §10.6 | _not yet issued_ | — | ⏳ spec-only |
 | 4j — Self-broadcast safety triggers (migration 085) | §10.6 | [#155](https://github.com/Dewinator/mycelium/pull/155) follow-up | `c4a545e` | ✅ on `main` |
 | 5 — Outbound peer discovery / gossip client | §3, §7 | _not yet issued_ | — | ⏳ spec-only |
