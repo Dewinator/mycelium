@@ -4,6 +4,7 @@ import type { MemoryService } from "../services/supabase.js";
 import type { NeurochemistryService, NeurochemEvent } from "../services/neurochemistry.js";
 import type { CausalService } from "../services/causal.js";
 import type { SkillsService } from "../services/skills.js";
+import type { RemAuditService, RemAuditDeps } from "../services/rem-audit.js";
 
 /**
  * `digest` — the end-of-conversation soul development pipeline.
@@ -73,7 +74,8 @@ export async function digest(
   skillsService: SkillsService,
   neurochem: NeurochemistryService,
   genomeLabel: string,
-  input: z.infer<typeof digestSchema>
+  input: z.infer<typeof digestSchema>,
+  remAudit?: { service: RemAuditService; deps: RemAuditDeps }
 ) {
   const report: string[] = [];
   report.push("# Digest Report\n");
@@ -228,6 +230,41 @@ export async function digest(
     }
   } catch (err) {
     report.push(`**Reflection:** skipped — ${err instanceof Error ? err.message : String(err)}`);
+  }
+
+  // =========================================================================
+  // Step 3.5: REM self-audit on swarm-imported lessons (SWARM_SPEC §10.5)
+  //
+  // Tentative (Tier-B) swarm lessons get checked against local lived
+  // experience; falsified ones are forgotten, the origin's trust is
+  // decremented, and a falsifying local lesson is recorded — closing the
+  // self-correcting loop. Skipped silently when no remAudit deps are
+  // injected (tests / minimal client builds).
+  // =========================================================================
+  if (remAudit) {
+    try {
+      const outcomes = await remAudit.service.runSelfAudit({}, remAudit.deps);
+      if (outcomes.length > 0) {
+        const forgotten = outcomes.filter((o) => o.forgotten).length;
+        const failed = outcomes.filter((o) => o.error).length;
+        const newLessons = outcomes.filter((o) => o.local_lesson_id).length;
+        const decrementParts = outcomes
+          .filter((o) => o.forgotten)
+          .map((o) => `${o.origin_node_id}(-${o.trust_decrement.toFixed(2)})`);
+        const decrementSummary = decrementParts.length > 0
+          ? ` — trust decrements: ${decrementParts.join(", ")}`
+          : "";
+        const failedSummary = failed > 0 ? ` (${failed} failed)` : "";
+        report.push(
+          `**REM self-audit:** ${forgotten} swarm lesson(s) falsified, ${newLessons} local falsifying lesson(s) recorded${decrementSummary}${failedSummary}`
+        );
+      }
+    } catch (err) {
+      // Non-fatal — the audit pipeline must never poison the digest cycle.
+      report.push(
+        `**REM self-audit:** skipped — ${err instanceof Error ? err.message : String(err)}`
+      );
+    }
   }
 
   // =========================================================================
