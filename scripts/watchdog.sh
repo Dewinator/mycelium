@@ -17,7 +17,7 @@ mkdir -p "$STATE_DIR"
 
 export PATH="/opt/homebrew/bin:/opt/homebrew/sbin:/usr/local/bin:/usr/bin:/bin:/usr/sbin:/sbin:$PATH"
 
-COMPONENTS="docker supabase-pg supabase-rest ollama embedding-model dashboard"
+COMPONENTS="docker supabase-pg supabase-rest ollama embedding-model dashboard quarantine-release"
 OVERALL="ok"
 
 log() { echo "[$(date '+%Y-%m-%d %H:%M:%S')] $*" >> "$LOG"; }
@@ -49,6 +49,38 @@ probe_dashboard() {
   local code
   code=$(curl -s -o /dev/null -w '%{http_code}' --max-time 3 http://127.0.0.1:8787/ 2>/dev/null || echo "000")
   [ "$code" = "200" ]
+}
+
+# Sweep §10.2 expired quarantines. The probe IS the action — calling
+# `quarantine_release_step()` is idempotent (returns 0 when nothing is
+# expired, which is the steady state). We treat any non-zero return value
+# as "ok with detail" so the dashboard can surface the count without
+# painting the component red. A psql failure (DB locked, container down)
+# IS a probe failure; the supabase-pg recovery path will handle it.
+probe_quarantine_release() {
+  if ! docker exec vectormemory-db pg_isready -U postgres >/dev/null 2>&1; then
+    return 1
+  fi
+  local out
+  out=$(docker exec vectormemory-db psql \
+    -U postgres -d vectormemory \
+    --quiet --no-align --tuples-only \
+    -c "SELECT quarantine_release_step();" 2>/dev/null) || return 1
+  out="$(echo "$out" | tr -d '[:space:]')"
+  if [ -z "$out" ]; then
+    return 1
+  fi
+  if [ "$out" != "0" ]; then
+    log "quarantine_release: released $out node(s)"
+    set_status "quarantine-release" "ok" "released ${out} node(s)"
+    return 0
+  fi
+  return 0
+}
+heal_quarantine_release() {
+  # The function is idempotent and depends only on supabase-pg. If the
+  # probe failed, the supabase recovery path is the right place to fix it.
+  return 1
 }
 
 # ── Backoff ──────────────────────────────────────────────
@@ -143,6 +175,14 @@ else
   set_status "embedding-model" "skipped" "ollama down"
 fi
 check_component "dashboard" probe_dashboard heal_dashboard
+
+# Quarantine release runs only when supabase-pg is up; otherwise mark as
+# skipped so the dashboard doesn't show stale red status during DB outages.
+if [ "$(get_status supabase-pg)" = "ok" ]; then
+  check_component "quarantine-release" probe_quarantine_release heal_quarantine_release
+else
+  set_status "quarantine-release" "skipped" "supabase-pg down"
+fi
 
 # ── Status-Snapshot ──────────────────────────────────────
 {
