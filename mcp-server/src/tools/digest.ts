@@ -5,6 +5,10 @@ import type { NeurochemistryService, NeurochemEvent } from "../services/neuroche
 import type { CausalService } from "../services/causal.js";
 import type { SkillsService } from "../services/skills.js";
 import type { RemAuditService, RemAuditDeps } from "../services/rem-audit.js";
+import type {
+  RemPromotionService,
+  RemPromotionDeps,
+} from "../services/rem-promotion.js";
 
 /**
  * `digest` — the end-of-conversation soul development pipeline.
@@ -75,7 +79,8 @@ export async function digest(
   neurochem: NeurochemistryService,
   genomeLabel: string,
   input: z.infer<typeof digestSchema>,
-  remAudit?: { service: RemAuditService; deps: RemAuditDeps }
+  remAudit?: { service: RemAuditService; deps: RemAuditDeps },
+  remPromotion?: { service: RemPromotionService; deps: RemPromotionDeps }
 ) {
   const report: string[] = [];
   report.push("# Digest Report\n");
@@ -263,6 +268,45 @@ export async function digest(
       // Non-fatal — the audit pipeline must never poison the digest cycle.
       report.push(
         `**REM self-audit:** skipped — ${err instanceof Error ? err.message : String(err)}`
+      );
+    }
+  }
+
+  // =========================================================================
+  // Step 3.6: REM promotion-audit on swarm-imported lessons (SWARM_SPEC §10.6)
+  //
+  // Symmetric counterpart to step 3.5: tentative (Tier-B) swarm lessons get
+  // checked against local lived experience for *corroborating* clusters.
+  // Findings are promoted to Tier-A (broadcast-eligible) and an append-only
+  // row lands in tier_promotion_log. Skipped silently when no remPromotion
+  // deps are injected (tests / minimal client builds). Runs AFTER 3.5 so a
+  // swarm lesson cannot be promoted in the same cycle that falsified it
+  // (Tier-B → forget short-circuits the promotion read).
+  // =========================================================================
+  if (remPromotion) {
+    try {
+      const outcomes = await remPromotion.service.runPromotionPass(
+        {},
+        remPromotion.deps,
+      );
+      if (outcomes.length > 0) {
+        const promoted = outcomes.filter((o) => o.promoted).length;
+        const failed = outcomes.filter((o) => o.error).length;
+        const originParts = outcomes
+          .filter((o) => o.promoted)
+          .map((o) => `${o.origin_node_id}(${o.cluster_size})`);
+        const originSummary = originParts.length > 0
+          ? ` — origins: ${originParts.join(", ")}`
+          : "";
+        const failedSummary = failed > 0 ? ` (${failed} failed)` : "";
+        report.push(
+          `**REM promotion-audit:** ${promoted} swarm lesson(s) promoted to Tier-A${originSummary}${failedSummary}`
+        );
+      }
+    } catch (err) {
+      // Non-fatal — the promotion pipeline must never poison the digest cycle.
+      report.push(
+        `**REM promotion-audit:** skipped — ${err instanceof Error ? err.message : String(err)}`
       );
     }
   }
