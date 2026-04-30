@@ -161,6 +161,10 @@ import { SwarmPinService } from "./services/swarm-pin.js";
 import {
   swarmPinLessonSchema, swarmPinLessonHandler,
 } from "./tools/swarm-pin.js";
+import { SwarmPeersService } from "./services/swarm-peers.js";
+import {
+  swarmListPeersSchema, swarmListPeers,
+} from "./tools/swarm-peers.js";
 import {
   getSelfModelSchema, getSelfModel,
   updateSelfModelSchema, updateSelfModel,
@@ -231,6 +235,7 @@ const neurochemistryService = new NeurochemistryService(SUPABASE_URL, SUPABASE_K
 const relationsService      = new RelationsService(SUPABASE_URL, SUPABASE_KEY);
 const nodeIdentityService   = new NodeIdentityService(SUPABASE_URL, SUPABASE_KEY);
 const swarmPinService       = new SwarmPinService(SUPABASE_URL, SUPABASE_KEY);
+const swarmPeersService     = new SwarmPeersService(SUPABASE_URL, SUPABASE_KEY);
 const remAuditService       = new RemAuditService(SUPABASE_URL, SUPABASE_KEY);
 const remPromotionService   = new RemPromotionService(SUPABASE_URL, SUPABASE_KEY);
 const remDiversityService   = new RemDiversityService(SUPABASE_URL, SUPABASE_KEY);
@@ -881,6 +886,22 @@ server.tool(
   withErrorHandling((input) =>
     swarmPinLessonHandler(swarmPinService, memoryService, swarmPinLessonSchema.parse(input)),
   ),
+);
+
+// --- swarm phase 4 read-only: peer state (issue #143 first slice) ----------
+// Operator-facing window onto the §10 trust state per peer: trust_weight,
+// quarantine flag + expiry, last_seen_at, last_decay_at + reason, latest
+// trust_edge_log delta, and the count of swarm_lessons admitted from each
+// origin in the last 24h. Read-only — write tools from issue #143
+// (swarm_publish_tier_a_lesson etc.) ship in follow-up PRs behind
+// OPENCLAW_ALLOW_SWARM_WRITE=1. Trust columns are local-only (SWARM_SPEC
+// §3.4 forbids exposing them across the wire), but the local MCP boundary
+// is explicitly allowed by the issue.
+server.tool(
+  "swarm_list_peers",
+  "List swarm peers known to this node with their §10 trust state: trust_weight, quarantine flag, last_seen_at, last decay reason, latest trust_edge_log delta, and 24h admission count. Pass includeSelf=true to also return the self row. Read-only.",
+  swarmListPeersSchema.shape,
+  withErrorHandling((input) => swarmListPeers(swarmPeersService, swarmListPeersSchema.parse(input)))
 );
 
 /* DEFERRED 2026-04-26 — pairing (tinder) + federation-PKI + federation Phase 2.
