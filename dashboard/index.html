@@ -1062,6 +1062,179 @@
     .syn-views { align-self: flex-start; }
   }
 
+  /* ---------------------------------------------------------------------- */
+  /*   schwarm panel — phase 4 substrate visibility                          */
+  /* ---------------------------------------------------------------------- */
+  #panel-swarm .panel-intro p { margin: 0 0 8px; }
+
+  /* Tier badge — A is the broadcast-eligible firebreak, B the tentative.    */
+  .tier-badge {
+    display: inline-flex; align-items: center; gap: 5px;
+    padding: 2px 8px; border-radius: 999px;
+    font-size: 11px; font-weight: 600; letter-spacing: 0.04em;
+    text-transform: uppercase; line-height: 1.3; vertical-align: middle;
+    border: 1px solid transparent;
+  }
+  .tier-badge.tier-a {
+    background: color-mix(in srgb, var(--accent) 14%, transparent);
+    color: var(--accent); border-color: color-mix(in srgb, var(--accent) 40%, transparent);
+  }
+  .tier-badge.tier-b {
+    background: color-mix(in srgb, var(--warn) 12%, transparent);
+    color: var(--warn); border-color: color-mix(in srgb, var(--warn) 38%, transparent);
+  }
+  .tier-badge.tier-quarantined {
+    background: color-mix(in srgb, var(--bad) 12%, transparent);
+    color: var(--bad); border-color: color-mix(in srgb, var(--bad) 40%, transparent);
+  }
+  .tier-badge::before {
+    content: ""; width: 6px; height: 6px; border-radius: 50%; background: currentColor;
+    box-shadow: 0 0 0 0 currentColor;
+  }
+  .tier-badge.tier-a::before { animation: pulse-a 2.4s ease-out infinite; }
+  @keyframes pulse-a {
+    0%   { box-shadow: 0 0 0 0 color-mix(in srgb, currentColor 70%, transparent); }
+    70%  { box-shadow: 0 0 0 6px color-mix(in srgb, currentColor 0%, transparent); }
+    100% { box-shadow: 0 0 0 0 color-mix(in srgb, currentColor 0%, transparent); }
+  }
+
+  /* Trust meter — visualises a peer's trust_weight from -1 to +1.            */
+  .trust-meter {
+    position: relative; width: 100%; max-width: 220px;
+    height: 6px; border-radius: 999px;
+    background: linear-gradient(90deg,
+      color-mix(in srgb, var(--bad) 35%, transparent) 0%,
+      color-mix(in srgb, var(--text-faint) 25%, transparent) 50%,
+      color-mix(in srgb, var(--good) 35%, transparent) 100%);
+    overflow: visible;
+  }
+  .trust-meter > .needle {
+    position: absolute; top: -3px; width: 12px; height: 12px;
+    border-radius: 50%;
+    background: var(--bg-elev); border: 2px solid var(--accent);
+    box-shadow: 0 0 0 2px color-mix(in srgb, var(--accent) 18%, transparent), var(--shadow);
+    transform: translateX(-50%);
+    transition: left .4s ease, border-color .25s ease;
+  }
+  .trust-meter > .needle.pos { border-color: var(--good); box-shadow: 0 0 0 2px color-mix(in srgb, var(--good) 22%, transparent), var(--shadow); }
+  .trust-meter > .needle.neg { border-color: var(--bad);  box-shadow: 0 0 0 2px color-mix(in srgb, var(--bad)  22%, transparent), var(--shadow); }
+  .trust-meter > .zero-tick {
+    position: absolute; left: 50%; top: -2px; bottom: -2px; width: 1px;
+    background: color-mix(in srgb, var(--text-faint) 60%, transparent);
+  }
+
+  /* Mini-timeline for promotion / trust log entries.                         */
+  .swarm-timeline { display: flex; flex-direction: column; gap: 0; }
+  .swarm-timeline .row {
+    display: grid; grid-template-columns: 96px 22px 1fr;
+    align-items: flex-start; gap: 10px; padding: 8px 0;
+    border-bottom: 1px dashed color-mix(in srgb, var(--border) 80%, transparent);
+  }
+  .swarm-timeline .row:last-child { border-bottom: 0; }
+  .swarm-timeline .when { color: var(--text-faint); font-size: 12px; font-family: var(--mono); white-space: nowrap; }
+  .swarm-timeline .glyph {
+    width: 22px; height: 22px; border-radius: 50%;
+    display: inline-flex; align-items: center; justify-content: center;
+    font-size: 11px; font-weight: 700;
+    border: 1px solid var(--border); background: var(--bg-elev-2);
+    color: var(--text-dim);
+  }
+  .swarm-timeline .glyph.up   { color: var(--good); border-color: color-mix(in srgb, var(--good) 40%, transparent); }
+  .swarm-timeline .glyph.down { color: var(--bad);  border-color: color-mix(in srgb, var(--bad)  40%, transparent); }
+  .swarm-timeline .glyph.warn { color: var(--warn); border-color: color-mix(in srgb, var(--warn) 40%, transparent); }
+  .swarm-timeline .body { font-size: 13px; line-height: 1.45; min-width: 0; }
+  .swarm-timeline .body .meta { color: var(--text-faint); font-size: 12px; margin-top: 2px; }
+
+  /* Lesson card stack — hash-chain motif via a left-edge accent stripe.      */
+  .lesson-card {
+    position: relative;
+    padding: 12px 14px 12px 18px;
+    background: var(--bg-elev-2);
+    border: 1px solid var(--border);
+    border-radius: var(--radius-sm);
+    margin-bottom: 10px;
+  }
+  .lesson-card::before {
+    content: ""; position: absolute; left: 0; top: 8px; bottom: 8px; width: 3px;
+    border-radius: 3px;
+    background: linear-gradient(180deg, var(--accent), var(--accent-2));
+    opacity: 0.55;
+  }
+  .lesson-card.tier-b::before { background: linear-gradient(180deg, var(--warn), color-mix(in srgb, var(--warn) 30%, var(--bg-elev-2))); }
+  .lesson-card .head {
+    display: flex; align-items: center; gap: 8px; margin-bottom: 6px; flex-wrap: wrap;
+  }
+  .lesson-card .head .origin {
+    color: var(--text-dim); font-size: 12px; font-family: var(--mono);
+  }
+  .lesson-card .head .when { color: var(--text-faint); font-size: 12px; margin-left: auto; }
+  .lesson-card .body { font-size: 14px; line-height: 1.5; color: var(--text); }
+  .lesson-card .footer {
+    margin-top: 8px; display: flex; gap: 14px; flex-wrap: wrap;
+    font-size: 12px; color: var(--text-faint);
+  }
+  .lesson-card .footer .pill {
+    padding: 1px 7px; border-radius: 4px;
+    background: color-mix(in srgb, var(--bg) 55%, var(--bg-elev-2));
+    border: 1px solid var(--border); color: var(--text-dim);
+    font-family: var(--mono);
+  }
+
+  /* Contradicts — the only red-tinted card, signals operator attention.      */
+  .contradicts-row {
+    display: grid; grid-template-columns: 1fr 36px 1fr;
+    gap: 10px; align-items: stretch; margin-bottom: 8px;
+  }
+  .contradicts-row .lhs, .contradicts-row .rhs {
+    background: var(--bg-elev-2);
+    border: 1px solid color-mix(in srgb, var(--bad) 30%, var(--border));
+    border-radius: var(--radius-sm);
+    padding: 10px 12px; min-width: 0;
+  }
+  .contradicts-row .vs {
+    align-self: center; text-align: center;
+    color: var(--bad); font-weight: 700; font-size: 13px; letter-spacing: 0.05em;
+  }
+  .contradicts-row .vs .sim {
+    display: block; font-size: 11px; color: var(--text-faint);
+    font-family: var(--mono); font-weight: 400; margin-top: 4px;
+  }
+  .contradicts-row .preview {
+    font-size: 13px; line-height: 1.4; color: var(--text);
+    max-height: 4.4em; overflow: hidden;
+    display: -webkit-box; -webkit-line-clamp: 3; -webkit-box-orient: vertical;
+  }
+  .contradicts-row .meta { color: var(--text-faint); font-size: 11px; font-family: var(--mono); margin-top: 6px; }
+  @media (max-width: 720px) {
+    .contradicts-row { grid-template-columns: 1fr; }
+    .contradicts-row .vs { padding: 4px 0; }
+  }
+
+  /* Diversity heat — small horizontal bar showing concentration.             */
+  .heat-bar {
+    width: 100%; max-width: 160px; height: 6px; border-radius: 3px;
+    background: color-mix(in srgb, var(--text-faint) 18%, transparent);
+    position: relative; overflow: hidden;
+  }
+  .heat-bar > i {
+    display: block; height: 100%; border-radius: 3px;
+    background: linear-gradient(90deg, var(--good), var(--warn));
+  }
+  .heat-bar.over > i {
+    background: linear-gradient(90deg, var(--warn), var(--bad));
+  }
+
+  /* KPI value-tone variants used in the schwarm panel.                       */
+  .kpi .value.tone-good { color: var(--good); }
+  .kpi .value.tone-warn { color: var(--warn); }
+  .kpi .value.tone-bad  { color: var(--bad);  }
+
+  /* Empty-state for sub-cards.                                               */
+  .swarm-empty {
+    color: var(--text-faint); font-size: 13px; padding: 14px 0; text-align: center;
+    border: 1px dashed var(--border); border-radius: var(--radius-sm);
+  }
+
 </style>
 <!-- Three.js (UMD bundle, last UMD release before module-only) — powers the
      synapses tab's 3D Hebbian-graph visualisation. Loaded from a pinned CDN
@@ -1147,6 +1320,7 @@
     -->
     <!-- Schwarm -->
     <button class="tab" data-tab="guard" data-group="schwarm" data-i18n="nav.guard">guard</button>
+    <button class="tab" data-tab="swarm" data-group="schwarm" data-i18n="nav.swarm">schwarm</button>
     <!-- DEFERRED 2026-04-26 — re-enable with feature flag
     <button class="tab" data-tab="population" data-group="schwarm" data-i18n="nav.population">population</button>
     <button class="tab" data-tab="tinder" data-group="schwarm" data-i18n="nav.tinder">tinder</button>
@@ -1647,6 +1821,82 @@
       <table class="mem" id="guard-recent-table"></table>
     </section>
   </div><!-- /panel-guard -->
+
+  <!-- ────────────────────────────────────────────────────────────────────
+       SCHWARM (Phase 4 — SWARM_SPEC v1.1 substrate visibility)
+       Shows everything the autonomous tick has wired into the cognitive
+       substrate but that previously had no UI surface: imported swarm
+       lessons with their tier, peer-trust edges, contradiction edges,
+       promotion log, REM diversity audits.
+       ──────────────────────────────────────────────────────────────────── -->
+  <div class="tab-panel" id="panel-swarm">
+    <div class="panel-intro" data-i18n-html="intro.swarm"></div>
+
+    <section class="grid grid-kpi" id="swarm-kpis"></section>
+
+    <section class="grid grid-charts-2" style="margin-top:16px">
+      <div class="card">
+        <h2 data-i18n="card.swarm.lessons">eingehende lehren</h2>
+        <div class="sub" style="margin-bottom:10px" data-i18n="card.swarm.lessons.sub">
+          aus dem schwarm signiert empfangene lessons. tier-A ist broadcast-fähig, tier-B ist tentativ und wartet auf REM-self-audit oder lokale bestätigung.
+        </div>
+        <div id="swarm-lessons-list"></div>
+      </div>
+
+      <div class="card">
+        <h2 data-i18n="card.swarm.trust">vertrauen pro peer</h2>
+        <div class="sub" style="margin-bottom:10px" data-i18n="card.swarm.trust.sub">
+          jeder peer hat ein vertrauenskonto zwischen −1 und +1. negative werte führen zur quarantäne. der punkt zeigt den aktuellen stand.
+        </div>
+        <table class="mem" id="swarm-trust-table"></table>
+      </div>
+    </section>
+
+    <section class="card" style="margin-top:16px">
+      <h2 data-i18n="card.swarm.contradicts">widersprüche zwischen schwarm-lehren</h2>
+      <div class="sub" style="margin-bottom:10px" data-i18n="card.swarm.contradicts.sub">
+        zwei semantisch nahe lessons mit gegensätzlicher polarität. beide werden auf tier-B demotet, bis neue evidenz kommt oder REM die falsifikation findet.
+      </div>
+      <div id="swarm-contradicts-list"></div>
+    </section>
+
+    <section class="grid grid-charts-2" style="margin-top:16px">
+      <div class="card">
+        <h2 data-i18n="card.swarm.promotions">tier-promotionen</h2>
+        <div class="sub" style="margin-bottom:10px" data-i18n="card.swarm.promotions.sub">
+          B → A wenn ≥ 2 lokale erfahrungen die lesson stützen. A → B wenn widerspruch oder REM-falsifikation auftritt.
+        </div>
+        <div class="swarm-timeline" id="swarm-promotions-timeline"></div>
+      </div>
+
+      <div class="card">
+        <h2 data-i18n="card.swarm.trustlog">vertrauens-bewegungen</h2>
+        <div class="sub" style="margin-bottom:10px" data-i18n="card.swarm.trustlog.sub">
+          jede positive oder negative änderung am peer-vertrauen mit grund. quelle für audit.
+        </div>
+        <div class="swarm-timeline" id="swarm-trustlog-timeline"></div>
+      </div>
+    </section>
+
+    <section class="card" style="margin-top:16px">
+      <h2 data-i18n="card.swarm.diversity">REM diversitäts-audit</h2>
+      <div class="sub" style="margin-bottom:10px" data-i18n="card.swarm.diversity.sub">
+        der nächtliche REM-zyklus prüft, ob lessons aus zu wenigen quellen stammen oder einander zu ähnlich sind, und drückt das gewicht runter — die anti-echo-chamber-mechanik aus §10.4.
+      </div>
+      <table class="mem" id="swarm-diversity-table"></table>
+    </section>
+
+    <details class="tech-info" style="margin-top:16px">
+      <summary>Tech-Info anzeigen</summary>
+      <dl class="tech-grid">
+        <dt>Spec</dt><dd><code>docs/SWARM_SPEC.md</code> v1.1 (Proof-of-Knowledge + self-healing immunity)</dd>
+        <dt>Migrationen</dt><dd>070 nodes · 071 swarm_lessons · 075 trust_edge · 077 evidence_origin · 078 lesson_tiers · 079 rem_self_audit · 080 contradicts · 081 promotion_audit · 082 diversity</dd>
+        <dt>Tabellen</dt><dd><code>swarm_lessons</code>, <code>swarm_lesson_contradictions</code>, <code>tier_promotion_log</code>, <code>trust_edge_log</code>, <code>lesson_diversity_log</code>, <code>nodes</code></dd>
+        <dt>Tier-Firewall</dt><dd>nur tier-A wird re-broadcastet — tier-B bleibt lokal bis REM oder gegenseitige bestätigung</dd>
+        <dt>Privacy</dt><dd>nur lesson + multihash-evidenz wandern, niemals rohe experiences</dd>
+      </dl>
+    </details>
+  </div><!-- /panel-swarm -->
 
   <div class="tab-panel" id="panel-emergence">
     <div class="panel-intro" data-i18n-html="intro.emergence"></div>
@@ -3044,6 +3294,201 @@ function renderGuard(health, summary) {
       }).join("")}</tbody>`;
   }
 }
+
+// --- schwarm panel (phase 4 substrate visibility) ------------------------
+async function loadSwarm() {
+  const kpis = $("swarm-kpis");
+  const lessonsBox = $("swarm-lessons-list");
+  const trustTbl = $("swarm-trust-table");
+  const contraBox = $("swarm-contradicts-list");
+  const promoBox = $("swarm-promotions-timeline");
+  const trustLogBox = $("swarm-trustlog-timeline");
+  const divTbl = $("swarm-diversity-table");
+
+  // graceful skeleton while loading
+  if (kpis && !kpis.dataset.loaded) {
+    kpis.innerHTML = `<div class="card kpi"><div class="label">…</div><div class="value">—</div></div>`.repeat(4);
+  }
+
+  try {
+    const r = await fetch("/swarm-overview");
+    if (!r.ok) throw new Error("HTTP " + r.status);
+    const d = await r.json();
+    kpis.dataset.loaded = "1";
+
+    // ── KPI tiles ────────────────────────────────────────────────────────
+    const k = d.kpis || {};
+    const tierA = k.tier_a || 0, tierB = k.tier_b || 0;
+    const peers = k.peers_known || 0, quarantined = k.peers_quarantined || 0;
+    const contraTone = (k.contradicts || 0) > 0 ? "tone-warn" : "";
+    const trustTone  = quarantined > 0 ? "tone-bad" : "";
+    kpis.innerHTML = [
+      kpiTile("schwarm-lessons", `${tierA + tierB}`, `${tierA}× tier-A · ${tierB}× tier-B`),
+      kpiTile("bekannte peers", `${peers}`, quarantined ? `${quarantined}× quarantäne` : "alle gesund", trustTone),
+      kpiTile("widersprüche", `${k.contradicts || 0}`, k.contradicts ? "operator-prüfung offen" : "keine offen", contraTone),
+      kpiTile("promotionen 30d", `${k.promotions_30d || 0}`, "B↔A bewegungen"),
+      kpiTile("evidence-leaves", `${k.evidence_leaves || 0}`, `${k.evidence_lessons || 0} lessons mit beleg`),
+      kpiTile("REM diversity-checks", `${k.diversity_checks || 0}`, k.diversity_concentrated ? `${k.diversity_concentrated}× über-konzentriert` : "ok"),
+    ].join("");
+
+    // ── Lessons stack ────────────────────────────────────────────────────
+    const lessons = d.swarm_lessons || [];
+    if (!lessons.length) {
+      lessonsBox.innerHTML = `<div class="swarm-empty">noch keine schwarm-lessons empfangen.</div>`;
+    } else {
+      lessonsBox.innerHTML = lessons.map(l => {
+        const tier = (l.lesson_tier || "B").toUpperCase();
+        const tierCls = tier === "A" ? "tier-a" : "tier-b";
+        const cardCls = tier === "A" ? "" : "tier-b";
+        const verified = l.signature_verified_at ? "✓ signatur" : "○ unverifiziert";
+        const weight = l.local_weight != null ? `gewicht ${Number(l.local_weight).toFixed(2)}` : "";
+        const cluster = l.synthesized_from_cluster_size ? `${l.synthesized_from_cluster_size}er-cluster` : "";
+        return `<div class="lesson-card ${cardCls}">
+          <div class="head">
+            <span class="tier-badge ${tierCls}">tier ${tier}</span>
+            <span class="origin">${escapeHtml(shortNode(l.origin_node_id))}</span>
+            <span class="when">${formatDate(l.received_at || l.signed_at)}</span>
+          </div>
+          <div class="body">${escapeHtml((l.content || "").slice(0, 280))}${(l.content || "").length > 280 ? "…" : ""}</div>
+          <div class="footer">
+            <span class="pill">${verified}</span>
+            ${cluster ? `<span class="pill">${cluster}</span>` : ""}
+            ${weight ? `<span class="pill">${weight}</span>` : ""}
+            <span class="pill">spec ${escapeHtml(l.spec_version || "?")}</span>
+          </div>
+        </div>`;
+      }).join("");
+    }
+
+    // ── Peer trust table ─────────────────────────────────────────────────
+    const peersList = d.peers || [];
+    if (!peersList.length) {
+      trustTbl.innerHTML = `<thead><tr><th></th></tr></thead><tbody><tr><td class="empty">keine peers bekannt — der schwarm hat noch genau einen knoten (dich).</td></tr></tbody>`;
+    } else {
+      trustTbl.innerHTML = `
+        <thead><tr><th>peer</th><th>vertrauen</th><th>letzter kontakt</th><th>grund</th></tr></thead>
+        <tbody>${peersList.map(p => {
+          const tw = clamp(Number(p.trust_weight ?? 0), -1, 1);
+          const left = ((tw + 1) / 2) * 100;
+          const cls = tw > 0.05 ? "pos" : tw < -0.05 ? "neg" : "";
+          const quarantined = p.quarantined_until && new Date(p.quarantined_until) > new Date();
+          const label = quarantined ? `<span class="tier-badge tier-quarantined">quarantäne</span>` : `<span class="meta">${tw.toFixed(2)}</span>`;
+          return `<tr>
+            <td class="meta" title="${escapeHtml(p.node_id || "")}">${escapeHtml(p.display_name || shortNode(p.node_id))}</td>
+            <td>
+              <div class="trust-meter">
+                <span class="zero-tick"></span>
+                <span class="needle ${cls}" style="left:${left.toFixed(1)}%"></span>
+              </div>
+              <div class="meta" style="margin-top:4px">${label}</div>
+            </td>
+            <td class="meta">${formatDate(p.last_seen_at)}</td>
+            <td class="meta">${escapeHtml(p.trust_reason || "—")}</td>
+          </tr>`;
+        }).join("")}</tbody>`;
+    }
+
+    // ── Contradicts list ─────────────────────────────────────────────────
+    const contras = d.contradicts || [];
+    if (!contras.length) {
+      contraBox.innerHTML = `<div class="swarm-empty">keine widersprüche gefunden — der schwarm ist intern konsistent.</div>`;
+    } else {
+      contraBox.innerHTML = contras.map(c => `
+        <div class="contradicts-row">
+          <div class="lhs">
+            <div class="meta">${escapeHtml(shortNode(c.a_origin) || "lokal")} · ${formatDate(c.a_signed_at)}</div>
+            <div class="preview">${escapeHtml((c.a_content || "").slice(0, 220))}</div>
+          </div>
+          <div class="vs">↯<span class="sim">cos ${(c.cosine_similarity ?? 0).toFixed(2)}<br>conf ${(c.confidence ?? 0).toFixed(2)}</span></div>
+          <div class="rhs">
+            <div class="meta">${escapeHtml(shortNode(c.b_origin) || "lokal")} · ${formatDate(c.b_signed_at)}</div>
+            <div class="preview">${escapeHtml((c.b_content || "").slice(0, 220))}</div>
+          </div>
+        </div>
+        <div class="meta" style="margin: -4px 0 14px 4px">erkannt ${formatDate(c.detected_at)} · ${escapeHtml(c.reason || "")}</div>
+      `).join("");
+    }
+
+    // ── Promotion timeline ───────────────────────────────────────────────
+    const promotions = d.promotions || [];
+    if (!promotions.length) {
+      promoBox.innerHTML = `<div class="swarm-empty">noch keine promotionen.</div>`;
+    } else {
+      promoBox.innerHTML = promotions.map(p => {
+        const up = (p.from_tier === "B" && p.to_tier === "A");
+        const glyph = up ? "up" : "down";
+        const arrow = up ? "↑" : "↓";
+        return `<div class="row">
+          <span class="when">${formatDate(p.at)}</span>
+          <span class="glyph ${glyph}" title="${p.from_tier} → ${p.to_tier}">${arrow}</span>
+          <div class="body">
+            tier <strong>${escapeHtml(p.from_tier)}</strong> → <strong>${escapeHtml(p.to_tier)}</strong>
+            <div class="meta">${escapeHtml(p.reason || "")}${p.evidence_count ? ` · ${p.evidence_count}× evidenz` : ""}</div>
+          </div>
+        </div>`;
+      }).join("");
+    }
+
+    // ── Trust log timeline ───────────────────────────────────────────────
+    const tlog = d.trust_log || [];
+    if (!tlog.length) {
+      trustLogBox.innerHTML = `<div class="swarm-empty">keine bewegungen aufgezeichnet.</div>`;
+    } else {
+      trustLogBox.innerHTML = tlog.map(e => {
+        const delta = (e.weight_after ?? 0) - (e.weight_before ?? 0);
+        const glyph = delta > 0 ? "up" : delta < 0 ? "down" : "warn";
+        const arrow = delta > 0 ? "+" : delta < 0 ? "−" : "·";
+        return `<div class="row">
+          <span class="when">${formatDate(e.at)}</span>
+          <span class="glyph ${glyph}" title="δ ${delta.toFixed(3)}">${arrow}</span>
+          <div class="body">
+            <span class="meta">${escapeHtml(e.display_name || shortNode(e.node_id))}</span>
+            <strong>${(e.weight_before ?? 0).toFixed(2)} → ${(e.weight_after ?? 0).toFixed(2)}</strong>
+            <div class="meta">${escapeHtml(e.reason || "")}</div>
+          </div>
+        </div>`;
+      }).join("");
+    }
+
+    // ── Diversity audit table ────────────────────────────────────────────
+    const div = d.diversity_audits || [];
+    if (!div.length) {
+      divTbl.innerHTML = `<thead><tr><th></th></tr></thead><tbody><tr><td class="empty">der REM-zyklus hat noch keine konzentrationen geflaggt.</td></tr></tbody>`;
+    } else {
+      divTbl.innerHTML = `
+        <thead><tr><th>wann</th><th>konzentration</th><th>cohort</th><th>near-dups</th><th>gewicht</th><th>grund</th></tr></thead>
+        <tbody>${div.map(r => {
+          const overCls = r.over_concentration ? "over" : "";
+          const ratio = r.topic_cohort_size > 0 ? Math.min(1, (r.near_dup_origin_count || 0) / r.topic_cohort_size) : 0;
+          return `<tr>
+            <td class="meta">${formatDate(r.at)}</td>
+            <td><div class="heat-bar ${overCls}"><i style="width:${(ratio * 100).toFixed(0)}%"></i></div></td>
+            <td class="meta">${r.topic_cohort_size ?? "—"}</td>
+            <td class="meta">${r.near_dup_origin_count ?? 0}</td>
+            <td class="meta">${(r.prev_weight ?? 0).toFixed(2)} → <strong>${(r.new_weight ?? 0).toFixed(2)}</strong></td>
+            <td class="meta">${escapeHtml(r.reason || "—")}</td>
+          </tr>`;
+        }).join("")}</tbody>`;
+    }
+  } catch (e) {
+    if (kpis) {
+      kpis.innerHTML = `<div class="card"><div class="kpi"><div class="label">fehler</div><div class="value tone-bad">—</div><div class="hint">${escapeHtml(e.message || String(e))}</div></div></div>`;
+    }
+  }
+}
+
+function kpiTile(label, value, hint, valueCls = "") {
+  return `<div class="card kpi"><div class="label">${escapeHtml(label)}</div><div class="value ${valueCls}">${escapeHtml(String(value))}</div><div class="hint">${escapeHtml(hint || "")}</div></div>`;
+}
+
+function shortNode(nodeId) {
+  if (!nodeId) return "—";
+  const s = String(nodeId);
+  if (s.length <= 14) return s;
+  return s.slice(0, 8) + "…" + s.slice(-4);
+}
+
+function clamp(n, lo, hi) { return Math.max(lo, Math.min(hi, n)); }
 
 // --- tinder panel ---------------------------------------------------------
 let tinderState = { viewer: "main", deck: [], cursor: 0, matches: [] };
@@ -4550,6 +4995,7 @@ document.querySelectorAll(".tab").forEach(btn => {
     document.querySelectorAll(".tab-panel").forEach(p => p.classList.toggle("active", p.id === "panel-" + name));
     if (name === "projects") renderProjectsGrid();
     if (name === "teacher") loadTeacher();
+    if (name === "swarm") loadSwarm();
     closeSidebar();
     window.scrollTo({ top: 0, behavior: "instant" });
   });
