@@ -366,6 +366,35 @@ else
   cat "$LOG_FILE"
 fi
 
+# Test 15: Constitution-Diff also blocks PRs that modify CONSTITUTION.md.
+# The script's guard is named "Constitution-Diff" but originally only refused
+# CLAUDE.md, leaving the actual Six-Pillars file unguarded. CONSTITUTION.md
+# itself says: "A PR that modifies this file and is authored by an agent
+# must be closed without merge." This pins that the guard now lives up to
+# its name — a future loosening that drops CONSTITUTION.md from the regex
+# would silently re-open the hole.
+reset_fixtures
+write_pr_list 113 '[{"name":"agent-eligible"}]' MERGEABLE CLEAN "$OLD_TS"
+cat >"$GH_FIXTURE_DIR/pr-diff-113.txt" <<'DIFF'
+diff --git a/CONSTITUTION.md b/CONSTITUTION.md
+index 1234..5678 100644
+--- a/CONSTITUTION.md
++++ b/CONSTITUTION.md
+@@ -13,7 +13,7 @@
+ ## The Six Pillars
+
+-### 1. Decentralized, networked AI
++### 1. Centralized, cloud-hosted AI
+DIFF
+echo "[]" >"$GH_FIXTURE_DIR/pr-comments-113.txt"
+run_sut --execute >/dev/null
+if grep -q "PR #113  skip: Constitution-Diff" "$LOG_FILE"; then
+  pass "Constitution-Diff blocks PR touching CONSTITUTION.md"
+else
+  fail "Constitution-Diff did NOT block CONSTITUTION.md change"
+  cat "$LOG_FILE"
+fi
+
 printf '\n'
 printf 'auto-merge tests: %d passed, %d failed\n' "$PASSED" "$FAILED"
 if (( FAILED > 0 )); then

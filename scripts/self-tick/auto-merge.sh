@@ -11,7 +11,7 @@
 #   4. >=30 minutes old (window for Reed to intervene)
 #   5. no comment body has a line-anchored "HOLD" token (matches ^/?HOLD\b
 #      so a comment that merely discusses the mechanism in prose doesn't trip)
-#   6. Constitution-Diff: PR diff does NOT touch `CLAUDE.md`
+#   6. Constitution-Diff: PR diff does NOT touch `CONSTITUTION.md` or `CLAUDE.md`
 #
 # After any merges land, runs `scripts/migrate.sh` and `npm run build` so a
 # stale local DB / dist doesn't bite the next tick.
@@ -66,15 +66,23 @@ log() {
   printf '%s  %s\n' "$(date -u +%Y-%m-%dT%H:%M:%SZ)" "$*" | tee -a "$LOG_FILE" >&2
 }
 
-# Constitution-Diff guard. Conservative: any change to `CLAUDE.md` blocks the
-# merge. Reed merges those by hand. The issue spec scoped this to "Core
-# Pillars / Roadmap sections" but byte-exact section detection across diff
-# context is brittle — refusing the whole file is the safe simplification.
+# Constitution-Diff guard. Conservative: any change to `CONSTITUTION.md` or
+# `CLAUDE.md` blocks the merge. Reed merges those by hand. The issue spec
+# scoped this to "Core Pillars / Roadmap sections" but byte-exact section
+# detection across diff context is brittle — refusing the whole file is the
+# safe simplification.
+#
+# CONSTITUTION.md is the actual Six Pillars text and is explicit:
+#   "A PR that modifies this file and is authored by an agent must be closed
+#    without merge."
+# So the file the guard is named after must itself be guarded. CLAUDE.md is
+# project guidance and is also refused for the same reason — agent-led drift
+# of the project's framing should always pass through Reed.
 constitution_diff_blocked() {
   local pr_num="$1"
   local diff
   diff=$(gh pr diff "$pr_num" --repo "$REPO" 2>/dev/null) || return 1
-  if printf '%s\n' "$diff" | grep -Eq '^diff --git a/CLAUDE\.md b/CLAUDE\.md'; then
+  if printf '%s\n' "$diff" | grep -Eq '^diff --git a/(CONSTITUTION|CLAUDE)\.md b/(CONSTITUTION|CLAUDE)\.md'; then
     return 0  # blocked
   fi
   return 1
