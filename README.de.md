@@ -214,6 +214,27 @@ cd mycelium
 
 Füge den ausgegebenen JSON-Block in die Konfiguration deines MCP-Clients ein (z.B. `.mcp.json` bei Claude Code, `settings.json` bei Cursor). Pfad anpassen an dein Klon-Verzeichnis.
 
+### Aktualisieren
+
+Sobald eine neue Version auf `main` gelandet ist, aktualisiere in-place:
+
+```bash
+cd /pfad/zu/mycelium
+bash scripts/update.sh
+```
+
+Auf macOS kannst du `update.command` auch im Finder doppelklicken.
+
+`update.sh` ist das Laufzeit-Pendant zu `install.sh`. Es:
+
+1. holt und rebased den aktuellen Branch von `origin`
+2. führt `npm ci && npm run build` in `mcp-server/` aus
+3. wendet neue SQL-Migrationen via `scripts/migrate.sh` an (idempotent)
+4. zieht fehlende Ollama-Modelle (idempotent)
+5. lädt die LaunchAgents `com.mycelium.dashboard` und `com.mycelium.middleware` neu (bzw. `mycelium-{dashboard,middleware}.service` unter Linux)
+
+Jeder Schritt ist ein No-Op, wenn es nichts zu tun gibt — du kannst das Script beliebig oft laufen lassen. Nützliche Flags: `--yes`, `--branch <name>`, `--skip-models`, `--skip-services`, `--skip-migrations`, `--print-only`. Nach dem Update den MCP-Client (Claude Code, Cursor, …) neu starten, damit neue Tools erkannt werden.
+
 ### Bestehende Memories importieren
 
 ```bash
