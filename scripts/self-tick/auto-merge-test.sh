@@ -142,7 +142,7 @@ else
   cat "$LOG_FILE"
 fi
 
-# Test 3: HOLD comment blocks merge
+# Test 3: line-anchored HOLD comment blocks merge
 reset_fixtures
 write_pr_list 102 '[{"name":"agent-eligible"}]' MERGEABLE CLEAN "$OLD_TS"
 cat >"$GH_FIXTURE_DIR/pr-diff-102.txt" <<'DIFF'
@@ -153,12 +153,12 @@ index 1..2 100644
 @@ -0,0 +1 @@
 +x
 DIFF
-printf 'do not merge — HOLD please\nfollow-up comment\n' >"$GH_FIXTURE_DIR/pr-comments-102.txt"
+printf 'HOLD: needs design review before merging\n' >"$GH_FIXTURE_DIR/pr-comments-102.txt"
 run_sut --dry-run >/dev/null
 if grep -q "PR #102  skip: HOLD comment present" "$LOG_FILE"; then
-  pass "HOLD comment blocks merge"
+  pass "Line-anchored HOLD comment blocks merge"
 else
-  fail "HOLD comment did NOT block merge"
+  fail "Line-anchored HOLD comment did NOT block merge"
   cat "$LOG_FILE"
 fi
 
@@ -215,6 +215,24 @@ if grep -q "PR #106  skip: too young" "$LOG_FILE"; then
   pass "Too-young PR is skipped (cooldown)"
 else
   fail "Too-young PR should have been skipped"
+  cat "$LOG_FILE"
+fi
+
+# Test 8: comment merely discussing HOLD in prose does NOT block (regression
+# guard for the bug where ``no `HOLD` comment ✓`` falsely blocked PR #158).
+reset_fixtures
+write_pr_list 107 '[{"name":"agent-eligible"}]' MERGEABLE CLEAN "$OLD_TS"
+cat >"$GH_FIXTURE_DIR/pr-diff-107.txt" <<'DIFF'
+diff --git a/x b/x
+@@ -0,0 +1 @@
++x
+DIFF
+printf '## Validation\n\nAll six guards fire as designed: no `HOLD` comment ✓, no CLAUDE.md touched ✓.\n' >"$GH_FIXTURE_DIR/pr-comments-107.txt"
+run_sut --dry-run >/dev/null
+if grep -q "PR #107  WOULD-MERGE" "$LOG_FILE"; then
+  pass "Comment that mentions HOLD in prose does NOT block"
+else
+  fail "Comment mentioning HOLD in prose should NOT have blocked merge"
   cat "$LOG_FILE"
 fi
 

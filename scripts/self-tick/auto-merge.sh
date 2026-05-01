@@ -9,7 +9,8 @@
 #   2. lacks the `agent-do-not-touch` label
 #   3. mergeable=MERGEABLE AND mergeStateStatus=CLEAN
 #   4. >=30 minutes old (window for Reed to intervene)
-#   5. no comment body contains the literal token "HOLD"
+#   5. no comment body has a line-anchored "HOLD" token (matches ^/?HOLD\b
+#      so a comment that merely discusses the mechanism in prose doesn't trip)
 #   6. Constitution-Diff: PR diff does NOT touch `CLAUDE.md`
 #
 # After any merges land, runs `scripts/migrate.sh` and `npm run build` so a
@@ -66,10 +67,14 @@ constitution_diff_blocked() {
 }
 
 hold_comment_present() {
+  # HOLD must be a line-anchored token so that comments which merely *discuss*
+  # the mechanism (e.g. ``no `HOLD` comment ✓``) don't trip the gate.
+  # Matches: line starts with optional whitespace, optional `/` prefix, the
+  # literal HOLD, then end-of-line OR whitespace OR `:` (for "HOLD: reason").
   local pr_num="$1"
   local bodies
   bodies=$(gh pr view "$pr_num" --repo "$REPO" --json comments --jq '.comments[].body' 2>/dev/null) || return 1
-  printf '%s\n' "$bodies" | grep -Fq 'HOLD'
+  printf '%s\n' "$bodies" | grep -Eq '^[[:space:]]*/?HOLD([[:space:]:]|$)'
 }
 
 iso_to_epoch() {

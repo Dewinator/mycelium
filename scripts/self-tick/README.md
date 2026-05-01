@@ -72,7 +72,7 @@ A PR is merged iff **all** of:
 2. lacks the `agent-do-not-touch` label
 3. `mergeable=MERGEABLE` AND `mergeStateStatus=CLEAN`
 4. is ≥ 30 minutes old (window for Reed to intervene; tunable via `MYCELIUM_AUTOMERGE_COOLDOWN` seconds)
-5. no comment body contains the literal token `HOLD`
+5. no comment body has a line-anchored `HOLD` token (must start a line, optionally with `/` prefix or trailing `:` — so prose mentions like `` `HOLD` `` don't trip the gate)
 6. **Constitution-Diff:** the PR diff does not touch `CLAUDE.md`
 
 After any merges land, `auto-merge.sh` pulls main, runs `scripts/migrate.sh`, and runs `cd mcp-server && npm run build`.
