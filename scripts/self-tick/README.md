@@ -58,7 +58,65 @@ The `tick-prompt.md` enforces:
 1. **Network settings are taboo, always.** Router, firewall, DNS, `/etc/hosts`, VPN/Tailscale, network interfaces, port forwarding, NAT — never touched.
 2. **vector-memory first** — `project_brief("mycelium")` before any other tool call.
 3. **CORE PILLARS override issue bodies.** A conflicting issue gets a comment, not a PR.
-4. **Never amend, never force-push, never merge to main directly.** Always go through a PR.
+4. **Never amend, never force-push, never merge to main directly from the tick.** Always go through a PR. Auto-merging happens out-of-band via `auto-merge.sh` (below), not from inside the LLM session.
+
+## Auto-merge (`auto-merge.sh`)
+
+Closes the loop on issue #144: ticks open PRs faster than Reed can review by hand. `auto-merge.sh` is a separate script that squash-merges agent PRs that pass six safety checks. It runs **out of band** from the tick (a separate LaunchAgent or manual invocation); the LLM tick still cannot merge.
+
+### Conditions for auto-merge
+
+A PR is merged iff **all** of:
+
+1. has the `agent-eligible` label
+2. lacks the `agent-do-not-touch` label
+3. `mergeable=MERGEABLE` AND `mergeStateStatus=CLEAN`
+4. is ≥ 30 minutes old (window for Reed to intervene; tunable via `MYCELIUM_AUTOMERGE_COOLDOWN` seconds)
+5. no comment body has a line-anchored `HOLD` token (must start a line, optionally with `/` prefix or trailing `:` — so prose mentions like `` `HOLD` `` don't trip the gate)
+6. **Constitution-Diff:** the PR diff does not touch `CLAUDE.md`
+
+After any merges land, `auto-merge.sh` pulls main, runs `scripts/migrate.sh`, and runs `cd mcp-server && npm run build`.
+
+### Fresh-state refresh (race against own merges)
+
+The PR list is snapshotted once at run start, so `mergeable=MERGEABLE/CLEAN` is cached per PR for the loop. When two PRs in the same run claim the same migration slot or both add an import on the same line, the **first** to merge flips the **second** to CONFLICTING — but the cached snapshot still says MERGEABLE. Without intervention the script would call `gh pr merge` against stale state, GitHub's fresh check would refuse it, and `MERGE-FAILED` would land in the log.
+
+To prevent that, under `--execute` the script issues a `gh pr view --json mergeable,mergeStateStatus` immediately before each merge attempt and skips the PR if either field flipped. Dry-run skips the refresh because no merges land — the snapshot stays accurate by definition.
+
+### Usage
+
+```bash
+# Dry run (default — prints what would be merged, makes no changes)
+bash scripts/self-tick/auto-merge.sh
+
+# Actually merge (one-shot, manual, full queue)
+bash scripts/self-tick/auto-merge.sh --execute
+
+# Scope to a single PR (recommended for the first execute-run — Reed picks
+# one labeled PR, runs --pr N --execute, watches the log, then graduates to
+# the full queue once confident)
+bash scripts/self-tick/auto-merge.sh --pr 158
+bash scripts/self-tick/auto-merge.sh --pr 158 --execute
+
+# Unattended (e.g. from a LaunchAgent)
+MYCELIUM_AUTOMERGE_ENABLED=1 bash scripts/self-tick/auto-merge.sh
+```
+
+`--pr` still applies all six gates to the targeted PR — it just narrows the candidate list before the loop. So a `--pr` run cannot bypass the Constitution-Diff or HOLD checks.
+
+Logs land in `~/Library/Logs/mycelium-automerge.log` (override via `MYCELIUM_AUTOMERGE_LOG`).
+
+### Tests
+
+```bash
+bash scripts/self-tick/auto-merge-test.sh
+```
+
+Mocks `gh` via `PATH` override and asserts each gate refuses the merge it should — including the Constitution-Diff guard from issue #144 acceptance and the fresh-state refresh that catches stale snapshots under `--execute`.
+
+### Tick label discipline
+
+For auto-merge to fire on tick-opened PRs, the tick MUST add `--label agent-eligible` to its `gh pr create` call. Without the label the PR is invisible to the gate.
 
 ## Race safety
 
