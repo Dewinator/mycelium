@@ -35,9 +35,22 @@ const ENV_FILE   = path.join(ROOT, "docker", ".env");
 
 // FederationService lives in the compiled MCP server. We import it at runtime
 // so the dashboard and the MCP server share the same crypto logic.
+// Federation is deferred (CLAUDE.md roadmap step 5) — federation.js is no
+// longer produced by the build. Load lazily only when MYCELIUM_FEATURE_FEDERATION=1
+// so the dashboard still boots in the default no-federation mode.
 const FED_DIST   = path.join(ROOT, "mcp-server", "dist", "services");
-const { FederationService } = await import(path.join(FED_DIST, "federation.js"));
-const { GuardService: FedGuardService } = await import(path.join(FED_DIST, "guard.js"));
+let FederationService = null;
+let FedGuardService = null;
+if (process.env.MYCELIUM_FEATURE_FEDERATION === "1") {
+  try {
+    ({ FederationService } = await import(path.join(FED_DIST, "federation.js")));
+    ({ GuardService: FedGuardService } = await import(path.join(FED_DIST, "guard.js")));
+  } catch (err) {
+    console.error("federation imports failed — feature flag set but dist missing:", err.message);
+    FederationService = null;
+    FedGuardService = null;
+  }
+}
 
 // Swarm Phase 3c (issue #87): /.well-known/mycelium-node handler + node
 // identity adapter both live in the compiled MCP server tree so they share
@@ -202,6 +215,22 @@ async function callRpc(name, body = {}) {
     body: JSON.stringify(body),
   });
   if (!r.ok) throw new Error(`rpc ${name} failed: HTTP ${r.status}`);
+  return r.json();
+}
+
+// PostgREST direct-table GET — used by /swarm-overview to read Phase 4
+// substrate tables that don't (yet) have a dedicated RPC. Path is the part
+// after /, e.g. "swarm_lessons?select=...&order=...".
+async function pgGet(path) {
+  const r = await fetch(new URL(`/${path}`, UPSTREAM), {
+    method: "GET",
+    headers: {
+      "Accept":        "application/json",
+      "Authorization": `Bearer ${SERVICE_JWT}`,
+      "apikey":        SERVICE_JWT,
+    },
+  });
+  if (!r.ok) throw new Error(`postgrest GET /${path} failed: HTTP ${r.status}`);
   return r.json();
 }
 
@@ -911,6 +940,128 @@ async function handleAgents(_req, res) {
   } catch (e) {
     res.writeHead(502, { "Content-Type": "application/json" });
     res.end(JSON.stringify({ error: "agents fetch failed", detail: String(e?.message || e) }));
+  }
+}
+
+// /swarm-overview — Phase 4 substrate aggregator for the dashboard's
+// Schwarm tab. Reads the SWARM_SPEC v1.1 tables (swarm_lessons, nodes,
+// trust_edge_log, swarm_lesson_contradictions, tier_promotion_log,
+// lesson_diversity_log, lesson_evidence_origin) and ships everything in a
+// single round-trip so the UI doesn't have to fan out N fetches itself.
+async function handleSwarmOverview(_req, res) {
+  try {
+    const [
+      swarmLessons,
+      peers,
+      trustLog,
+      contradictions,
+      promotions,
+      diversityAudits,
+      kpiCounts,
+      evidenceCounts,
+    ] = await Promise.all([
+      // §3.7 swarm_lessons — most-recent 25 lessons
+      pgGet("swarm_lessons?select=id,content,lesson_tier,origin_node_id,signed_at,received_at,signature_verified_at,spec_version,local_weight,synthesized_from_cluster_size&order=received_at.desc.nullslast,signed_at.desc&limit=25"),
+      // peers — every node row except is_self, ordered by last contact
+      pgGet("nodes?select=node_id,display_name,is_self,trust_weight,trust_reason,last_seen_at,quarantined_until,consecutive_rejections&is_self=eq.false&order=last_seen_at.desc.nullslast&limit=20"),
+      // §10.1/10.2 trust_edge_log — last 15 movements (display_name resolved below)
+      pgGet("trust_edge_log?select=id,node_id,weight_before,weight_after,reason,at&order=at.desc&limit=15"),
+      // §10.3 swarm_lesson_contradictions — top 10 most recent
+      pgGet("swarm_lesson_contradictions?select=id,a_id,b_id,cosine_similarity,confidence,reason,detected_at,evidence_count&order=detected_at.desc&limit=10"),
+      // §10.6 tier_promotion_log — top 15 promotions
+      pgGet("tier_promotion_log?select=id,lesson_id,from_tier,to_tier,reason,evidence_ids,at&order=at.desc&limit=15"),
+      // §10.4 lesson_diversity_log — top 15 audits
+      pgGet("lesson_diversity_log?select=id,lesson_id,prev_weight,new_weight,topic_cohort_size,near_dup_origin_count,over_concentration,reason,at&order=at.desc&limit=15"),
+      // KPI roll-up — small queries with HEAD-style counts
+      Promise.all([
+        pgGet("swarm_lessons?select=id&lesson_tier=eq.A&limit=1000"),
+        pgGet("swarm_lessons?select=id&lesson_tier=eq.B&limit=1000"),
+        pgGet("nodes?select=node_id&is_self=eq.false&limit=1000"),
+        pgGet("nodes?select=node_id&is_self=eq.false&quarantined_until=gt.now&limit=1000"),
+        pgGet("swarm_lesson_contradictions?select=id&limit=1000"),
+        pgGet(`tier_promotion_log?select=id&at=gte.${new Date(Date.now() - 30 * 86400_000).toISOString()}&limit=1000`),
+        pgGet("lesson_diversity_log?select=id,over_concentration&limit=1000"),
+      ]),
+      // Evidence-leaf counts — distinct lesson_ids and total leaves
+      pgGet("lesson_evidence_origin?select=lesson_id&limit=10000"),
+    ]);
+
+    const [tierA, tierB, peersAll, peersQuar, contraAll, promo30d, divAll] = kpiCounts;
+    const evidenceLeafCount = Array.isArray(evidenceCounts) ? evidenceCounts.length : 0;
+    const evidenceLessonCount = new Set(
+      (evidenceCounts || []).map((r) => r.lesson_id).filter(Boolean)
+    ).size;
+    const diversityConcentrated = (divAll || []).filter((r) => r.over_concentration).length;
+
+    // Resolve content previews for contradictions in one extra fetch.
+    let contradictsResolved = [];
+    if (contradictions.length > 0) {
+      const ids = [
+        ...new Set(contradictions.flatMap((c) => [c.a_id, c.b_id])),
+      ];
+      const inList = ids.map((x) => `"${x}"`).join(",");
+      const detail = ids.length
+        ? await pgGet(
+            `swarm_lessons?select=id,content,origin_node_id,signed_at&id=in.(${inList})`,
+          )
+        : [];
+      const byId = new Map(detail.map((r) => [r.id, r]));
+      contradictsResolved = contradictions.map((c) => {
+        const a = byId.get(c.a_id) || {};
+        const b = byId.get(c.b_id) || {};
+        return {
+          ...c,
+          a_content: a.content,
+          a_origin:  a.origin_node_id,
+          a_signed_at: a.signed_at,
+          b_content: b.content,
+          b_origin:  b.origin_node_id,
+          b_signed_at: b.signed_at,
+        };
+      });
+    }
+
+    // Resolve display_name for the trust_log via the peers list we already
+    // have (no FK embed — keeps the query working without a declared FK).
+    const peerById = new Map((peers || []).map((p) => [p.node_id, p]));
+    const trustLogFlat = (trustLog || []).map((r) => ({
+      ...r,
+      display_name: peerById.get(r.node_id)?.display_name || null,
+    }));
+
+    // evidence_count for promotions (length of evidence_ids array if present).
+    const promotionsFlat = (promotions || []).map((r) => ({
+      ...r,
+      evidence_count: Array.isArray(r.evidence_ids) ? r.evidence_ids.length : null,
+    }));
+
+    res.writeHead(200, {
+      "Content-Type":  "application/json; charset=utf-8",
+      "Cache-Control": "no-store",
+    });
+    res.end(JSON.stringify({
+      kpis: {
+        tier_a: tierA.length,
+        tier_b: tierB.length,
+        peers_known: peersAll.length,
+        peers_quarantined: peersQuar.length,
+        contradicts: contraAll.length,
+        promotions_30d: promo30d.length,
+        evidence_leaves: evidenceLeafCount,
+        evidence_lessons: evidenceLessonCount,
+        diversity_checks: divAll.length,
+        diversity_concentrated: diversityConcentrated,
+      },
+      swarm_lessons: swarmLessons,
+      peers,
+      trust_log: trustLogFlat,
+      contradicts: contradictsResolved,
+      promotions: promotionsFlat,
+      diversity_audits: diversityAudits,
+    }));
+  } catch (e) {
+    res.writeHead(502, { "Content-Type": "application/json" });
+    res.end(JSON.stringify({ error: "swarm-overview failed", detail: String(e?.message || e) }));
   }
 }
 
@@ -1686,6 +1837,7 @@ const server = http.createServer((req, res) => {
   if (req.url === "/genomes")                 return FEATURE.population ? handleGenomes(req, res) : deferred(res, "population");
   if (req.url === "/sleep")                   return handleSleep(req, res);
   if (req.url === "/agents")                  return handleAgents(req, res);
+  if (req.url === "/swarm-overview")          return handleSwarmOverview(req, res);
   if (req.url === "/matches")                 return handleMatches(req, res);
   if (req.url === "/provision")               return handleProvision(req, res);
   if (req.url === "/breed")                   return FEATURE.pairing    ? handleBreed(req, res)            : deferred(res, "pairing");
