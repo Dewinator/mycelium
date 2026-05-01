@@ -287,6 +287,68 @@ else
   cat "$LOG_FILE"
 fi
 
+# Test 11: --pr <num> scopes the run to a single PR. The list contains
+# three eligible PRs but the SUT only considers the targeted one.
+reset_fixtures
+cat >"$GH_FIXTURE_DIR/pr-list.json" <<JSON
+[
+  {"number":200,"title":"target","headRefName":"agent/a","labels":[{"name":"agent-eligible"}],"mergeable":"MERGEABLE","mergeStateStatus":"CLEAN","createdAt":"$OLD_TS"},
+  {"number":201,"title":"sibling-1","headRefName":"agent/b","labels":[{"name":"agent-eligible"}],"mergeable":"MERGEABLE","mergeStateStatus":"CLEAN","createdAt":"$OLD_TS"},
+  {"number":202,"title":"sibling-2","headRefName":"agent/c","labels":[{"name":"agent-eligible"}],"mergeable":"MERGEABLE","mergeStateStatus":"CLEAN","createdAt":"$OLD_TS"}
+]
+JSON
+cat >"$GH_FIXTURE_DIR/pr-diff-200.txt" <<'DIFF'
+diff --git a/x b/x
+@@ -0,0 +1 @@
++x
+DIFF
+echo "[]" >"$GH_FIXTURE_DIR/pr-comments-200.txt"
+run_sut --pr 200 --dry-run >/dev/null
+if grep -q "PR #200  WOULD-MERGE" "$LOG_FILE" \
+   && ! grep -q "PR #201" "$LOG_FILE" \
+   && ! grep -q "PR #202" "$LOG_FILE" \
+   && grep -q "scope=pr=200" "$LOG_FILE" \
+   && grep -q "considered=1" "$LOG_FILE"; then
+  pass "--pr scopes the run to a single PR"
+else
+  fail "--pr should have scoped to PR #200 only"
+  cat "$LOG_FILE"
+fi
+
+# Test 12: --pr <num> against a list that does not contain that number is a
+# clean no-op (considered=0, merged=0, no error).
+reset_fixtures
+write_pr_list 210 '[{"name":"agent-eligible"}]' MERGEABLE CLEAN "$OLD_TS"
+echo "" >"$GH_FIXTURE_DIR/pr-diff-210.txt"
+echo "[]" >"$GH_FIXTURE_DIR/pr-comments-210.txt"
+run_sut --pr 999 --dry-run >/dev/null
+if grep -q "considered=0" "$LOG_FILE" \
+   && grep -q "scope=pr=999" "$LOG_FILE" \
+   && ! grep -q "PR #210" "$LOG_FILE"; then
+  pass "--pr <missing-num> is a clean no-op"
+else
+  fail "--pr 999 should have produced considered=0"
+  cat "$LOG_FILE"
+fi
+
+# Test 13: --pr without a numeric arg fails with usage error
+reset_fixtures
+write_pr_list 211 '[{"name":"agent-eligible"}]' MERGEABLE CLEAN "$OLD_TS"
+echo "" >"$GH_FIXTURE_DIR/pr-diff-211.txt"
+echo "[]" >"$GH_FIXTURE_DIR/pr-comments-211.txt"
+out=$(PATH="$TMP_ROOT:$PATH" \
+  GH_FIXTURE_DIR="$GH_FIXTURE_DIR" \
+  MYCELIUM_REPO=Dewinator/mycelium \
+  MYCELIUM_AUTOMERGE_LOG="$LOG_FILE" \
+  bash "$SUT" --pr abc --dry-run 2>&1; echo "rc=$?")
+if printf '%s' "$out" | grep -q "rc=2" \
+   && printf '%s' "$out" | grep -q "requires a numeric PR number"; then
+  pass "--pr <non-numeric> fails with rc=2"
+else
+  fail "--pr abc should have exited with rc=2 + usage message"
+  printf '%s\n' "$out"
+fi
+
 printf '\n'
 printf 'auto-merge tests: %d passed, %d failed\n' "$PASSED" "$FAILED"
 if (( FAILED > 0 )); then

@@ -18,6 +18,12 @@
 #
 # SAFE BY DEFAULT: dry-run unless --execute is passed or
 # MYCELIUM_AUTOMERGE_ENABLED=1 is set in the environment.
+#
+# Usage:
+#   auto-merge.sh                   # dry-run, full queue
+#   auto-merge.sh --execute         # merge full queue
+#   auto-merge.sh --pr 158          # dry-run, only PR #158
+#   auto-merge.sh --pr 158 --execute  # merge only PR #158 (recommended for first execute-run)
 
 set -euo pipefail
 
@@ -28,16 +34,24 @@ SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 REPO_ROOT="$(cd "$SCRIPT_DIR/../.." && pwd)"
 
 DRY_RUN=true
+TARGET_PR=""
 
-for arg in "$@"; do
-  case "$arg" in
-    --execute) DRY_RUN=false ;;
-    --dry-run) DRY_RUN=true ;;
+while [[ $# -gt 0 ]]; do
+  case "$1" in
+    --execute) DRY_RUN=false; shift ;;
+    --dry-run) DRY_RUN=true; shift ;;
+    --pr)
+      if [[ $# -lt 2 || ! "$2" =~ ^[0-9]+$ ]]; then
+        echo "auto-merge.sh: --pr requires a numeric PR number" >&2
+        exit 2
+      fi
+      TARGET_PR="$2"
+      shift 2 ;;
     --help|-h)
-      sed -n '2,20p' "${BASH_SOURCE[0]}"
+      sed -n '2,26p' "${BASH_SOURCE[0]}"
       exit 0 ;;
     *)
-      echo "auto-merge.sh: unknown arg '$arg' (try --help)" >&2
+      echo "auto-merge.sh: unknown arg '$1' (try --help)" >&2
       exit 2 ;;
   esac
 done
@@ -129,11 +143,22 @@ run_auto_merge() {
   pr_list_json=$(gh pr list --repo "$REPO" --state open \
     --json number,title,headRefName,labels,mergeable,mergeStateStatus,createdAt \
     --limit 50)
+
+  # --pr scope: filter to a single PR before the loop so all six gates still
+  # apply to that one PR and the log shape stays identical (considered=N,
+  # merged=N). Lets Reed run the first execute-run against one labeled PR
+  # without juggling agent-do-not-touch labels on the rest.
+  if [[ -n "$TARGET_PR" ]]; then
+    pr_list_json=$(printf '%s' "$pr_list_json" | jq --argjson n "$TARGET_PR" '[.[] | select(.number == $n)]')
+  fi
+
   now_ts=$(date -u +%s)
 
   local mode_label="DRY-RUN"
   [[ "$DRY_RUN" == "true" ]] || mode_label="EXECUTE"
-  log "auto-merge run starting  mode=$mode_label  repo=$REPO"
+  local scope_label="full-queue"
+  [[ -z "$TARGET_PR" ]] || scope_label="pr=$TARGET_PR"
+  log "auto-merge run starting  mode=$mode_label  scope=$scope_label  repo=$REPO"
 
   while read -r pr; do
     considered=$((considered + 1))

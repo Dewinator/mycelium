@@ -89,12 +89,20 @@ To prevent that, under `--execute` the script issues a `gh pr view --json mergea
 # Dry run (default — prints what would be merged, makes no changes)
 bash scripts/self-tick/auto-merge.sh
 
-# Actually merge (one-shot, manual)
+# Actually merge (one-shot, manual, full queue)
 bash scripts/self-tick/auto-merge.sh --execute
+
+# Scope to a single PR (recommended for the first execute-run — Reed picks
+# one labeled PR, runs --pr N --execute, watches the log, then graduates to
+# the full queue once confident)
+bash scripts/self-tick/auto-merge.sh --pr 158
+bash scripts/self-tick/auto-merge.sh --pr 158 --execute
 
 # Unattended (e.g. from a LaunchAgent)
 MYCELIUM_AUTOMERGE_ENABLED=1 bash scripts/self-tick/auto-merge.sh
 ```
+
+`--pr` still applies all six gates to the targeted PR — it just narrows the candidate list before the loop. So a `--pr` run cannot bypass the Constitution-Diff or HOLD checks.
 
 Logs land in `~/Library/Logs/mycelium-automerge.log` (override via `MYCELIUM_AUTOMERGE_LOG`).
 
