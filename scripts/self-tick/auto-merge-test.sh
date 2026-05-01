@@ -349,6 +349,23 @@ else
   printf '%s\n' "$out"
 fi
 
+# Test 14: UNSTABLE mergeStateStatus is skipped (failing checks). Test 6 covers
+# DIRTY/CONFLICTING; UNSTABLE is the trickier state — branch is mergeable but
+# CI is red. The gate's `state != CLEAN` check rejects it implicitly; this
+# pins that behaviour so a future loosened-equality refactor can't silently
+# auto-merge PRs whose tests are failing.
+reset_fixtures
+write_pr_list 112 '[{"name":"agent-eligible"}]' MERGEABLE UNSTABLE "$OLD_TS"
+echo "" >"$GH_FIXTURE_DIR/pr-diff-112.txt"
+echo "[]" >"$GH_FIXTURE_DIR/pr-comments-112.txt"
+run_sut --dry-run >/dev/null
+if grep -q "PR #112  skip: mergeable=MERGEABLE mergeStateStatus=UNSTABLE" "$LOG_FILE"; then
+  pass "UNSTABLE merge state (failing CI) is skipped"
+else
+  fail "UNSTABLE merge state should have been skipped"
+  cat "$LOG_FILE"
+fi
+
 printf '\n'
 printf 'auto-merge tests: %d passed, %d failed\n' "$PASSED" "$FAILED"
 if (( FAILED > 0 )); then
