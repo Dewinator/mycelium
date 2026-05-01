@@ -28,11 +28,12 @@ mkdir -p "$GH_FIXTURE_DIR"
 cat >"$GH_BIN" <<'MOCK'
 #!/usr/bin/env bash
 # Fixture dispatcher. Args:
-#   gh pr list --repo X --state open --json ... --limit ...   → pr-list.json
-#   gh pr diff <num> --repo X                                  → pr-diff-<num>.txt
-#   gh pr view <num> --repo X --json comments --jq ...         → pr-comments-<num>.txt
-#   gh pr view <num> --repo X --json mergeCommit --jq ...      → pr-merge-<num>.txt
-#   gh pr merge <num> ...                                      → pr-merge-result-<num> (exit code)
+#   gh pr list --repo X --state open --json ... --limit ...        → pr-list.json
+#   gh pr diff <num> --repo X                                       → pr-diff-<num>.txt
+#   gh pr view <num> --repo X --json mergeable,mergeStateStatus     → pr-state-<num>.txt
+#   gh pr view <num> --repo X --json comments --jq ...              → pr-comments-<num>.txt
+#   gh pr view <num> --repo X --json mergeCommit --jq ...           → pr-merge-<num>.txt
+#   gh pr merge <num> ...                                           → pr-merge-result-<num> (exit code)
 sub="$1"; shift
 case "$sub" in
   pr)
@@ -47,8 +48,14 @@ case "$sub" in
         ;;
       view)
         num="$1"
-        # detect comments-vs-mergecommit by looking for --json comments / mergeCommit
-        if printf '%s\n' "$@" | grep -q 'comments'; then
+        # Pick the right fixture by which --json field the SUT requested.
+        # mergeable+mergeStateStatus  → pre-merge fresh-state refresh
+        # comments                    → HOLD-comment guard
+        # mergeCommit (default)       → post-merge sha lookup
+        if printf '%s\n' "$@" | grep -q 'mergeable'; then
+          cat "$GH_FIXTURE_DIR/pr-state-$num.txt" 2>/dev/null \
+            || printf '{"mergeable":"MERGEABLE","mergeStateStatus":"CLEAN"}\n'
+        elif printf '%s\n' "$@" | grep -q 'comments'; then
           cat "$GH_FIXTURE_DIR/pr-comments-$num.txt" 2>/dev/null || true
         else
           cat "$GH_FIXTURE_DIR/pr-merge-$num.txt" 2>/dev/null || echo "abc1234"
@@ -233,6 +240,50 @@ if grep -q "PR #107  WOULD-MERGE" "$LOG_FILE"; then
   pass "Comment that mentions HOLD in prose does NOT block"
 else
   fail "Comment mentioning HOLD in prose should NOT have blocked merge"
+  cat "$LOG_FILE"
+fi
+
+# Test 9: stale snapshot — PR was MERGEABLE/CLEAN at run start but flipped
+# CONFLICTING by the time we'd merge it (e.g. earlier merge in this run
+# touched the same migration slot). Pre-merge fresh-state refresh must
+# catch it and skip cleanly instead of letting `gh pr merge` fail noisily.
+# Only fires under --execute; dry-run trusts the snapshot.
+reset_fixtures
+write_pr_list 108 '[{"name":"agent-eligible"}]' MERGEABLE CLEAN "$OLD_TS"
+cat >"$GH_FIXTURE_DIR/pr-diff-108.txt" <<'DIFF'
+diff --git a/x b/x
+@@ -0,0 +1 @@
++x
+DIFF
+echo "[]" >"$GH_FIXTURE_DIR/pr-comments-108.txt"
+# Fresh state went stale between snapshot and merge.
+printf '{"mergeable":"CONFLICTING","mergeStateStatus":"DIRTY"}\n' >"$GH_FIXTURE_DIR/pr-state-108.txt"
+run_sut --execute >/dev/null
+if grep -q "PR #108  skip: state went stale" "$LOG_FILE"; then
+  pass "Stale-snapshot PR is caught by pre-merge refresh under --execute"
+else
+  fail "Stale-snapshot PR should have been skipped pre-merge"
+  cat "$LOG_FILE"
+fi
+
+# Test 10: dry-run trusts the snapshot — even with a stale fixture present,
+# dry-run should still WOULD-MERGE because no merges land in dry-run, so
+# cached state is accurate by definition.
+reset_fixtures
+write_pr_list 109 '[{"name":"agent-eligible"}]' MERGEABLE CLEAN "$OLD_TS"
+cat >"$GH_FIXTURE_DIR/pr-diff-109.txt" <<'DIFF'
+diff --git a/x b/x
+@@ -0,0 +1 @@
++x
+DIFF
+echo "[]" >"$GH_FIXTURE_DIR/pr-comments-109.txt"
+printf '{"mergeable":"CONFLICTING","mergeStateStatus":"DIRTY"}\n' >"$GH_FIXTURE_DIR/pr-state-109.txt"
+run_sut --dry-run >/dev/null
+if grep -q "PR #109  WOULD-MERGE" "$LOG_FILE" \
+   && ! grep -q "PR #109  skip: state went stale" "$LOG_FILE"; then
+  pass "Dry-run skips the fresh-state refresh"
+else
+  fail "Dry-run should not have called the fresh-state refresh"
   cat "$LOG_FILE"
 fi
 

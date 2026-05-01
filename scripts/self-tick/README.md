@@ -77,6 +77,12 @@ A PR is merged iff **all** of:
 
 After any merges land, `auto-merge.sh` pulls main, runs `scripts/migrate.sh`, and runs `cd mcp-server && npm run build`.
 
+### Fresh-state refresh (race against own merges)
+
+The PR list is snapshotted once at run start, so `mergeable=MERGEABLE/CLEAN` is cached per PR for the loop. When two PRs in the same run claim the same migration slot or both add an import on the same line, the **first** to merge flips the **second** to CONFLICTING — but the cached snapshot still says MERGEABLE. Without intervention the script would call `gh pr merge` against stale state, GitHub's fresh check would refuse it, and `MERGE-FAILED` would land in the log.
+
+To prevent that, under `--execute` the script issues a `gh pr view --json mergeable,mergeStateStatus` immediately before each merge attempt and skips the PR if either field flipped. Dry-run skips the refresh because no merges land — the snapshot stays accurate by definition.
+
 ### Usage
 
 ```bash
@@ -98,7 +104,7 @@ Logs land in `~/Library/Logs/mycelium-automerge.log` (override via `MYCELIUM_AUT
 bash scripts/self-tick/auto-merge-test.sh
 ```
 
-Mocks `gh` via `PATH` override and asserts each gate refuses the merge it should — including the Constitution-Diff guard from issue #144 acceptance.
+Mocks `gh` via `PATH` override and asserts each gate refuses the merge it should — including the Constitution-Diff guard from issue #144 acceptance and the fresh-state refresh that catches stale snapshots under `--execute`.
 
 ### Tick label discipline
 

@@ -180,6 +180,26 @@ run_auto_merge() {
       continue
     fi
 
+    # Refresh state right before the merge call. The pr_list_json snapshot is
+    # taken once at run start; when an earlier merge in this same run lands,
+    # a sibling PR can flip CONFLICTING (e.g. two PRs claiming the same
+    # migration slot, or both adding an import on the same line). Without
+    # this, gh pr merge would hit GitHub's fresh check and racks up
+    # MERGE-FAILED log noise. Skipped in dry-run since no merges land.
+    if [[ "$DRY_RUN" != "true" ]]; then
+      local fresh fresh_mergeable fresh_state
+      fresh=$(gh pr view "$num" --repo "$REPO" --json mergeable,mergeStateStatus 2>/dev/null) || {
+        log "PR #$num  skip: could not refresh pre-merge state"
+        continue
+      }
+      fresh_mergeable=$(printf '%s' "$fresh" | jq -r '.mergeable')
+      fresh_state=$(printf '%s' "$fresh" | jq -r '.mergeStateStatus')
+      if [[ "$fresh_mergeable" != "MERGEABLE" || "$fresh_state" != "CLEAN" ]]; then
+        log "PR #$num  skip: state went stale (now mergeable=$fresh_mergeable state=$fresh_state) — earlier merge probably caused conflict"
+        continue
+      fi
+    fi
+
     if merge_one "$num" "$title"; then
       [[ "$DRY_RUN" == "true" ]] || merged=$((merged + 1))
     fi
