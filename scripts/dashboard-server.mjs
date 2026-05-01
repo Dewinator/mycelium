@@ -1455,6 +1455,186 @@ async function handleTeacherEscalationResolve(req, res, escId) {
   res.end(JSON.stringify(data));
 }
 
+// --- Swarm Phase 4: operator actions (issue #142 backend slice) ----------
+// Three POST endpoints that let an operator resolve §10.3 contradictions,
+// override a peer's TrustEdge state, and manually pin a Tier-B swarm
+// lesson to Tier-A. The frontend buttons that call these land in a
+// follow-up that depends on the schwarm tab from PR #133. The migration
+// behind these handlers is supabase/migrations/086_swarm_operator_actions.sql.
+
+async function readJsonPostBody(req, res) {
+  if (req.method !== "POST") {
+    res.writeHead(405, { "Content-Type": "application/json" });
+    res.end(JSON.stringify({ error: "POST only" }));
+    return null;
+  }
+  const chunks = [];
+  for await (const c of req) chunks.push(c);
+  const raw = Buffer.concat(chunks).toString("utf8");
+  if (!raw) return {};
+  try {
+    return JSON.parse(raw);
+  } catch {
+    res.writeHead(400, { "Content-Type": "application/json" });
+    res.end(JSON.stringify({ error: "invalid JSON body" }));
+    return null;
+  }
+}
+
+// POST /swarm/contradict-resolve {pair_id, decision: 'a'|'b'|'park'}
+// Wraps operator_resolve_contradict() — atomic resolve + tier promotion +
+// audit row. The RPC raises on unknown pair_id, double-resolve, or invalid
+// decision; we surface those as 4xx with the RPC error string.
+async function handleSwarmContradictResolve(req, res) {
+  const body = await readJsonPostBody(req, res);
+  if (body == null) return;
+  if (!body.pair_id || typeof body.pair_id !== "string") {
+    res.writeHead(400, { "Content-Type": "application/json" });
+    res.end(JSON.stringify({ error: "pair_id (UUID string) required" }));
+    return;
+  }
+  if (!["a", "b", "park"].includes(body.decision)) {
+    res.writeHead(400, { "Content-Type": "application/json" });
+    res.end(JSON.stringify({ error: "decision must be 'a' | 'b' | 'park'" }));
+    return;
+  }
+  try {
+    const result = await callRpc("operator_resolve_contradict", {
+      p_pair_id:  body.pair_id,
+      p_decision: body.decision,
+    });
+    res.writeHead(200, { "Content-Type": "application/json", "Cache-Control": "no-store" });
+    res.end(JSON.stringify(result));
+  } catch (e) {
+    res.writeHead(400, { "Content-Type": "application/json" });
+    res.end(JSON.stringify({ error: "contradict-resolve failed", detail: String(e?.message || e) }));
+  }
+}
+
+// POST /swarm/peer-trust-override {node_id, action: 'distrust'|'restore', days?}
+// Composes record_trust_edge_change (audit + weight) with quarantine_origin
+// (state machine) — both from migration 075. No new RPC; operator-override
+// is just a specific sequence of the existing operator-safe primitives.
+//
+// distrust → weight=0.0, quarantine 30 days (or `days` override).
+// restore  → weight=0.5 (default new-peer trust from migration 071),
+//            and clear quarantined_until via a fresh quarantine_origin
+//            call with days=0... no wait, quarantine_origin enforces days>0.
+//            Instead we issue an UPDATE through PostgREST to clear the
+//            column directly. That's the only path that doesn't require
+//            inventing a clear_quarantine RPC for this single use site.
+async function handleSwarmPeerTrustOverride(req, res) {
+  const body = await readJsonPostBody(req, res);
+  if (body == null) return;
+  if (!body.node_id || typeof body.node_id !== "string") {
+    res.writeHead(400, { "Content-Type": "application/json" });
+    res.end(JSON.stringify({ error: "node_id (string) required" }));
+    return;
+  }
+  if (!["distrust", "restore"].includes(body.action)) {
+    res.writeHead(400, { "Content-Type": "application/json" });
+    res.end(JSON.stringify({ error: "action must be 'distrust' | 'restore'" }));
+    return;
+  }
+
+  try {
+    if (body.action === "distrust") {
+      const days = Number.isInteger(body.days) && body.days > 0 ? body.days : 30;
+      // Trust drop first (the audit log row records the operator reason).
+      await callRpc("record_trust_edge_change", {
+        p_node_id:    body.node_id,
+        p_new_weight: 0.0,
+        p_reason:     "operator-override-distrust",
+      });
+      await callRpc("quarantine_origin", {
+        p_node_id: body.node_id,
+        p_days:    days,
+        p_reason:  "operator-override-distrust",
+      });
+      res.writeHead(200, { "Content-Type": "application/json", "Cache-Control": "no-store" });
+      res.end(JSON.stringify({
+        ok:                  true,
+        node_id:             body.node_id,
+        action:              "distrust",
+        new_trust_weight:    0.0,
+        quarantine_days:     days,
+      }));
+      return;
+    }
+
+    // restore — weight back to default 0.5 + clear quarantined_until.
+    await callRpc("record_trust_edge_change", {
+      p_node_id:    body.node_id,
+      p_new_weight: 0.5,
+      p_reason:     "operator-override-restore",
+    });
+    // Clear quarantine + reset rejection streak via direct UPDATE through
+    // PostgREST (no clear-quarantine RPC exists; quarantine_origin enforces
+    // days > 0 so we can't reuse it). The service_role JWT we already mint
+    // for callRpc is sufficient.
+    const r = await fetch(
+      new URL(
+        `/nodes?node_id=eq.${encodeURIComponent(body.node_id)}`,
+        UPSTREAM,
+      ),
+      {
+        method: "PATCH",
+        headers: {
+          "Content-Type":  "application/json",
+          "Accept":        "application/json",
+          "Prefer":        "return=representation",
+          "Authorization": `Bearer ${SERVICE_JWT}`,
+          "apikey":        SERVICE_JWT,
+        },
+        body: JSON.stringify({
+          quarantined_until:      null,
+          consecutive_rejections: 0,
+          decay_reason:           "operator-override-restore",
+        }),
+      },
+    );
+    if (!r.ok) throw new Error(`PATCH /nodes failed: HTTP ${r.status}`);
+    res.writeHead(200, { "Content-Type": "application/json", "Cache-Control": "no-store" });
+    res.end(JSON.stringify({
+      ok:               true,
+      node_id:          body.node_id,
+      action:           "restore",
+      new_trust_weight: 0.5,
+      quarantine_cleared: true,
+    }));
+  } catch (e) {
+    res.writeHead(400, { "Content-Type": "application/json" });
+    res.end(JSON.stringify({ error: "peer-trust-override failed", detail: String(e?.message || e) }));
+  }
+}
+
+// POST /swarm/lesson-pin {lesson_id}
+// Manual operator-override of the §10.6 promotion path. Idempotent on
+// already-Tier-A lessons (RPC returns noop=true). Local-lesson pin
+// (lessons.tier='pinned') is intentionally NOT supported here — local
+// lessons have no append-only audit table mirroring tier_promotion_log,
+// so a lessons.tier UPDATE would lose the operator decision. That slice
+// lands separately when a local-pin audit table exists.
+async function handleSwarmLessonPin(req, res) {
+  const body = await readJsonPostBody(req, res);
+  if (body == null) return;
+  if (!body.lesson_id || typeof body.lesson_id !== "string") {
+    res.writeHead(400, { "Content-Type": "application/json" });
+    res.end(JSON.stringify({ error: "lesson_id (UUID string) required" }));
+    return;
+  }
+  try {
+    const result = await callRpc("operator_pin_swarm_lesson", {
+      p_lesson_id: body.lesson_id,
+    });
+    res.writeHead(200, { "Content-Type": "application/json", "Cache-Control": "no-store" });
+    res.end(JSON.stringify(result));
+  } catch (e) {
+    res.writeHead(400, { "Content-Type": "application/json" });
+    res.end(JSON.stringify({ error: "lesson-pin failed", detail: String(e?.message || e) }));
+  }
+}
+
 // --- Swarm Phase 3c: GET /.well-known/mycelium-node ----------------------
 // Serves the local node's self-signed NodeAdvertisement (SWARM_SPEC §3.3 +
 // §4.1). Unauthenticated and idempotent on purpose — discovery starts here.
@@ -1480,6 +1660,12 @@ const server = http.createServer((req, res) => {
   // Swarm discovery — must precede the static fall-through so the
   // .well-known path doesn't get rewritten as a file lookup.
   if (req.url === "/.well-known/mycelium-node") return handleNodeAdvertisement(req, res);
+  // Swarm Phase 4 operator actions (issue #142 backend slice). Frontend
+  // buttons that POST these endpoints land in a follow-up PR that builds
+  // on the schwarm tab from PR #133.
+  if (req.url === "/swarm/contradict-resolve")  return handleSwarmContradictResolve(req, res);
+  if (req.url === "/swarm/peer-trust-override") return handleSwarmPeerTrustOverride(req, res);
+  if (req.url === "/swarm/lesson-pin")          return handleSwarmLessonPin(req, res);
   if (req.url.startsWith("/api/"))            return proxyApi(req, res);
   if (req.url.startsWith("/belief"))          return proxyBelief(req, res);
   if (req.url.startsWith("/guard"))           return proxyGuard(req, res);
