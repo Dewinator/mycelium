@@ -622,26 +622,40 @@ swarm-labelled phase merges to `main`.
 | 4a — PoK + self-healing spec (v1.1) | §3.1, §3.7, §4.6, §5 (16–20), §10 | [#100](https://github.com/Dewinator/mycelium/issues/100) | `3292bd6` | ✅ on `main` |
 | 4b — `wire-types.ts` v1.1 fields + JCS validator update | §3.1 | [#102](https://github.com/Dewinator/mycelium/issues/102) | `a33a5e5`, `dd68ab0` | ✅ on `main` |
 | 4c — Evidence Merkle builder service | §3.7.1 | [#103](https://github.com/Dewinator/mycelium/issues/103) | `289ac96` | ✅ on `main` |
-| 4d — `prev_lesson_hash` chain table (migration 074) | §3.7.2 | [#104](https://github.com/Dewinator/mycelium/issues/104) | — | 🟡 PR [#119](https://github.com/Dewinator/mycelium/pull/119) open |
-| 4e — `/swarm/lessons/{id}/proof` endpoint | §4.6 | [#105](https://github.com/Dewinator/mycelium/issues/105) | `a78f436` (substrate) | 🟡 endpoint PR [#128](https://github.com/Dewinator/mycelium/pull/128) open |
+| 4d — `prev_lesson_hash` chain table (migration 074) | §3.7.2 | [#104](https://github.com/Dewinator/mycelium/issues/104) | `09c64b8` | ✅ on `main` |
+| 4e — `/swarm/lessons/{id}/proof` endpoint | §4.6 | [#105](https://github.com/Dewinator/mycelium/issues/105) | `a78f436` (substrate), `170d7cc` (endpoint) | ✅ on `main` |
 | 4f — TrustEdge auto-tuning + quarantine (migration 075) | §10.1, §10.2 | [#107](https://github.com/Dewinator/mycelium/issues/107) | `25bf3a8` | ✅ on `main` |
 | 4g — ConscienceAgent contradicts-trigger (migration 080) | §10.3 | [#108](https://github.com/Dewinator/mycelium/issues/108) | `6d59674` | ✅ on `main` |
 | 4h — REM self-audit pass (§10.5 falsification arrow) | §10.5 | [#109](https://github.com/Dewinator/mycelium/issues/109) | `8cad92f` | ✅ on `main` |
 | 4i.1 — Two-tier pinning + broadcast firewall (migration 078) | §10.4, §10.6 | [#114](https://github.com/Dewinator/mycelium/issues/114) | `db98ea0` | ✅ on `main` |
-| 4i.2 — REM promotion-audit Tier-B → Tier-A (migration 081, §10.6 promote arrow) | §10.6 | [#114](https://github.com/Dewinator/mycelium/issues/114) | — | 🟡 PR [#129](https://github.com/Dewinator/mycelium/pull/129) open |
-| 4i.3 — Anti-echo-chamber receiver-cohort diversity pass (migration 082) | §10.4 | [#114](https://github.com/Dewinator/mycelium/issues/114) | — | 🟡 PR [#131](https://github.com/Dewinator/mycelium/pull/131) open |
+| 4i.2 — REM promotion-audit Tier-B → Tier-A (migration 081, §10.6 promote arrow) | §10.6 | [#114](https://github.com/Dewinator/mycelium/issues/114) | `69dd87c` | ✅ on `main` |
+| 4i.3 — Anti-echo-chamber receiver-cohort diversity pass (migration 082) | §10.4 | [#114](https://github.com/Dewinator/mycelium/issues/114) | `dc88488` | ✅ on `main` |
 | 4i.4 — Producer-side Tier-A tagging on local-lesson insert | §10.6 | _not yet issued_ | — | ⏳ spec-only |
+| 4j — Self-broadcast safety triggers (migration 085) | §10.6 | [#155](https://github.com/Dewinator/mycelium/pull/155) follow-up | `c4a545e` | ✅ on `main` |
 | 5 — Outbound peer discovery / gossip client | §3, §7 | _not yet issued_ | — | ⏳ spec-only |
 | 6 — Lesson publishing pipeline (producer side) | §4, §6 | _not yet issued_ | — | ⏳ spec-only |
 | 7 — Lesson ingestion pipeline (consumer side) | §5, §7 | _not yet issued_ | — | ⏳ spec-only |
 | 8 — `HubAnchor` exchange | §4 | _not yet issued_ | — | ⏳ spec-only |
 | 9 — Diversity-preserving sync policy | §0.3, §10.4 | _not yet issued_ | — | ⏳ spec-only |
 
-Phase 4 is now substantially landed: 4a–4c, 4f–4h, and 4i.1 are on `main`;
-4d, 4e (endpoint), 4i.2, and 4i.3 are open PRs awaiting Reed's manual merge;
-4i.4 is the residual producer-side tagging sub-phase, still spec-only.
-Phases 5–9 remain spec-only — the project's current priority stays
-*Gehirn perfektionieren* (see [`CLAUDE.md` § Roadmap (Reed 2026-04-26)](../CLAUDE.md)).
+Phase 4 substrate is fully on `main`: 4a–4i.3 plus the 4j self-broadcast
+safety triggers are all merged. Active wiring PRs in the queue tie this
+substrate into the agent + operator surfaces — issues
+[#136](https://github.com/Dewinator/mycelium/issues/136) (producer-side
+`lesson_chain` hook in `record_lesson`),
+[#137](https://github.com/Dewinator/mycelium/issues/137) (REM digest
+wiring), [#138](https://github.com/Dewinator/mycelium/issues/138)
+(inbound `/swarm/lessons` admission),
+[#139](https://github.com/Dewinator/mycelium/issues/139) (outbound feed
+broadcaster), [#141](https://github.com/Dewinator/mycelium/issues/141)
+(trust-edge decay sweep),
+[#142](https://github.com/Dewinator/mycelium/issues/142) (operator
+contradict/quarantine actions) and
+[#143](https://github.com/Dewinator/mycelium/issues/143) (MCP tool
+surface for swarm operations). 4i.4 (producer-side Tier-A tagging on
+local-lesson insert) remains spec-only. Phases 5–9 remain spec-only —
+the project's current priority stays *Gehirn perfektionieren* (see
+[`CLAUDE.md` § Roadmap (Reed 2026-04-26)](../CLAUDE.md)).
 The wire contract is frozen at v1.1 so an independent implementer can
 already build a v1.1-equivalent peer with full PoK and self-healing
 semantics, and remain compatible once the residual sub-phases land here.
