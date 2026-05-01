@@ -170,6 +170,10 @@ import { SwarmAdmitService } from "./services/swarm-admit.js";
 import {
   swarmAdmitLessonSchema, swarmAdmitLessonHandler,
 } from "./tools/swarm-admit.js";
+import { SwarmPublishService } from "./services/swarm-publish.js";
+import {
+  swarmPublishTierAlessonSchema, swarmPublishTierAlessonHandler,
+} from "./tools/swarm-publish.js";
 import {
   getSelfModelSchema, getSelfModel,
   updateSelfModelSchema, updateSelfModel,
@@ -242,6 +246,7 @@ const nodeIdentityService   = new NodeIdentityService(SUPABASE_URL, SUPABASE_KEY
 const swarmPinService       = new SwarmPinService(SUPABASE_URL, SUPABASE_KEY);
 const swarmPeersService     = new SwarmPeersService(SUPABASE_URL, SUPABASE_KEY);
 const swarmAdmitService     = new SwarmAdmitService(SUPABASE_URL, SUPABASE_KEY);
+const swarmPublishService   = new SwarmPublishService(SUPABASE_URL, SUPABASE_KEY);
 const remAuditService       = new RemAuditService(SUPABASE_URL, SUPABASE_KEY);
 const remPromotionService   = new RemPromotionService(SUPABASE_URL, SUPABASE_KEY);
 const remDiversityService   = new RemDiversityService(SUPABASE_URL, SUPABASE_KEY);
@@ -931,6 +936,28 @@ server.tool(
   swarmAdmitLessonSchema.shape,
   withErrorHandling((input) =>
     swarmAdmitLessonHandler(swarmAdmitService, memoryService, swarmAdmitLessonSchema.parse(input)),
+  ),
+);
+
+// --- swarm phase 4 write-side: publish a local lesson at Tier-A (issue #143)
+// Producer-side counterpart to swarm_pin_lesson — instead of overriding an
+// already-stored row's tier, this tool takes a LOCAL `lessons` row, signs it
+// with the node's self-key (Ed25519, key file outside the DB per pillar 1),
+// computes the §3.7.2 chain hash, appends a `lesson_chain` entry, inserts
+// into `swarm_lessons`, and audits the B→A promotion in
+// `tier_promotion_log` — all in one atomic txn (migration 087). Behind the
+// OPENCLAW_ALLOW_SWARM_WRITE=1 ethics-gate (publishing onto the wire is the
+// most consequential surface in this tool family).
+server.tool(
+  "swarm_publish_tier_a_lesson",
+  "Force a local lesson onto the swarm at Tier-A (broadcast-eligible). Signs the lesson with the node's self-key, appends a lesson_chain entry, inserts into swarm_lessons, and audits the B→A promotion atomically (one txn). Idempotent against already-published lessons. REQUIRES OPENCLAW_ALLOW_SWARM_WRITE=1 — refuses with a structured error otherwise. Also writes a 'decisions'-category memory tagged 'swarm' on success (best-effort).",
+  swarmPublishTierAlessonSchema.shape,
+  withErrorHandling((input) =>
+    swarmPublishTierAlessonHandler(
+      swarmPublishService,
+      memoryService,
+      swarmPublishTierAlessonSchema.parse(input),
+    ),
   ),
 );
 
