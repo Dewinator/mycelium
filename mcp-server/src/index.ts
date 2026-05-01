@@ -27,6 +27,7 @@ import {
 import { ExperienceService } from "./services/experiences.js";
 import { RemAuditService } from "./services/rem-audit.js";
 import { RemPromotionService } from "./services/rem-promotion.js";
+import { RemDiversityService } from "./services/rem-diversity.js";
 import {
   recordExperienceSchema,
   recordExperience,
@@ -232,6 +233,7 @@ const nodeIdentityService   = new NodeIdentityService(SUPABASE_URL, SUPABASE_KEY
 const swarmPinService       = new SwarmPinService(SUPABASE_URL, SUPABASE_KEY);
 const remAuditService       = new RemAuditService(SUPABASE_URL, SUPABASE_KEY);
 const remPromotionService   = new RemPromotionService(SUPABASE_URL, SUPABASE_KEY);
+const remDiversityService   = new RemDiversityService(SUPABASE_URL, SUPABASE_KEY);
 // DEFERRED 2026-04-26 — federation service parked until federation phase.
 // const federationService = new FederationService(
 //   SUPABASE_URL,
@@ -640,6 +642,10 @@ server.tool(
     {
       service: remPromotionService,
       deps: remPromotionService.defaultDeps(),
+    },
+    {
+      service: remDiversityService,
+      deps: remDiversityService.defaultDeps(),
     }
   ))
 );
