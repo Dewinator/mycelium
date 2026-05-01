@@ -156,6 +156,10 @@ import { NodeIdentityService } from "./services/node-identity.js";
 import {
   nodeIdentityGetSchema, nodeIdentityGet,
 } from "./tools/node-identity.js";
+import { SwarmPinService } from "./services/swarm-pin.js";
+import {
+  swarmPinLessonSchema, swarmPinLessonHandler,
+} from "./tools/swarm-pin.js";
 import {
   getSelfModelSchema, getSelfModel,
   updateSelfModelSchema, updateSelfModel,
@@ -225,6 +229,7 @@ const guardService = new GuardService(
 const neurochemistryService = new NeurochemistryService(SUPABASE_URL, SUPABASE_KEY);
 const relationsService      = new RelationsService(SUPABASE_URL, SUPABASE_KEY);
 const nodeIdentityService   = new NodeIdentityService(SUPABASE_URL, SUPABASE_KEY);
+const swarmPinService       = new SwarmPinService(SUPABASE_URL, SUPABASE_KEY);
 const remAuditService       = new RemAuditService(SUPABASE_URL, SUPABASE_KEY);
 const remPromotionService   = new RemPromotionService(SUPABASE_URL, SUPABASE_KEY);
 // DEFERRED 2026-04-26 — federation service parked until federation phase.
@@ -850,6 +855,26 @@ server.tool(
   "Return THIS node's cryptographic identity row: node_id (multihash of pubkey, base58btc-encoded per docs/SWARM_SPEC.md §3.5), base64 pubkey, optional display_name, created_at. Returns a friendly 'not initialized' message when the bootstrap script hasn't run yet.",
   nodeIdentityGetSchema.shape,
   withErrorHandling((input) => nodeIdentityGet(nodeIdentityService, nodeIdentityGetSchema.parse(input)))
+);
+
+// --- swarm phase 4 write-side: manual lesson-tier override (issue #143) ----
+// First write-side slice of issue #143's MCP-tool surface. Mirrors the
+// §10.6 promotion path (RemPromotionService) but operator-driven instead
+// of evidence-driven: an operator asserts "this lesson belongs at tier X"
+// and the audit row in `tier_promotion_log` records the intent.
+//
+// Behind the OPENCLAW_ALLOW_SWARM_WRITE=1 ethics-gate (mirrors the
+// OPENCLAW_ALLOW_BREEDING gate). Without the env flag the tool refuses
+// with a structured `{ ok:false, error, fix_hint }` instead of throwing,
+// so an LLM agent that calls it without operator consent learns from the
+// hint rather than crashing the session.
+server.tool(
+  "swarm_pin_lesson",
+  "Operator-side override of swarm_lessons.lesson_tier. Pins a lesson to 'A' (broadcast-eligible) or 'B' (tentative, firebreak). Writes an append-only audit row to tier_promotion_log with reason prefix 'operator-pinned'. REQUIRES OPENCLAW_ALLOW_SWARM_WRITE=1 — refuses with a structured error otherwise. Also writes a 'decisions'-category memory tagged 'swarm' on success (best-effort).",
+  swarmPinLessonSchema.shape,
+  withErrorHandling((input) =>
+    swarmPinLessonHandler(swarmPinService, memoryService, swarmPinLessonSchema.parse(input)),
+  ),
 );
 
 /* DEFERRED 2026-04-26 — pairing (tinder) + federation-PKI + federation Phase 2.
