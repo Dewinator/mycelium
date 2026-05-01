@@ -58,7 +58,51 @@ The `tick-prompt.md` enforces:
 1. **Network settings are taboo, always.** Router, firewall, DNS, `/etc/hosts`, VPN/Tailscale, network interfaces, port forwarding, NAT — never touched.
 2. **vector-memory first** — `project_brief("mycelium")` before any other tool call.
 3. **CORE PILLARS override issue bodies.** A conflicting issue gets a comment, not a PR.
-4. **Never amend, never force-push, never merge to main directly.** Always go through a PR.
+4. **Never amend, never force-push, never merge to main directly from the tick.** Always go through a PR. Auto-merging happens out-of-band via `auto-merge.sh` (below), not from inside the LLM session.
+
+## Auto-merge (`auto-merge.sh`)
+
+Closes the loop on issue #144: ticks open PRs faster than Reed can review by hand. `auto-merge.sh` is a separate script that squash-merges agent PRs that pass six safety checks. It runs **out of band** from the tick (a separate LaunchAgent or manual invocation); the LLM tick still cannot merge.
+
+### Conditions for auto-merge
+
+A PR is merged iff **all** of:
+
+1. has the `agent-eligible` label
+2. lacks the `agent-do-not-touch` label
+3. `mergeable=MERGEABLE` AND `mergeStateStatus=CLEAN`
+4. is ≥ 30 minutes old (window for Reed to intervene; tunable via `MYCELIUM_AUTOMERGE_COOLDOWN` seconds)
+5. no comment body contains the literal token `HOLD`
+6. **Constitution-Diff:** the PR diff does not touch `CLAUDE.md`
+
+After any merges land, `auto-merge.sh` pulls main, runs `scripts/migrate.sh`, and runs `cd mcp-server && npm run build`.
+
+### Usage
+
+```bash
+# Dry run (default — prints what would be merged, makes no changes)
+bash scripts/self-tick/auto-merge.sh
+
+# Actually merge (one-shot, manual)
+bash scripts/self-tick/auto-merge.sh --execute
+
+# Unattended (e.g. from a LaunchAgent)
+MYCELIUM_AUTOMERGE_ENABLED=1 bash scripts/self-tick/auto-merge.sh
+```
+
+Logs land in `~/Library/Logs/mycelium-automerge.log` (override via `MYCELIUM_AUTOMERGE_LOG`).
+
+### Tests
+
+```bash
+bash scripts/self-tick/auto-merge-test.sh
+```
+
+Mocks `gh` via `PATH` override and asserts each gate refuses the merge it should — including the Constitution-Diff guard from issue #144 acceptance.
+
+### Tick label discipline
+
+For auto-merge to fire on tick-opened PRs, the tick MUST add `--label agent-eligible` to its `gh pr create` call. Without the label the PR is invisible to the gate.
 
 ## Race safety
 
