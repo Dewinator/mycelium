@@ -1,4 +1,4 @@
--- 087_broadcast_diversity_filter.sql — Swarm Phase 4, issue #139 closure slice
+-- 088_broadcast_diversity_filter.sql — Swarm Phase 4, issue #139 closure slice
 --
 -- Closes the last open acceptance line of issue #139:
 --   "Diversity-dampened lessons (`local_weight < 0.3`) are excluded."
@@ -68,4 +68,4 @@ CREATE OR REPLACE VIEW swarm_lessons_broadcast_eligible AS
      AND local_weight >= 0.3;
 
 COMMENT ON VIEW swarm_lessons_broadcast_eligible IS
-  'docs/SWARM_SPEC.md §10.6 + §10.4 firebreak (tightened by migration 087). Any /swarm/lessons HTTP handler MUST select FROM this view, never from the underlying swarm_lessons table — that is the contract that prevents (a) re-broadcast of Tier-B (un-vetted) lessons per §10.6, and (b) re-broadcast of §10.4-dampened (local_weight < 0.3) lessons whose over-concentration the receiver already pulled back from. The view is a thin combined filter; predicates push to the indexes from migrations 071, 078, and 082.';
+  'docs/SWARM_SPEC.md §10.6 + §10.4 firebreak (tightened by migration 088). Any /swarm/lessons HTTP handler MUST select FROM this view, never from the underlying swarm_lessons table — that is the contract that prevents (a) re-broadcast of Tier-B (un-vetted) lessons per §10.6, and (b) re-broadcast of §10.4-dampened (local_weight < 0.3) lessons whose over-concentration the receiver already pulled back from. The view is a thin combined filter; predicates push to the indexes from migrations 071, 078, and 082.';

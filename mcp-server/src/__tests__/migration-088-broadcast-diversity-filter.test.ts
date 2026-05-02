@@ -6,7 +6,7 @@ import { dirname, resolve } from "node:path";
 import { MIN_LOCAL_WEIGHT_FOR_BROADCAST } from "../swarm/endpoints/lesson-feed.js";
 
 // ---------------------------------------------------------------------------
-// Migration 087 — broadcast view §10.4 diversity filter (issue #139 closure)
+// Migration 088 — broadcast view §10.4 diversity filter (issue #139 closure)
 //
 // Closes the last open acceptance line of issue #139:
 //   "Diversity-dampened lessons (local_weight < 0.3) are excluded."
@@ -29,7 +29,7 @@ const __dirname = dirname(fileURLToPath(import.meta.url));
 const MIGRATION_PATH = resolve(
   __dirname,
   "../../..",
-  "supabase/migrations/087_broadcast_diversity_filter.sql",
+  "supabase/migrations/088_broadcast_diversity_filter.sql",
 );
 const SQL_RAW = readFileSync(MIGRATION_PATH, "utf8");
 // Strip line and block comments BEFORE keyword checks so prose like
