@@ -28,18 +28,12 @@
  * Substrate filter contract:
  *
  *   - The loader MUST read FROM `swarm_lessons_broadcast_eligible` (the
- *     §10.6 + §10.4 firebreak view from migrations 078 + 087). Reading
- *     directly from `swarm_lessons` would re-broadcast Tier-B (un-vetted)
- *     lessons AND §10.4-dampened lessons. As of migration 087 the view
- *     itself enforces BOTH filters at the SQL layer:
- *         lesson_tier   = 'A'      (§10.6 two-tier pinning, mig. 078)
- *         local_weight >= 0.3      (§10.4 anti-echo-chamber, mig. 082)
- *   - Diversity-dampened lessons (`local_weight < 0.3`) stay local —
- *     re-broadcasting them would amplify the concentration the §10.4
- *     pass already pulled back from. The threshold mirrors the
- *     `MIN_LOCAL_WEIGHT_FOR_BROADCAST` constant exported below for any
- *     non-broadcast caller that wants the same gate without going through
- *     the view.
+ *     §10.6 firebreak view from migration 078). Reading directly from
+ *     `swarm_lessons` would re-broadcast Tier-B (un-vetted) lessons.
+ *   - The loader MUST also apply the §10.4 anti-echo-chamber filter
+ *     (`local_weight >= 0.3` from migration 082). Diversity-dampened
+ *     lessons stay local — re-broadcasting them would amplify the
+ *     concentration the §10.4 pass already pulled back from.
  *   - The handler does NOT re-apply either filter. The substrate IS the
  *     contract; this module verifies shape + pagination + clamping only.
  *     A loader that violates the contract is caught by the integration
@@ -76,13 +70,10 @@ export const LIMIT_MIN = 1;
 export const LIMIT_MAX = 200;
 
 /**
- * §10.4 anti-echo-chamber threshold for local_weight. As of migration 087
- * the SUBSTRATE (the firebreak view itself) enforces this — a loader that
- * `SELECT *` from the view is automatically compliant. The constant stays
- * exported for non-broadcast callers (e.g. dashboard widgets that want to
- * preview "what would be broadcast" without going through the view) and
- * to give the migration-087 contract test a single shared symbol that
- * proves the SQL literal and this TS constant agree.
+ * §10.4 anti-echo-chamber threshold for local_weight. Documented on the
+ * loader contract — the SUBSTRATE applies the filter, not the handler —
+ * so this constant is exported for the wiring PR's loader to import and
+ * to give the contract test a single shared symbol.
  */
 export const MIN_LOCAL_WEIGHT_FOR_BROADCAST = 0.3;
 
