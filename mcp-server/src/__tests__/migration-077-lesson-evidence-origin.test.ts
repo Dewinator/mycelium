@@ -182,7 +182,7 @@ test("get_lesson_evidence returns ordered (position, hashed_experience_id) pairs
   // implementation reconstruct the producer-canonical order without
   // relying on PostgreSQL's row-return order accidentally matching.
   // Ordering by position ASC is the §3.7.1 leaf-order contract.
-  assert.match(SQL, /create or replace function get_lesson_evidence\(p_lesson_id uuid\)\s+returns table \(position int, hashed_experience_id text\)\s+language sql stable/);
+  assert.match(SQL, /create or replace function get_lesson_evidence\(p_lesson_id uuid\)\s+returns table \("position" int, hashed_experience_id text\)\s+language sql stable/);
   assert.match(SQL, /select position, hashed_experience_id\s+from lesson_evidence_origin\s+where lesson_id = p_lesson_id\s+order by position asc/);
 });
 
