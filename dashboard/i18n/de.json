@@ -252,6 +252,8 @@
   "update.step.terminal": "Terminal",
   "update.step.cmd_intro": "Im Terminal ausführen:",
   "update.copy": "kopieren",
+  "update.copied": "kopiert ✓",
+  "update.copy_select": "markiert — Cmd+C",
   "update.dismiss.aria": "Banner ausblenden",
   "update.remote_note": "Du bist via Browser auf {host} verbunden — die Aktualisierung läuft dort, nicht auf deinem aktuellen Gerät.",
   "update.step.cmd_intro_remote": "Im Terminal deines aktuellen Geräts ausführen — die Verbindung läuft dann via SSH zum Server:"

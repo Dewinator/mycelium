@@ -303,7 +303,15 @@
     overflow-x: auto; white-space: nowrap;
     padding: 6px 10px;
   }
-  .update-banner .ub-cmd-row .btn { font-size: 12px; padding: 6px 12px; min-height: 0; }
+  .update-banner .ub-cmd-row .btn { font-size: 12px; padding: 6px 12px; min-height: 0; transition: background .15s, border-color .15s, color .15s; }
+  .update-banner .ub-cmd-row .btn.ub-copy-ok {
+    background: color-mix(in srgb, var(--good) 25%, var(--bg-elev-2));
+    border-color: var(--good); color: var(--good);
+  }
+  .update-banner .ub-cmd-row .btn.ub-copy-warn {
+    background: color-mix(in srgb, var(--warn) 22%, var(--bg-elev-2));
+    border-color: var(--warn); color: var(--warn);
+  }
   .update-banner .ub-dismiss {
     flex: 0 0 auto;
     background: transparent; border: 0; color: var(--text-dim);
@@ -7394,12 +7402,51 @@ async function checkForUpdate() {
 
   document.getElementById("ub-copy").addEventListener("click", async () => {
     const txt = (cmdEl?.textContent || "").trim();
-    try { await navigator.clipboard.writeText(txt); }
-    catch { /* clipboard API blocked — code is selectable inline as fallback */ }
     const btn = document.getElementById("ub-copy");
     const old = btn.textContent;
-    btn.textContent = "✓";
-    setTimeout(() => { btn.textContent = old; }, 1500);
+
+    // Three-tier fallback because navigator.clipboard.writeText only works
+    // on HTTPS or localhost — over plain HTTP via Tailnet/LAN it throws
+    // (or is undefined entirely) and Reed's first banner test produced
+    // a fake ✓ on a button that actually copied nothing.
+    //   1. modern Clipboard API
+    //   2. document.execCommand('copy') on a hidden textarea (deprecated
+    //      but still works on http: contexts in every current browser)
+    //   3. select the visible <code> element so the user can hit Cmd+C
+    let ok = false;
+    if (navigator.clipboard && window.isSecureContext) {
+      try { await navigator.clipboard.writeText(txt); ok = true; }
+      catch { /* fall through */ }
+    }
+    if (!ok) {
+      try {
+        const ta = document.createElement("textarea");
+        ta.value = txt;
+        ta.style.position = "fixed";
+        ta.style.opacity = "0";
+        ta.style.pointerEvents = "none";
+        document.body.appendChild(ta);
+        ta.focus();
+        ta.select();
+        ok = document.execCommand("copy");
+        document.body.removeChild(ta);
+      } catch { ok = false; }
+    }
+    if (!ok && cmdEl) {
+      // Last resort — select the visible code so the user can copy by hand.
+      const range = document.createRange();
+      range.selectNodeContents(cmdEl);
+      const sel = window.getSelection();
+      sel.removeAllRanges();
+      sel.addRange(range);
+    }
+
+    btn.textContent = ok ? (tt("update.copied") || "kopiert ✓") : (tt("update.copy_select") || "Text markiert — Cmd+C");
+    btn.classList.add(ok ? "ub-copy-ok" : "ub-copy-warn");
+    setTimeout(() => {
+      btn.textContent = old;
+      btn.classList.remove("ub-copy-ok", "ub-copy-warn");
+    }, 2200);
   });
   document.getElementById("ub-dismiss").addEventListener("click", () => {
     if (data.remote_sha) localStorage.setItem("vm-update-dismissed", data.remote_sha);
