@@ -231,6 +231,85 @@
   .empty { color: var(--text-faint); font-size: 13px; padding: 24px 0; text-align: center; }
   .err { color: var(--bad); font-size: 13px; padding: 12px 14px; border: 1px solid var(--bad); border-radius: var(--radius-sm); background: rgba(227,26,26,0.10); margin-bottom: 16px; }
 
+  /* Update banner — populated from /update-status. Sits above the page
+     header until the user dismisses it (per-version) or the local sha
+     catches up with main. Layout: leading icon · body · close button. */
+  .update-banner {
+    display: flex; align-items: flex-start; gap: 14px;
+    margin: 0 0 16px;
+    padding: 14px 18px;
+    background: linear-gradient(135deg, rgba(0,117,255,0.10), rgba(33,212,253,0.06));
+    border: 1px solid var(--accent, #0075FF);
+    border-radius: var(--radius-sm);
+    color: var(--text);
+  }
+  .update-banner .ub-icon {
+    flex: 0 0 auto;
+    width: 32px; height: 32px;
+    display: inline-flex; align-items: center; justify-content: center;
+    border-radius: 50%;
+    background: var(--accent-gradient, linear-gradient(135deg,#0075FF,#21D4FD));
+    color: #fff; font-size: 16px; font-weight: 700;
+  }
+  .update-banner .ub-body { flex: 1; min-width: 0; }
+  .update-banner .ub-title { font-size: 14px; font-weight: 700; margin-bottom: 2px; }
+  .update-banner .ub-sub  { font-size: 12.5px; color: var(--text-dim); line-height: 1.5; }
+  .update-banner .ub-sub code { font-family: var(--mono); font-size: 11.5px; padding: 1px 5px; background: var(--bg-elev-2); border-radius: 4px; }
+  .update-banner .ub-latest { display: block; margin-top: 2px; }
+  .update-banner .ub-latest em { font-style: normal; color: var(--text); }
+  .update-banner .ub-howto {
+    margin-top: 12px;
+    padding-top: 10px;
+    border-top: 1px dashed var(--border);
+  }
+  .update-banner .ub-howto-title {
+    font-size: 11px; font-weight: 700; letter-spacing: 0.08em;
+    text-transform: uppercase; color: var(--text-dim);
+    margin-bottom: 6px;
+  }
+  .update-banner .ub-howto-list {
+    margin: 0; padding-left: 22px;
+    display: flex; flex-direction: column; gap: 8px;
+    font-size: 13px; line-height: 1.5;
+  }
+  .update-banner .ub-howto-list li { padding-left: 4px; }
+  .update-banner .ub-step-tag {
+    display: inline-block; margin-right: 6px;
+    padding: 1px 8px; border-radius: 999px;
+    font-size: 10px; font-weight: 700; letter-spacing: 0.06em;
+    text-transform: uppercase;
+    background: var(--accent-soft, rgba(0,117,255,0.16));
+    color: var(--accent, #0075FF);
+  }
+  .update-banner .ub-howto-list code {
+    font-family: var(--mono); font-size: 11.5px;
+    padding: 2px 6px; background: var(--bg-elev-2);
+    border: 1px solid var(--border); border-radius: 4px;
+    user-select: all; white-space: nowrap;
+  }
+  .update-banner .ub-cmd-row {
+    display: flex; align-items: center; gap: 8px; flex-wrap: wrap;
+    margin-top: 4px;
+  }
+  .update-banner .ub-cmd-row code {
+    flex: 1; min-width: 200px;
+    overflow-x: auto; white-space: nowrap;
+    padding: 6px 10px;
+  }
+  .update-banner .ub-cmd-row .btn { font-size: 12px; padding: 6px 12px; min-height: 0; }
+  .update-banner .ub-dismiss {
+    flex: 0 0 auto;
+    background: transparent; border: 0; color: var(--text-dim);
+    font-size: 20px; line-height: 1; cursor: pointer;
+    padding: 0 4px; align-self: flex-start;
+  }
+  .update-banner .ub-dismiss:hover { color: var(--text); }
+  @media (max-width: 600px) {
+    .update-banner { flex-direction: column; }
+    .update-banner .ub-dismiss { position: absolute; top: 10px; right: 10px; }
+    .update-banner { position: relative; }
+  }
+
   .health-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 10px 16px; font-size: 12px; }
   .health-grid .k { color: var(--text-dim); }
   .health-grid .v { color: var(--text); font-family: var(--mono); text-align: right; }
@@ -1306,6 +1385,39 @@
   <div class="backdrop" id="sidebar-backdrop"></div>
 
   <main class="main">
+  <!-- Update banner — populated by /update-status, hidden when current.
+       Shows two clearly labelled paths to update so a non-tech user can
+       follow whichever one matches their workflow. The .ub-sub line is
+       built in JS at reveal-time so the placeholder spans (#ub-behind,
+       #ub-msg) survive an i18n re-apply pass. -->
+  <div id="update-banner" class="update-banner" hidden role="status" aria-live="polite">
+    <div class="ub-icon" aria-hidden="true">⬆</div>
+    <div class="ub-body">
+      <div class="ub-title" data-i18n="update.title">Update verfügbar</div>
+      <div class="ub-sub" id="ub-sub"></div>
+      <div class="ub-howto">
+        <div class="ub-howto-title" data-i18n="update.howto">So aktualisierst du:</div>
+        <ol class="ub-howto-list">
+          <li>
+            <span class="ub-step-tag" data-i18n="update.step.easy">am einfachsten</span>
+            <span data-i18n-html="update.step.dblclick">
+              <strong>Doppelklick</strong> auf <code>update.command</code> im mycelium-Ordner.
+            </span>
+          </li>
+          <li>
+            <span class="ub-step-tag" data-i18n="update.step.terminal">Terminal</span>
+            <span data-i18n="update.step.cmd_intro">Im Terminal ausführen:</span>
+            <div class="ub-cmd-row">
+              <code id="ub-cmd">cd ~/mycelium &amp;&amp; bash scripts/update.sh</code>
+              <button class="btn" id="ub-copy" type="button" data-i18n="update.copy">kopieren</button>
+            </div>
+          </li>
+        </ol>
+      </div>
+    </div>
+    <button class="ub-dismiss" id="ub-dismiss" type="button" aria-label="Banner ausblenden" data-i18n-attr="aria-label:update.dismiss.aria">×</button>
+  </div>
+
   <header class="top">
     <button class="burger" id="burger" data-i18n-attr="aria-label:header.burger.aria" aria-label="menü">☰</button>
     <div class="status-line"><span class="status-dot" id="status"></span> <span id="status-text" data-i18n="header.status.connecting">verbinde…</span> &middot; <span id="generated">—</span></div>
@@ -7183,6 +7295,67 @@ if (origTabSwitch) {
 }
 
 initTheme();
+checkForUpdate();
+
+// --- update banner -----------------------------------------------------------
+// One-shot poll on dashboard load. Reveals the floating banner above the
+// header when /update-status reports the local checkout is behind main.
+// Dismissal is per-version (keyed on remote_sha) so a new release brings
+// the banner back without nagging on every page-load.
+async function checkForUpdate() {
+  const banner = document.getElementById("update-banner");
+  if (!banner) return;
+  let data;
+  try {
+    const r = await fetch("/update-status");
+    if (!r.ok) return;
+    data = await r.json();
+  } catch { return; }
+  if (!data || !data.ok || !data.behind_by || data.behind_by < 1) return;
+  if (localStorage.getItem("vm-update-dismissed") === data.remote_sha) return;
+
+  // Build the sub line in JS so the embedded spans aren't clobbered by an
+  // i18n re-apply pass. Three i18n keys cover the prose; everything else
+  // is structure (numbers, message) that comes from the API.
+  const sub = document.getElementById("ub-sub");
+  const behindStr = String(data.behind_by);
+  const subTpl = tt("update.sub_prefix") + " <strong>" + escapeHtml(behindStr) + " " +
+                 tt("update.commits") + "</strong> " +
+                 tt("update.sub_suffix") + " <code>main</code>.";
+  let html = subTpl;
+  if (data.latest_message) {
+    html += ' <span class="ub-latest">' +
+            tt("update.latest") + " <em>" + escapeHtml(data.latest_message) + "</em>" +
+            "</span>";
+  }
+  sub.innerHTML = html;
+
+  // Wire the actual repo path into the copy-and-paste command so the user
+  // doesn't have to figure out where they cloned. data.repo_path is the
+  // dashboard-server's ROOT — the same checkout the dashboard is being
+  // served from, so the command is always correct.
+  const cmdEl = document.getElementById("ub-cmd");
+  if (cmdEl && data.repo_path) {
+    cmdEl.textContent = `cd "${data.repo_path}" && bash scripts/update.sh`;
+  }
+
+  banner.hidden = false;
+
+  document.getElementById("ub-copy").addEventListener("click", async () => {
+    const txt = (cmdEl?.textContent || "").trim();
+    try { await navigator.clipboard.writeText(txt); }
+    catch { /* clipboard API blocked — code is selectable inline as fallback */ }
+    const btn = document.getElementById("ub-copy");
+    const old = btn.textContent;
+    btn.textContent = "✓";
+    setTimeout(() => { btn.textContent = old; }, 1500);
+  });
+  document.getElementById("ub-dismiss").addEventListener("click", () => {
+    if (data.remote_sha) localStorage.setItem("vm-update-dismissed", data.remote_sha);
+    banner.hidden = true;
+  });
+}
+
 window.load = load;
 // Wait for the i18n module to finish loading dictionaries — otherwise the
 // initial render writes raw translation keys ("intro.memory", "kpi.soul.episodes")

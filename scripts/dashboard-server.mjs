@@ -21,8 +21,11 @@ import https from "node:https";
 import { readFileSync } from "node:fs";
 import fs from "node:fs/promises";
 import path from "node:path";
-import { spawn } from "node:child_process";
+import { spawn, execFile } from "node:child_process";
+import { promisify } from "node:util";
 import { fileURLToPath } from "node:url";
+
+const execFileP = promisify(execFile);
 // Federation TLS helpers — only loaded when MYCELIUM_FEATURE_FEDERATION=1.
 // Refocus 2026-04-26 moved tls-host.mjs to scripts/deferred/lib/, so the
 // static import broke the dashboard for everyone else. Loaded lazily below.
@@ -2137,6 +2140,104 @@ async function handleLessonProof(_req, res, lessonId) {
   }
 }
 
+// --- /update-status ---------------------------------------------------------
+// "Are we behind main?" — used by the dashboard's update-banner. Compares the
+// local checkout's HEAD sha against github.com/Dewinator/mycelium main via
+// the public compare API. Cached in-process for 1 h so a refresh-spamming
+// phone can't burn the GitHub-anonymous 60/h rate-limit on this proxy.
+//
+// Returns:
+//   { ok, local_sha, local_short, remote_sha, remote_short, behind_by,
+//     latest_message, latest_at, repo_path, last_check, error?, detail? }
+//
+// `behind_by` semantic: number of commits on origin/main that our checkout
+// does not have yet. (GitHub `compare/A...B` reports `ahead_by` as the count
+// of commits B has past A; mapping that to our "you are N behind" wording.)
+const _updateCache = { sha: null, at: 0, payload: null };
+const UPDATE_CACHE_TTL_MS = 60 * 60 * 1000; // 1 h
+
+async function handleUpdateStatus(req, res) {
+  const last_check = new Date().toISOString();
+  let localSha = null;
+  try {
+    const { stdout } = await execFileP("git", ["rev-parse", "HEAD"], {
+      cwd: ROOT,
+      timeout: 4000,
+    });
+    localSha = stdout.trim();
+  } catch (e) {
+    res.writeHead(200, { "Content-Type": "application/json", "Cache-Control": "no-store" });
+    res.end(JSON.stringify({
+      ok: false, last_check, repo_path: ROOT,
+      error: "git_local_failed",
+      detail: String(e?.message || e),
+    }));
+    return;
+  }
+
+  // Cache hit when nothing has changed since the last check (same local sha,
+  // within TTL). Post-update the local sha changes and the cache is bypassed
+  // so the banner clears as soon as the new sha matches main.
+  if (
+    _updateCache.payload &&
+    _updateCache.sha === localSha &&
+    Date.now() - _updateCache.at < UPDATE_CACHE_TTL_MS
+  ) {
+    res.writeHead(200, { "Content-Type": "application/json", "Cache-Control": "no-store" });
+    res.end(JSON.stringify(_updateCache.payload));
+    return;
+  }
+
+  const out = {
+    ok: false,
+    last_check,
+    local_sha: localSha,
+    local_short: localSha.slice(0, 7),
+    repo_path: ROOT,
+    behind_by: 0,
+  };
+
+  try {
+    const r = await fetch(
+      `https://api.github.com/repos/Dewinator/mycelium/compare/${localSha}...main`,
+      {
+        headers: {
+          "User-Agent": "mycelium-dashboard-update-check",
+          "Accept": "application/vnd.github+json",
+        },
+        signal: AbortSignal.timeout(6000),
+      },
+    );
+    if (!r.ok) {
+      // 404 means GitHub doesn't recognise the local sha (fork? not pushed?
+      // detached state). Treat as a soft "can't tell" and clear the banner.
+      throw new Error(`HTTP ${r.status}`);
+    }
+    const data = await r.json();
+    out.ok = true;
+    out.behind_by = data.ahead_by ?? data.total_commits ?? 0;
+    if (Array.isArray(data.commits) && data.commits.length > 0) {
+      const latest = data.commits[data.commits.length - 1];
+      out.remote_sha = latest.sha;
+      out.remote_short = latest.sha.slice(0, 7);
+      out.latest_message = (latest.commit?.message || "").split("\n")[0].slice(0, 140);
+      out.latest_at = latest.commit?.committer?.date || latest.commit?.author?.date || null;
+    } else {
+      out.remote_sha = localSha;
+      out.remote_short = out.local_short;
+    }
+  } catch (e) {
+    out.error = "github_check_failed";
+    out.detail = String(e?.message || e);
+  }
+
+  _updateCache.sha = localSha;
+  _updateCache.at = Date.now();
+  _updateCache.payload = out;
+  res.writeHead(200, { "Content-Type": "application/json", "Cache-Control": "no-store" });
+  res.end(JSON.stringify(out));
+}
+
 const server = http.createServer((req, res) => {
   // Tiny access log.
   const t = new Date().toISOString();
@@ -2145,6 +2246,7 @@ const server = http.createServer((req, res) => {
   // Swarm discovery — must precede the static fall-through so the
   // .well-known path doesn't get rewritten as a file lookup.
   if (req.url === "/.well-known/mycelium-node") return handleNodeAdvertisement(req, res);
+  if (req.url === "/update-status")              return handleUpdateStatus(req, res);
   // Swarm Phase 4 operator actions (issue #142 backend slice). Frontend
   // buttons that POST these endpoints land in a follow-up PR that builds
   // on the schwarm tab from PR #133.

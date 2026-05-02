@@ -239,5 +239,18 @@
   "setup.client.verify": "So prüfst du, ob es klappt",
   "setup.client.docs": "Offizielle Doku",
 
-  "header.setup": "einrichtung"
+  "header.setup": "einrichtung",
+
+  "update.title": "Update verfügbar",
+  "update.sub_prefix": "Du läufst",
+  "update.commits": "Commits",
+  "update.sub_suffix": "hinter",
+  "update.latest": "Neueste Änderung:",
+  "update.howto": "So aktualisierst du:",
+  "update.step.easy": "am einfachsten",
+  "update.step.dblclick": "<strong>Doppelklick</strong> auf <code>update.command</code> im mycelium-Ordner.",
+  "update.step.terminal": "Terminal",
+  "update.step.cmd_intro": "Im Terminal ausführen:",
+  "update.copy": "kopieren",
+  "update.dismiss.aria": "Banner ausblenden"
 }
