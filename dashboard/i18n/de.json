@@ -96,6 +96,12 @@
   "card.swarm.trustlog.sub": "jede positive oder negative änderung am peer-vertrauen mit grund. quelle für audit.",
   "card.swarm.diversity": "REM diversitäts-audit",
   "card.swarm.diversity.sub": "der nächtliche REM-zyklus prüft, ob lessons aus zu wenigen quellen stammen oder einander zu ähnlich sind, und drückt das gewicht runter — die anti-echo-chamber-mechanik aus §10.4.",
+  "swarm.peer.action_col": "aktion",
+  "swarm.peer.distrust": "vertrauen aufheben",
+  "swarm.peer.restore": "vertrauen wiederherstellen",
+  "swarm.peer.distrust.confirm": "vertrauen zu diesem peer auf 0 setzen und 30 tage in quarantäne schicken? eingehende lessons werden bis dahin abgewiesen.",
+  "swarm.peer.restore.confirm": "vertrauen zu diesem peer auf den default 0.5 zurücksetzen und quarantäne aufheben?",
+  "swarm.peer.error": "operator-aktion fehlgeschlagen: {detail}",
   "intro.emergence": "<b>Emergenz</b> sind Momente, in denen der Agent etwas tut, das nicht direkt aus seiner Programmierung folgt — er widerspricht seinen eigenen Grundsätzen, lehnt eine Aufgabe begründet ab, formuliert ein neues Ziel, drückt unaufgefordert Unsicherheit aus, bildet eine stabile Meinung über jemanden. Solche Momente werden erfasst, damit du sie sehen und einordnen kannst.<span class=\"sub\">Sechs Indikatoren werden erkannt — vier automatisch aus den Daten, zwei aus den Tagesereignissen des Agenten.</span>",
   "intro.neurochemistry": "Drei chemische Signale steuern den inneren Zustand des Agenten — analog zur menschlichen Neurochemie. <b>Dopamin</b> misst, wie gut Vorhersagen passen (Lernfortschritt). <b>Serotonin</b> bestimmt Geduld und Planungsweite. <b>Noradrenalin</b> regelt Wachheit und Fokus.<span class=\"sub\">Die vier klassischen Affekt-Werte (Neugier, Zufriedenheit, Selbstvertrauen, Frustration) werden aus diesen drei Signalen abgeleitet.</span>",
 
