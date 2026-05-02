@@ -172,6 +172,33 @@ This spike answers four concrete questions:
   cheap first filter. The 256-cap in the threat model is now the
   defensive ceiling above proven small-N behaviour, not above an
   unknown.
+
+  **Liveness / publisher churn (2026-05-03 — `experiments/swarm-discovery/spike-mdns-churn.mjs`,
+  `report-mdns-churn.json`):** the prior spikes assumed peers stay up
+  for the duration of the test. The dashboard panel ("Discovery on the
+  dashboard" — open question 4 above) and the wake/network-change
+  re-announce hook in §L1 both presuppose that the discoverer can tell
+  when a peer leaves. This spike answers what `bonjour-service`'s
+  browser actually emits in the realistic crash case: spawn three
+  publishers, wait for all three `up` events, SIGKILL all three at
+  once (no goodbye packet possible because Node never gets to run
+  `service.stop()`), observe the browser for 15 s. **Empirical result
+  on macOS-arm64 (Node 25.9): zero `down` events fired in the 15 s
+  window.** All three publishers remained in the discoverer's seen-set
+  as "alive" indefinitely from the library's POV. The implementation
+  cannot rely on `down` events for liveness — the dashboard's
+  "this peer is offline" state needs an additional mechanism on top of
+  the library. Two options for issue 1's acceptance criteria:
+  *(a)* periodic re-fetch of `/.well-known/mycelium-node` per known
+  candidate URL with N consecutive failures evicting the entry — uses
+  the wire path the spike already validated; *(b)* track the per-record
+  TTL bonjour-service exposes and evict on TTL expiry. Option (a) is
+  the safer pick because it's transport-symmetric with the bootstrap
+  case (which has no mDNS layer at all) and reuses code that is going
+  to exist anyway. The implementation issue should name a concrete
+  liveness budget — e.g. "a peer absent for ≥30 s is shown as offline
+  in the dashboard, evicted from the active candidate set after 5 min"
+  — rather than leaving it implicit.
 - **WAN discovery: `js-libp2p` with a Kademlia DHT** (`@libp2p/kad-dht`),
   using only **public bootstrap nodes operated by mycelium users
   themselves** — never IPFS-network bootstrap. The DHT key is the
@@ -493,7 +520,7 @@ issues exist yet on GitHub.
 
 | order | proposed issue title | scope | depends on |
 |---|---|---|---|
-| 1 | `feat(discovery): mDNS responder + browser in Tauri sidecar (L1)` | Add `bonjour-service`, advertise `_mycelium._tcp.local`, browse for the same, feed candidate URLs into the existing peer-pending pipeline. **Default on for the native app.** | Wave 1 (Tauri sidecar landed, #176) |
+| 1 | `feat(discovery): mDNS responder + browser in Tauri sidecar (L1)` | Add `bonjour-service`, advertise `_mycelium._tcp.local`, browse for the same, feed candidate URLs into the existing peer-pending pipeline, **and run a TTL/heartbeat eviction loop on top** because `spike-mdns-churn.mjs` proved bonjour-service emits no `down` events for crashed publishers (zero in 15 s). **Default on for the native app.** | Wave 1 (Tauri sidecar landed, #176) |
 | 2 | `feat(discovery): "candidate peers" dashboard panel + promote action` | Surface mDNS hits to the operator with a "promote to trusted peer" button that flips `TrustEdge.weight` from 0 to `base_weight`. | issue 1 |
 | 3 | `feat(discovery): private libp2p Kademlia DHT client (L2), default-off` | Add `js-libp2p` + `@libp2p/kad-dht` behind `MYCELIUM_ENABLE_DHT=1`. Define the `/mycelium/kad/1.0.0` protocol id. Bootstrap list: Wave-2 nodes only. | Wave 2 (≥ 2 stable public peers) |
 | 4 | `feat(discovery): DHT pointer publish + lookup tool` | Sign and publish the URL pointer record on join; resolve `node_id → URL` on demand from the MCP tool surface. | issue 3 |

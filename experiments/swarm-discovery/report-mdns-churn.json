@@ -1,0 +1,94 @@
+{
+  "spike": "wave-3-mdns-churn",
+  "started_at": "2026-05-02T22:54:43.167Z",
+  "platform": "darwin-arm64",
+  "node": "v25.9.0",
+  "package": "bonjour-service + node:child_process",
+  "config": {
+    "publishers": 3,
+    "settle_window_ms": 4000,
+    "observe_after_kill_ms": 15000,
+    "kill_signal": "SIGKILL"
+  },
+  "spawn": {
+    "children_pids": [
+      85507,
+      85508,
+      85509
+    ],
+    "spawn_ms": 6
+  },
+  "settle": {
+    "window_ms": 4000,
+    "expected": 3,
+    "seen_alive": 3,
+    "all_seen": true,
+    "max_first_seen_ms": 650
+  },
+  "kill": {
+    "at": "2026-05-02T22:54:47.939Z",
+    "signal": "SIGKILL",
+    "children": [
+      {
+        "pid": 85507,
+        "exit_code": null,
+        "signal": "SIGKILL",
+        "reaped_ms_from_kill": 7
+      },
+      {
+        "pid": 85508,
+        "exit_code": null,
+        "signal": "SIGKILL",
+        "reaped_ms_from_kill": 7
+      },
+      {
+        "pid": 85509,
+        "exit_code": null,
+        "signal": "SIGKILL",
+        "reaped_ms_from_kill": 7
+      }
+    ]
+  },
+  "observe": {
+    "window_ms": 15000,
+    "down_events_total": 0,
+    "distinct_down_names": 0,
+    "expected_down": 3,
+    "all_publishers_got_down": false,
+    "earliest_down_ms_from_kill": null,
+    "latest_down_ms_from_kill": null,
+    "still_seen_alive_at_end": [
+      "mycelium-spike-85509",
+      "mycelium-spike-85508",
+      "mycelium-spike-85507"
+    ],
+    "per_publisher_down_ms_from_kill": {}
+  },
+  "events": [
+    {
+      "kind": "up",
+      "name": "mycelium-spike-85509",
+      "t_ms_from_discover_start": 537,
+      "t_ms_from_kill": null,
+      "port": 61337,
+      "txt_node_id": "spike-85509"
+    },
+    {
+      "kind": "up",
+      "name": "mycelium-spike-85508",
+      "t_ms_from_discover_start": 560,
+      "t_ms_from_kill": null,
+      "port": 61335,
+      "txt_node_id": "spike-85508"
+    },
+    {
+      "kind": "up",
+      "name": "mycelium-spike-85507",
+      "t_ms_from_discover_start": 650,
+      "t_ms_from_kill": null,
+      "port": 61336,
+      "txt_node_id": "spike-85507"
+    }
+  ],
+  "finished_at": "2026-05-02T22:55:02.950Z"
+}
