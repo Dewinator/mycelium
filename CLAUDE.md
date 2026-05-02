@@ -194,7 +194,14 @@ provisioniert pro Rolle (privat / coden / kochen / …) eine Instanz und
 verbindet seinen MCP-Client damit. Das Gehirn weiß nichts von anderen
 Gehirnen. Schwarm/Föderation kommt später als zusätzlicher Layer obendrauf.
 
-### Native-App Track (Reed 2026-05-02) — höchste laufende Priorität
+### Vier Wellen (Reed 2026-05-02) — Bird's-eye view
+
+Reeds Vision vom 2026-05-02 ist als vier sequentielle Wellen organisiert.
+Cross-wave Übersicht (was hängt von was ab, welches Doc anchored welche
+Welle, was passiert nach jedem Wave-Landing): [`docs/waves.md`](docs/waves.md).
+Welle 1 ist die laufende — Details siehe direkt unten.
+
+### Native-App Track (Reed 2026-05-02) — höchste laufende Priorität (Welle 1)
 
 Roadmap-Schritt 2 ("Installation so einfach wie möglich") ist konkretisiert
 worden zu **Path A: native standalone App** (macOS / Windows / Linux,
