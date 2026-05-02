@@ -199,6 +199,54 @@ This spike answers four concrete questions:
   liveness budget — e.g. "a peer absent for ≥30 s is shown as offline
   in the dashboard, evicted from the active candidate set after 5 min"
   — rather than leaving it implicit.
+
+  **Heartbeat-eviction validation of option (a) (2026-05-03 —
+  `experiments/swarm-discovery/spike-mdns-heartbeat.mjs`,
+  `report-mdns-heartbeat.json`):** the churn spike named option (a) as
+  the safer choice but didn't run it. This spike does. Method: spawn
+  N=3 publishers, mDNS-discover all of them, learn URL+`node_id` from
+  each TXT record, then start a heartbeat loop that re-fetches every
+  candidate URL every `HEARTBEAT_INTERVAL_MS` (5 s) using the same
+  `fetchUrl` (2 s timeout, 64 KiB body cap) the implementation will
+  lift. Per-URL state: `fail_count` resets on success, increments on
+  failure; reaching `FAIL_THRESHOLD` (3) marks the URL evicted with a
+  timestamp. After 2 successful heartbeats against everyone, SIGKILL
+  one specific publisher and observe for 25 s — long enough that the
+  victim accumulates ≥3 consecutive failures *and* the survivors have
+  ample chance to false-positive-evict. Empirical results on macOS-arm64
+  (Node 25.9):
+  - **Detection latency: 15003 ms from kill to eviction.** Exactly the
+    `FAIL_THRESHOLD × HEARTBEAT_INTERVAL_MS` budget, within ±3 ms. The
+    "peer offline within ~30 s" UX promise the design doc names is
+    achievable with these numbers and ~15 s of slack to spare.
+  - **Failure-mode of dead publishers: `connect ECONNREFUSED`** (port
+    closed by kernel after process exit), not timeout. Each failed
+    heartbeat returns in ≤4 ms. The implementation does not have to
+    wait the full 2 s timeout per probe — fail-fast is the realistic
+    path.
+  - **Zero false-positive evictions on the two survivors** across the
+    full 7-round / 35 s observation. `final_fail_count` stayed 0 for
+    both throughout — the loop is not jumpy at this interval/threshold.
+  - **Cost per heartbeat: 263 bytes on the wire, ~6 ms wall-time.**
+    With one peer that's ~52 B/s and ~1.2 ms/s of CPU; at the doc's
+    256-candidate cap that's still only ~14 KB/s and ~310 ms/s — well
+    inside what a quiet sidecar can absorb.
+  - **Spike found a bug in its own first version** worth recording for
+    the implementation: `bonjour-service`'s `up`-event order is *not*
+    guaranteed to match the publisher's spawn order. The first run
+    SIGKILLed the wrong child because it indexed `children[]` (spawn
+    order) and `candidates` (mDNS order) as if they aligned — they
+    didn't. Fix: match by `node_id` (which encodes the PID) instead.
+    For the implementation, the takeaway is that *any* mapping between
+    "I spawned this" and "I see it on the wire" must go through
+    identity (`node_id`), not array position.
+
+  Net effect: option (a) is now empirically proven, not just "the
+  safer pick on paper." The implementation issue can specify the
+  acceptance criterion as "a peer absent for ≥15 s (3 consecutive
+  failed `/.well-known` re-fetches at 5 s interval) is evicted from
+  the active candidate set; the dashboard shows the eviction within
+  one heartbeat cycle thereafter." Concrete numbers, defensible budget.
 - **WAN discovery: `js-libp2p` with a Kademlia DHT** (`@libp2p/kad-dht`),
   using only **public bootstrap nodes operated by mycelium users
   themselves** — never IPFS-network bootstrap. The DHT key is the
@@ -520,7 +568,7 @@ issues exist yet on GitHub.
 
 | order | proposed issue title | scope | depends on |
 |---|---|---|---|
-| 1 | `feat(discovery): mDNS responder + browser in Tauri sidecar (L1)` | Add `bonjour-service`, advertise `_mycelium._tcp.local`, browse for the same, feed candidate URLs into the existing peer-pending pipeline, **and run a TTL/heartbeat eviction loop on top** because `spike-mdns-churn.mjs` proved bonjour-service emits no `down` events for crashed publishers (zero in 15 s). **Default on for the native app.** | Wave 1 (Tauri sidecar landed, #176) |
+| 1 | `feat(discovery): mDNS responder + browser in Tauri sidecar (L1)` | Add `bonjour-service`, advertise `_mycelium._tcp.local`, browse for the same, feed candidate URLs into the existing peer-pending pipeline, **and run a heartbeat-eviction loop on top** because `spike-mdns-churn.mjs` proved bonjour-service emits no `down` events for crashed publishers (zero in 15 s). Concrete liveness contract from `spike-mdns-heartbeat.mjs`: re-fetch every candidate's `/.well-known/mycelium-node` every 5 s with the existing 2 s timeout / 64 KiB body cap; 3 consecutive failures evict (15 s detection, ±3 ms on macOS); index by `node_id` (the spike caught a bug where indexing by spawn-order ≠ mDNS-up-order). **Default on for the native app.** | Wave 1 (Tauri sidecar landed, #176) |
 | 2 | `feat(discovery): "candidate peers" dashboard panel + promote action` | Surface mDNS hits to the operator with a "promote to trusted peer" button that flips `TrustEdge.weight` from 0 to `base_weight`. | issue 1 |
 | 3 | `feat(discovery): private libp2p Kademlia DHT client (L2), default-off` | Add `js-libp2p` + `@libp2p/kad-dht` behind `MYCELIUM_ENABLE_DHT=1`. Define the `/mycelium/kad/1.0.0` protocol id. Bootstrap list: Wave-2 nodes only. | Wave 2 (≥ 2 stable public peers) |
 | 4 | `feat(discovery): DHT pointer publish + lookup tool` | Sign and publish the URL pointer record on join; resolve `node_id → URL` on demand from the MCP tool surface. | issue 3 |

@@ -1,0 +1,339 @@
+{
+  "spike": "wave-3-mdns-heartbeat",
+  "started_at": "2026-05-02T23:07:05.113Z",
+  "platform": "darwin-arm64",
+  "node": "v25.9.0",
+  "package": "bonjour-service + node:http + node:child_process",
+  "config": {
+    "publishers": 3,
+    "heartbeat_interval_ms": 5000,
+    "heartbeat_timeout_ms": 2000,
+    "body_self_cap_bytes": 65536,
+    "fail_threshold": 3,
+    "settle_heartbeats": 2,
+    "observe_after_kill_ms": 25000,
+    "mdns_settle_ms": 4000,
+    "kill_victim_index": 0,
+    "expected_detection_ms": 15000
+  },
+  "spawn": {
+    "children_pids": [
+      86281,
+      86282,
+      86283
+    ],
+    "spawn_ms": 5
+  },
+  "discover": {
+    "settle_window_ms": 4000,
+    "expected": 3,
+    "seen": 3,
+    "all_seen": true,
+    "instances": [
+      {
+        "name": "mycelium-spike-86283",
+        "node_id": "spike-86283",
+        "port": 65270,
+        "first_seen_ms": 446
+      },
+      {
+        "name": "mycelium-spike-86281",
+        "node_id": "spike-86281",
+        "port": 65269,
+        "first_seen_ms": 496
+      },
+      {
+        "name": "mycelium-spike-86282",
+        "node_id": "spike-86282",
+        "port": 65268,
+        "first_seen_ms": 607
+      }
+    ]
+  },
+  "kill_target": {
+    "name": "mycelium-spike-86281",
+    "node_id": "spike-86281",
+    "pid": 86281
+  },
+  "kill": {
+    "at": "2026-05-02T23:07:14.893Z",
+    "signal": "SIGKILL",
+    "at_heartbeat_round": 2,
+    "victim_pid": 86281
+  },
+  "heartbeat": {
+    "rounds_completed": 7,
+    "total_heartbeats": 19,
+    "total_bytes_on_wire": 4208,
+    "avg_ms_per_heartbeat": 6,
+    "avg_bytes_per_heartbeat": 221
+  },
+  "victim": {
+    "name": "mycelium-spike-86281",
+    "evicted": true,
+    "evicted_at_ms_from_kill": 15003,
+    "expected_detection_ms": 15000,
+    "detection_within_budget": true
+  },
+  "survivors": {
+    "count": 2,
+    "all_alive_at_end": true,
+    "any_false_positive_eviction": false,
+    "max_final_fail_count": 0,
+    "total_failed_heartbeats": 0
+  },
+  "per_publisher": {
+    "mycelium-spike-86283": {
+      "node_id": "spike-86283",
+      "url": "http://127.0.0.1:65270/.well-known/mycelium-node",
+      "total_heartbeats": 7,
+      "successful_heartbeats": 7,
+      "failed_heartbeats": 0,
+      "final_fail_count": 0,
+      "evicted": false,
+      "evicted_at_heartbeat_round": null,
+      "evicted_at_ms_from_start": null,
+      "evicted_at_ms_from_kill": null,
+      "heartbeats": [
+        {
+          "round": 1,
+          "t_ms_from_start": 0,
+          "t_ms_from_kill": null,
+          "ok": true,
+          "status": 200,
+          "ms": 24,
+          "bytes": 263,
+          "timed_out": false,
+          "error": null
+        },
+        {
+          "round": 2,
+          "t_ms_from_start": 5003,
+          "t_ms_from_kill": null,
+          "ok": true,
+          "status": 200,
+          "ms": 5,
+          "bytes": 263,
+          "timed_out": false,
+          "error": null
+        },
+        {
+          "round": 3,
+          "t_ms_from_start": 10004,
+          "t_ms_from_kill": 4996,
+          "ok": true,
+          "status": 200,
+          "ms": 6,
+          "bytes": 263,
+          "timed_out": false,
+          "error": null
+        },
+        {
+          "round": 4,
+          "t_ms_from_start": 15004,
+          "t_ms_from_kill": 9996,
+          "ok": true,
+          "status": 200,
+          "ms": 4,
+          "bytes": 263,
+          "timed_out": false,
+          "error": null
+        },
+        {
+          "round": 5,
+          "t_ms_from_start": 20007,
+          "t_ms_from_kill": 14998,
+          "ok": true,
+          "status": 200,
+          "ms": 4,
+          "bytes": 263,
+          "timed_out": false,
+          "error": null
+        },
+        {
+          "round": 6,
+          "t_ms_from_start": 25008,
+          "t_ms_from_kill": 20000,
+          "ok": true,
+          "status": 200,
+          "ms": 2,
+          "bytes": 263,
+          "timed_out": false,
+          "error": null
+        },
+        {
+          "round": 7,
+          "t_ms_from_start": 30011,
+          "t_ms_from_kill": 25002,
+          "ok": true,
+          "status": 200,
+          "ms": 3,
+          "bytes": 263,
+          "timed_out": false,
+          "error": null
+        }
+      ]
+    },
+    "mycelium-spike-86281": {
+      "node_id": "spike-86281",
+      "url": "http://127.0.0.1:65269/.well-known/mycelium-node",
+      "total_heartbeats": 5,
+      "successful_heartbeats": 2,
+      "failed_heartbeats": 3,
+      "final_fail_count": 3,
+      "evicted": true,
+      "evicted_at_heartbeat_round": 5,
+      "evicted_at_ms_from_start": 20011,
+      "evicted_at_ms_from_kill": 15003,
+      "heartbeats": [
+        {
+          "round": 1,
+          "t_ms_from_start": 0,
+          "t_ms_from_kill": null,
+          "ok": true,
+          "status": 200,
+          "ms": 18,
+          "bytes": 263,
+          "timed_out": false,
+          "error": null
+        },
+        {
+          "round": 2,
+          "t_ms_from_start": 5003,
+          "t_ms_from_kill": null,
+          "ok": true,
+          "status": 200,
+          "ms": 4,
+          "bytes": 263,
+          "timed_out": false,
+          "error": null
+        },
+        {
+          "round": 3,
+          "t_ms_from_start": 10004,
+          "t_ms_from_kill": 4996,
+          "ok": false,
+          "status": 0,
+          "ms": 4,
+          "bytes": 0,
+          "timed_out": false,
+          "error": "connect ECONNREFUSED 127.0.0.1:65269"
+        },
+        {
+          "round": 4,
+          "t_ms_from_start": 15004,
+          "t_ms_from_kill": 9996,
+          "ok": false,
+          "status": 0,
+          "ms": 2,
+          "bytes": 0,
+          "timed_out": false,
+          "error": "connect ECONNREFUSED 127.0.0.1:65269"
+        },
+        {
+          "round": 5,
+          "t_ms_from_start": 20007,
+          "t_ms_from_kill": 14998,
+          "ok": false,
+          "status": 0,
+          "ms": 2,
+          "bytes": 0,
+          "timed_out": false,
+          "error": "connect ECONNREFUSED 127.0.0.1:65269"
+        }
+      ]
+    },
+    "mycelium-spike-86282": {
+      "node_id": "spike-86282",
+      "url": "http://127.0.0.1:65268/.well-known/mycelium-node",
+      "total_heartbeats": 7,
+      "successful_heartbeats": 7,
+      "failed_heartbeats": 0,
+      "final_fail_count": 0,
+      "evicted": false,
+      "evicted_at_heartbeat_round": null,
+      "evicted_at_ms_from_start": null,
+      "evicted_at_ms_from_kill": null,
+      "heartbeats": [
+        {
+          "round": 1,
+          "t_ms_from_start": 0,
+          "t_ms_from_kill": null,
+          "ok": true,
+          "status": 200,
+          "ms": 18,
+          "bytes": 263,
+          "timed_out": false,
+          "error": null
+        },
+        {
+          "round": 2,
+          "t_ms_from_start": 5003,
+          "t_ms_from_kill": null,
+          "ok": true,
+          "status": 200,
+          "ms": 4,
+          "bytes": 263,
+          "timed_out": false,
+          "error": null
+        },
+        {
+          "round": 3,
+          "t_ms_from_start": 10004,
+          "t_ms_from_kill": 4996,
+          "ok": true,
+          "status": 200,
+          "ms": 6,
+          "bytes": 263,
+          "timed_out": false,
+          "error": null
+        },
+        {
+          "round": 4,
+          "t_ms_from_start": 15004,
+          "t_ms_from_kill": 9996,
+          "ok": true,
+          "status": 200,
+          "ms": 4,
+          "bytes": 263,
+          "timed_out": false,
+          "error": null
+        },
+        {
+          "round": 5,
+          "t_ms_from_start": 20007,
+          "t_ms_from_kill": 14998,
+          "ok": true,
+          "status": 200,
+          "ms": 3,
+          "bytes": 263,
+          "timed_out": false,
+          "error": null
+        },
+        {
+          "round": 6,
+          "t_ms_from_start": 25008,
+          "t_ms_from_kill": 20000,
+          "ok": true,
+          "status": 200,
+          "ms": 2,
+          "bytes": 263,
+          "timed_out": false,
+          "error": null
+        },
+        {
+          "round": 7,
+          "t_ms_from_start": 30011,
+          "t_ms_from_kill": 25002,
+          "ok": true,
+          "status": 200,
+          "ms": 2,
+          "bytes": 263,
+          "timed_out": false,
+          "error": null
+        }
+      ]
+    }
+  },
+  "finished_at": "2026-05-02T23:07:39.900Z"
+}
