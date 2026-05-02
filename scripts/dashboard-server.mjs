@@ -1261,6 +1261,21 @@ async function handleRelationsGraph(req, res) {
       parseFloat(url.searchParams.get("bridge_min_weight") || "0.5")));
     const bridgeTopK   = Math.min(500, parseInt(url.searchParams.get("bridge_top") || "300", 10) || 300);
 
+    // Search expansion. Without it, the recency-ordered limit budget (default
+    // 400 relations) is dominated by whatever has been moving lately —
+    // typically project / decision class memories — and topic-class memories
+    // can be entirely absent from the loaded subgraph. The frontend matcher
+    // can only highlight what is already loaded, so a search for a domain
+    // term ("audio", "rigging", …) silently returns zero hits even when the
+    // memory exists. When `q` is set we additionally fetch matching memories
+    // by content ILIKE / category EQ and pull their relations into the
+    // result set. Trim PostgREST control chars so an accidental "(" or ","
+    // can't break the or() grouping below.
+    const queryStr = (url.searchParams.get("q") || "")
+      .replace(/[(),*]/g, " ")
+      .trim()
+      .slice(0, 80);
+
     // --- 1) typed relations --------------------------------------------------
     const relsUrl = new URL("/memory_relations", UPSTREAM);
     relsUrl.searchParams.set("select", "a_id,b_id,type,weight,evidence_count,reason");
@@ -1280,6 +1295,57 @@ async function handleRelationsGraph(req, res) {
       weight: r.weight, evidence: r.evidence_count,
       reason: r.reason, kind: "typed",
     }));
+
+    // --- 1b) search expansion ------------------------------------------------
+    // Pull in memories that match the user's search and their relations, so
+    // they show up in the graph even if the recency-ordered top-N didn't
+    // happen to include them. Dedupe edges via the same (lo|hi|type) key the
+    // bridge step uses so we don't double-render an existing relation.
+    const searchHitIds = new Set();
+    if (queryStr) {
+      try {
+        const enc = encodeURIComponent(queryStr);
+        const sUrl = new URL(`/memories?select=id&or=(content.ilike.*${enc}*,category.eq.${enc})&limit=200`, UPSTREAM);
+        if (category) sUrl.searchParams.set("category", `eq.${category}`);
+        const sResp = await fetch(sUrl, {
+          headers: { Authorization: `Bearer ${SERVICE_JWT}`, apikey: SERVICE_JWT, Accept: "application/json" }
+        });
+        if (sResp.ok) {
+          const sRows = await sResp.json();
+          for (const r of sRows) searchHitIds.add(r.id);
+        }
+      } catch { /* best-effort — graph still renders without expansion */ }
+
+      if (searchHitIds.size > 0) {
+        const idList = [...searchHitIds].slice(0, 200).join(",");
+        const seen = new Set(edges.map(e => {
+          const lo = e.a < e.b ? e.a : e.b, hi = e.a < e.b ? e.b : e.a;
+          return `${lo}|${hi}|${e.type}`;
+        }));
+        try {
+          const erUrl = new URL(`/memory_relations?select=a_id,b_id,type,weight,evidence_count,reason&or=(a_id.in.(${idList}),b_id.in.(${idList}))&limit=400`, UPSTREAM);
+          if (types) erUrl.searchParams.set("type", `in.(${types})`);
+          const erResp = await fetch(erUrl, {
+            headers: { Authorization: `Bearer ${SERVICE_JWT}`, apikey: SERVICE_JWT, Accept: "application/json" }
+          });
+          if (erResp.ok) {
+            const erRows = await erResp.json();
+            for (const r of erRows) {
+              const lo = r.a_id < r.b_id ? r.a_id : r.b_id;
+              const hi = r.a_id < r.b_id ? r.b_id : r.a_id;
+              const k = `${lo}|${hi}|${r.type}`;
+              if (seen.has(k)) continue;
+              seen.add(k);
+              edges.push({
+                a: r.a_id, b: r.b_id, type: r.type,
+                weight: r.weight, evidence: r.evidence_count,
+                reason: r.reason, kind: "typed",
+              });
+            }
+          }
+        } catch { /* best-effort */ }
+      }
+    }
 
     // --- 2) optional Hebbian (undirected) -----------------------------------
     if (includeHebb) {
@@ -1369,6 +1435,10 @@ async function handleRelationsGraph(req, res) {
     const wantIds = new Set();
     for (const e of edges) { wantIds.add(e.a); wantIds.add(e.b); }
     for (const b of bridgeCandidates) { wantIds.add(b.a); wantIds.add(b.b); }
+    // Include search-matching memories even if they have zero relations — an
+    // isolated topic still belongs in the graph when its content matches the
+    // user's query, just as a single un-connected node.
+    for (const id of searchHitIds) wantIds.add(id);
 
     if (focusId && wantIds.has(focusId)) {
       // keep only edges reachable within `depth` hops from focusId
