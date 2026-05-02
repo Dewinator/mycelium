@@ -247,6 +247,50 @@ This spike answers four concrete questions:
   failed `/.well-known` re-fetches at 5 s interval) is evicted from
   the active candidate set; the dashboard shows the eviction within
   one heartbeat cycle thereafter." Concrete numbers, defensible budget.
+
+  **Rejoin after eviction (2026-05-03 — `experiments/swarm-discovery/spike-mdns-rejoin.mjs`,
+  `report-mdns-rejoin.json`):** the heartbeat spike's own header named
+  the next gap as "if the killed publisher restarts, mDNS would surface
+  it again and the loop would re-add it — orthogonal to eviction." It
+  was not orthogonal, and "would surface it again" was wrong. Method:
+  spawn 3 publishers with stable identities (`SPIKE_NODE_ID=rejoin-A/B/C`
+  via env, simulating production where `node_id = multihash(pubkey)` is
+  persistent). Run heartbeat eviction, confirm the victim is evicted
+  after 15 s, then respawn the victim with the SAME node_id and SAME
+  mDNS instance name (`mycelium-rejoin-A`) but a NEW ephemeral HTTP port
+  (the realistic post-restart shape). Keep the bonjour browser running
+  the entire time. **Empirical result on macOS-arm64 (Node 25.9):** the
+  browser fired ZERO `up` events for the rejoined publisher across the
+  full 30 s observation window. The candidate set's URL stayed pinned
+  to the dead port (52307) forever; heartbeats kept hitting `connect
+  ECONNREFUSED` because the surviving entry pointed at the original
+  publisher's port, not the respawn's port. Survivors stayed clean
+  (zero false-positive evictions on the un-killed publishers across the
+  full 12-round / 60 s test).
+
+  This is a binding finding for the implementation: **issue 1 cannot
+  ship with browse-once-then-heartbeat as its sole discovery loop.**
+  The implementation MUST add an explicit re-discovery path for
+  evicted candidates. Three concrete options the implementation can
+  choose between:
+  *(I)* On eviction, destroy and recreate the bonjour browser (or
+  call `find()` again with a fresh subscription) — heavyweight but
+  unambiguous. *(II)* Run a periodic re-browse cycle independent of
+  the heartbeat loop (e.g. every 30 s, restart the browser session
+  for one settle window) — keeps eviction and discovery decoupled at
+  the cost of extra mDNS traffic. *(III)* On eviction, call
+  `bonjour.find()` *with a fresh `Bonjour()` instance* — the same
+  approach the two-process spike already proved surfaces all running
+  publishers in 32 ms. Option (III) is the cheapest and most surgical;
+  it reuses the cold-discoverer code path the existing fanout spike
+  already validated. The implementation issue should pick one and
+  name it explicitly; the spike has shown that "do nothing extra" is
+  not viable. Concrete acceptance criterion: "after eviction of a
+  candidate by node_id N, the implementation re-browses mDNS within
+  ≤30 s and re-admits N to the active candidate set on the next
+  successful `/.well-known/mycelium-node` fetch against the
+  newly-discovered URL." Without this, Reed's archetypal "laptop wakes
+  from sleep, partner's mycelium re-discovers it" flow silently breaks.
 - **WAN discovery: `js-libp2p` with a Kademlia DHT** (`@libp2p/kad-dht`),
   using only **public bootstrap nodes operated by mycelium users
   themselves** — never IPFS-network bootstrap. The DHT key is the
@@ -568,7 +612,7 @@ issues exist yet on GitHub.
 
 | order | proposed issue title | scope | depends on |
 |---|---|---|---|
-| 1 | `feat(discovery): mDNS responder + browser in Tauri sidecar (L1)` | Add `bonjour-service`, advertise `_mycelium._tcp.local`, browse for the same, feed candidate URLs into the existing peer-pending pipeline, **and run a heartbeat-eviction loop on top** because `spike-mdns-churn.mjs` proved bonjour-service emits no `down` events for crashed publishers (zero in 15 s). Concrete liveness contract from `spike-mdns-heartbeat.mjs`: re-fetch every candidate's `/.well-known/mycelium-node` every 5 s with the existing 2 s timeout / 64 KiB body cap; 3 consecutive failures evict (15 s detection, ±3 ms on macOS); index by `node_id` (the spike caught a bug where indexing by spawn-order ≠ mDNS-up-order). **Default on for the native app.** | Wave 1 (Tauri sidecar landed, #176) |
+| 1 | `feat(discovery): mDNS responder + browser in Tauri sidecar (L1)` | Add `bonjour-service`, advertise `_mycelium._tcp.local`, browse for the same, feed candidate URLs into the existing peer-pending pipeline, **and run a heartbeat-eviction loop on top** because `spike-mdns-churn.mjs` proved bonjour-service emits no `down` events for crashed publishers (zero in 15 s). Concrete liveness contract from `spike-mdns-heartbeat.mjs`: re-fetch every candidate's `/.well-known/mycelium-node` every 5 s with the existing 2 s timeout / 64 KiB body cap; 3 consecutive failures evict (15 s detection, ±3 ms on macOS); index by `node_id` (the spike caught a bug where indexing by spawn-order ≠ mDNS-up-order). **Plus an explicit re-browse path for evicted candidates** because `spike-mdns-rejoin.mjs` proved bonjour-service does NOT auto-resurface a publisher that restarts with the same instance name and a new ephemeral port (zero `up` events in 30 s of observation). The implementation must, on eviction, instantiate a fresh `Bonjour()` browser session for the rejoin lookup — the two-process spike already validated cold-browse surfaces running publishers in 32 ms. Acceptance criterion for rejoin: "after eviction of a candidate by node_id N, the implementation re-browses mDNS within ≤30 s and re-admits N to the active candidate set on the next successful `/.well-known/mycelium-node` fetch against the newly-discovered URL." **Default on for the native app.** | Wave 1 (Tauri sidecar landed, #176) |
 | 2 | `feat(discovery): "candidate peers" dashboard panel + promote action` | Surface mDNS hits to the operator with a "promote to trusted peer" button that flips `TrustEdge.weight` from 0 to `base_weight`. | issue 1 |
 | 3 | `feat(discovery): private libp2p Kademlia DHT client (L2), default-off` | Add `js-libp2p` + `@libp2p/kad-dht` behind `MYCELIUM_ENABLE_DHT=1`. Define the `/mycelium/kad/1.0.0` protocol id. Bootstrap list: Wave-2 nodes only. | Wave 2 (≥ 2 stable public peers) |
 | 4 | `feat(discovery): DHT pointer publish + lookup tool` | Sign and publish the URL pointer record on join; resolve `node_id → URL` on demand from the MCP tool surface. | issue 3 |

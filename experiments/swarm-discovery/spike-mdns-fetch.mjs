@@ -76,7 +76,12 @@ const BODY_SELF_CAP_BYTES = 64 * 1024;
 const PUBLISH_LIFETIME_MS = MODE_PUBLISH
   ? Number(process.env.SPIKE_PUBLISH_MS) || 0
   : 0;
-const FAKE_NODE_ID = `spike-${process.pid}`;
+// `SPIKE_NODE_ID` lets a parent spike pin a stable identity across process
+// restarts — needed by spike-mdns-rejoin.mjs to simulate the production
+// model where node_id = multihash(pubkey) is persistent and a process
+// restart means "same identity, possibly new ephemeral port", not "new
+// peer." Default keeps the per-PID identity every other spike relies on.
+const FAKE_NODE_ID = process.env.SPIKE_NODE_ID ?? `spike-${process.pid}`;
 const FAKE_PUBKEY_B64 = "AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA="; // 32-byte zero, mock
 const FAKE_DISPLAY_NAME = "spike-mdns-fetch";
 
