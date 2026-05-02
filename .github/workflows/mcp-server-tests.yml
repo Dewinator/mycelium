@@ -23,7 +23,10 @@ jobs:
 
       - uses: actions/setup-node@v4
         with:
-          node-version: '20'
+          # Node 22 — `node --test` glob expansion ("**/*.test.js") is
+          # only supported on >=22 even though package.json engines is
+          # >=20. Bumping just CI here, not the engines field.
+          node-version: '22'
           cache: 'npm'
           cache-dependency-path: mcp-server/package-lock.json
 
