@@ -163,9 +163,14 @@ async function serveStatic(req, res) {
   for (const candidate of candidates) {
     try {
       const data = await fs.readFile(candidate);
+      const ext = path.extname(candidate);
+      const isHtml = ext === ".html" || ext === "";
+      // no-store on HTML so frontend bug-fixes propagate to the browser
+      // immediately. Other static assets keep a 1-h cache because they're
+      // large and rarely change.
       res.writeHead(200, {
-        "Content-Type": MIME[path.extname(candidate)] || "application/octet-stream",
-        "Cache-Control": "no-cache",
+        "Content-Type": MIME[ext] || "application/octet-stream",
+        "Cache-Control": isHtml ? "no-store" : "public, max-age=3600",
       });
       res.end(data);
       return;

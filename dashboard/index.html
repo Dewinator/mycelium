@@ -7400,49 +7400,61 @@ async function checkForUpdate() {
 
   banner.hidden = false;
 
-  document.getElementById("ub-copy").addEventListener("click", async () => {
+  document.getElementById("ub-copy").addEventListener("click", () => {
     const txt = (cmdEl?.textContent || "").trim();
     const btn = document.getElementById("ub-copy");
     const old = btn.textContent;
 
-    // Three-tier fallback because navigator.clipboard.writeText only works
-    // on HTTPS or localhost — over plain HTTP via Tailnet/LAN it throws
-    // (or is undefined entirely) and Reed's first banner test produced
-    // a fake ✓ on a button that actually copied nothing.
-    //   1. modern Clipboard API
-    //   2. document.execCommand('copy') on a hidden textarea (deprecated
-    //      but still works on http: contexts in every current browser)
-    //   3. select the visible <code> element so the user can hit Cmd+C
+    // Methusalem pattern that survives every URL scheme x browser combo:
+    // attach a near-invisible <textarea> to the live DOM (Safari refuses to
+    // copy from off-DOM nodes), select its full content, fire
+    // execCommand('copy'), tear it down. Plain alert() so the feedback is
+    // impossible to miss — Reed's first round had a silent flash that lied.
     let ok = false;
-    if (navigator.clipboard && window.isSecureContext) {
-      try { await navigator.clipboard.writeText(txt); ok = true; }
-      catch { /* fall through */ }
-    }
-    if (!ok) {
-      try {
-        const ta = document.createElement("textarea");
-        ta.value = txt;
-        ta.style.position = "fixed";
-        ta.style.opacity = "0";
-        ta.style.pointerEvents = "none";
-        document.body.appendChild(ta);
-        ta.focus();
-        ta.select();
-        ok = document.execCommand("copy");
-        document.body.removeChild(ta);
-      } catch { ok = false; }
-    }
-    if (!ok && cmdEl) {
-      // Last resort — select the visible code so the user can copy by hand.
-      const range = document.createRange();
-      range.selectNodeContents(cmdEl);
-      const sel = window.getSelection();
-      sel.removeAllRanges();
-      sel.addRange(range);
+    try {
+      const ta = document.createElement("textarea");
+      ta.value = txt;
+      ta.setAttribute("readonly", "");
+      ta.style.position = "fixed";
+      ta.style.top = "0";
+      ta.style.left = "0";
+      ta.style.width = "1px";
+      ta.style.height = "1px";
+      ta.style.padding = "0";
+      ta.style.border = "0";
+      ta.style.opacity = "0.01";
+      document.body.appendChild(ta);
+      ta.focus();
+      ta.select();
+      ta.setSelectionRange(0, txt.length);
+      ok = document.execCommand("copy");
+      document.body.removeChild(ta);
+    } catch { ok = false; }
+
+    // Belt-and-braces: also fire the modern API. If the page is on https
+    // or localhost it'll succeed in parallel; if it throws the textarea
+    // path already gave us our result.
+    if (navigator.clipboard?.writeText) {
+      navigator.clipboard.writeText(txt).then(() => { ok = true; }).catch(() => {});
     }
 
-    btn.textContent = ok ? (tt("update.copied") || "kopiert ✓") : (tt("update.copy_select") || "Text markiert — Cmd+C");
-    btn.classList.add(ok ? "ub-copy-ok" : "ub-copy-warn");
+    if (ok) {
+      btn.textContent = "kopiert ✓";
+      btn.classList.add("ub-copy-ok");
+      window.alert(`In die Zwischenablage kopiert:\n\n${txt}`);
+    } else {
+      // Final fallback — select the visible code so Cmd+C still works.
+      if (cmdEl) {
+        const range = document.createRange();
+        range.selectNodeContents(cmdEl);
+        const sel = window.getSelection();
+        sel.removeAllRanges();
+        sel.addRange(range);
+      }
+      btn.textContent = "Cmd+C drücken";
+      btn.classList.add("ub-copy-warn");
+      window.alert(`Konnte den Befehl nicht automatisch in die Zwischenablage schreiben — er ist jetzt markiert. Drücke Cmd+C, um ihn zu kopieren:\n\n${txt}`);
+    }
     setTimeout(() => {
       btn.textContent = old;
       btn.classList.remove("ub-copy-ok", "ub-copy-warn");
