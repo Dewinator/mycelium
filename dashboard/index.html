@@ -267,6 +267,13 @@
     text-transform: uppercase; color: var(--text-dim);
     margin-bottom: 6px;
   }
+  .update-banner .ub-remote-note {
+    font-size: 12.5px; color: var(--text);
+    background: rgba(255,181,71,0.10);
+    border: 1px solid color-mix(in srgb, var(--warn) 35%, transparent);
+    padding: 7px 10px; border-radius: var(--radius-sm);
+    margin-bottom: 10px; line-height: 1.45;
+  }
   .update-banner .ub-howto-list {
     margin: 0; padding-left: 22px;
     display: flex; flex-direction: column; gap: 8px;
@@ -7330,13 +7337,57 @@ async function checkForUpdate() {
   }
   sub.innerHTML = html;
 
-  // Wire the actual repo path into the copy-and-paste command so the user
-  // doesn't have to figure out where they cloned. data.repo_path is the
-  // dashboard-server's ROOT — the same checkout the dashboard is being
-  // served from, so the command is always correct.
+  // Wire the repo path into the copy-and-paste command. data.repo_path is
+  // the dashboard-server's ROOT — the checkout the dashboard is served
+  // from, so the path is always correct on the *server* host.
+  //
+  // Multi-device reality: many users run mycelium on a Mac mini / NAS /
+  // VPS and open the dashboard from a phone or laptop over Tailnet. In
+  // that case the local Terminal of the user's *current* device has no
+  // such directory and `bash scripts/update.sh` returns "command not
+  // found". We detect this by comparing location.hostname to the
+  // loopback shapes; when the user is browsing from elsewhere we promote
+  // an `ssh user@host …` command instead and add a note explaining
+  // *which* machine the work runs on.
   const cmdEl = document.getElementById("ub-cmd");
-  if (cmdEl && data.repo_path) {
-    cmdEl.textContent = `cd "${data.repo_path}" && bash scripts/update.sh`;
+  const stepTagTerm = banner.querySelector(".ub-howto-list li:nth-child(2) .ub-step-tag");
+  const stepIntroTerm = banner.querySelector('[data-i18n="update.step.cmd_intro"]');
+  const stepDblWrap = banner.querySelector(".ub-howto-list li:nth-child(1)");
+  const localCmd = data.repo_path
+    ? `cd "${data.repo_path}" && bash scripts/update.sh`
+    : "cd ~/mycelium && bash scripts/update.sh";
+
+  const localHosts = ["localhost", "127.0.0.1", "::1", "0.0.0.0"];
+  const isRemote = !localHosts.includes(location.hostname) && data.hostname;
+
+  if (isRemote) {
+    // SSH variant — user types this in their *local* Terminal, the
+    // command then runs on the server. location.hostname is what the
+    // user originally typed in the browser, so it's already a working
+    // address (Tailnet name, LAN IP, real domain — whatever).
+    const sshUser = data.username || "user";
+    const sshHost = location.hostname;
+    if (cmdEl) cmdEl.textContent = `ssh ${sshUser}@${sshHost} '${localCmd}'`;
+    // Replace the "Terminal" tag with one that names the host.
+    if (stepTagTerm) stepTagTerm.textContent = `Terminal · ${data.hostname}`;
+    if (stepIntroTerm) stepIntroTerm.textContent = tt("update.step.cmd_intro_remote") || stepIntroTerm.textContent;
+    // The double-click route doesn't apply remotely — the user can't
+    // double-click a file on a different machine. Hide it cleanly to
+    // avoid sending users into a dead-end.
+    if (stepDblWrap) stepDblWrap.hidden = true;
+
+    // Insert a one-line "you are connected to <host>" note above the
+    // how-to list so the context is visible at a glance.
+    const howto = banner.querySelector(".ub-howto");
+    if (howto && !howto.querySelector(".ub-remote-note")) {
+      const note = document.createElement("div");
+      note.className = "ub-remote-note";
+      note.textContent = tt("update.remote_note", { host: data.hostname }) ||
+        `Du bist via Browser auf ${data.hostname} verbunden — die Aktualisierung läuft dort, nicht auf deinem aktuellen Gerät.`;
+      howto.insertBefore(note, howto.querySelector(".ub-howto-list"));
+    }
+  } else {
+    if (cmdEl) cmdEl.textContent = localCmd;
   }
 
   banner.hidden = false;

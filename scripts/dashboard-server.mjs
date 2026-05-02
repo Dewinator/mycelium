@@ -2194,6 +2194,14 @@ async function handleUpdateStatus(req, res) {
     local_sha: localSha,
     local_short: localSha.slice(0, 7),
     repo_path: ROOT,
+    // Identity of the host running the server, so the frontend can
+    // distinguish "user is on the same machine as the server" from
+    // "user is on a phone / laptop connected via Tailnet to a Mac mini
+    // / NAS / VPS that hosts mycelium". Without this, the banner's
+    // copy-paste command points at a path that doesn't exist on the
+    // user's current device.
+    hostname: os.hostname(),
+    username: process.env.USER || process.env.LOGNAME || os.userInfo?.()?.username || "user",
     behind_by: 0,
   };
 

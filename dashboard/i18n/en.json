@@ -252,5 +252,7 @@
   "update.step.terminal": "Terminal",
   "update.step.cmd_intro": "Run this in a terminal:",
   "update.copy": "copy",
-  "update.dismiss.aria": "Dismiss banner"
+  "update.dismiss.aria": "Dismiss banner",
+  "update.remote_note": "You're connected to {host} via the browser — the update runs over there, not on your current device.",
+  "update.step.cmd_intro_remote": "Run this in the Terminal on your current device — the SSH command then executes on the server:"
 }
