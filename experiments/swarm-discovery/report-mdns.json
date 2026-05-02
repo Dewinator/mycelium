@@ -1,0 +1,58 @@
+{
+  "spike": "wave-3-mdns",
+  "started_at": "2026-05-02T21:16:47.827Z",
+  "platform": "darwin-arm64",
+  "node": "v25.9.0",
+  "package": "bonjour-service",
+  "mode": "both",
+  "service": {
+    "type": "mycelium",
+    "fqdn": "_mycelium._tcp.local",
+    "port": 8787,
+    "txt": {
+      "url": "http://Mac.local:8787/.well-known/mycelium-node",
+      "node_id": "spike-79770",
+      "spec": "v1"
+    }
+  },
+  "steps": {
+    "publish": {
+      "ok": true,
+      "ms": 254
+    },
+    "discover": {
+      "ok": true,
+      "count": 1,
+      "first_seen_ms": 613,
+      "peers": [
+        {
+          "name": "mycelium-spike-79770",
+          "host": "Mac",
+          "addresses": [
+            "fe80::ea:a057:2619:b8d7",
+            "2a02:810b:e13:9f00:48d:a041:d9e5:9e10",
+            "192.168.0.6",
+            "2a02:810b:e13:9f00:e09b:89cd:953e:3340",
+            "2a02:810b:e13:9f00:ecc1:7a26:102b:ea63",
+            "2a02:810b:e13:9f00:e0bc:74ed:cad3:b1f6",
+            "2a02:810b:e13:9f00:8170:c133:1854:e0a6",
+            "2a02:810b:e13:9f00:c4ae:ec1d:df51:a16e",
+            "2a02:810b:e13:9f00:b096:ebec:ce00:fe35",
+            "2a02:810b:e13:9f00:3085:8da7:8468:13da",
+            "2a02:810b:e13:9f00:bdf9:a4a2:a571:b260",
+            "fe80::80da:8aff:feaf:fe14",
+            "fe80::80da:8aff:feaf:fe14"
+          ],
+          "port": 8787,
+          "txt": {
+            "url": "http://Mac.local:8787/.well-known/mycelium-node",
+            "node_id": "spike-79770",
+            "spec": "v1"
+          },
+          "seen_after_ms": 613
+        }
+      ]
+    }
+  },
+  "finished_at": "2026-05-02T21:16:48.706Z"
+}

@@ -1,0 +1,5 @@
+node_modules/
+package-lock.json
+# Committed: report-mdns.json — spike reference data per platform run.
+# Future ad-hoc runs go here:
+report-local-*.json

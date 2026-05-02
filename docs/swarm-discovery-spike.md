@@ -70,6 +70,11 @@ This spike answers four concrete questions:
   Pure-JS, zero native deps, works on all three OSes via UDP multicast.
   Avoid `mdns` (npm) — it requires building against system Avahi/Bonjour
   headers and breaks the "one Tauri sidecar artifact per OS" promise.
+  Empirically validated on macOS — see [`experiments/swarm-discovery/`](../experiments/swarm-discovery/)
+  ([`report-mdns.json`](../experiments/swarm-discovery/report-mdns.json):
+  publish 254 ms, self-discover 613 ms, well under the 2 s budget; coexists
+  with the OS mDNSResponder daemon). Linux (Avahi) and Windows are still
+  open — re-run the same spike on each platform before locking the pick.
 - **WAN discovery: `js-libp2p` with a Kademlia DHT** (`@libp2p/kad-dht`),
   using only **public bootstrap nodes operated by mycelium users
   themselves** — never IPFS-network bootstrap. The DHT key is the
