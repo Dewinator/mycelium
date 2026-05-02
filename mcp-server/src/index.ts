@@ -174,6 +174,10 @@ import { SwarmPublishService } from "./services/swarm-publish.js";
 import {
   swarmPublishTierAlessonSchema, swarmPublishTierAlessonHandler,
 } from "./tools/swarm-publish.js";
+import { SwarmResolveContradictService } from "./services/swarm-resolve-contradict.js";
+import {
+  swarmResolveContradictSchema, swarmResolveContradictHandler,
+} from "./tools/swarm-resolve-contradict.js";
 import {
   getSelfModelSchema, getSelfModel,
   updateSelfModelSchema, updateSelfModel,
@@ -247,6 +251,7 @@ const swarmPinService       = new SwarmPinService(SUPABASE_URL, SUPABASE_KEY);
 const swarmPeersService     = new SwarmPeersService(SUPABASE_URL, SUPABASE_KEY);
 const swarmAdmitService     = new SwarmAdmitService(SUPABASE_URL, SUPABASE_KEY);
 const swarmPublishService   = new SwarmPublishService(SUPABASE_URL, SUPABASE_KEY);
+const swarmResolveContradictService = new SwarmResolveContradictService(SUPABASE_URL, SUPABASE_KEY);
 const remAuditService       = new RemAuditService(SUPABASE_URL, SUPABASE_KEY);
 const remPromotionService   = new RemPromotionService(SUPABASE_URL, SUPABASE_KEY);
 const remDiversityService   = new RemDiversityService(SUPABASE_URL, SUPABASE_KEY);
@@ -957,6 +962,25 @@ server.tool(
       swarmPublishService,
       memoryService,
       swarmPublishTierAlessonSchema.parse(input),
+    ),
+  ),
+);
+
+// --- swarm phase 4 write: resolve contradict pair (issue #143 + #142 backend) -
+// Operator-side resolution of a §10.3 contradict pair via migration-086's
+// `operator_resolve_contradict(UUID, TEXT)` RPC. Three outcomes (a/b/park) —
+// a/b delete the losing lesson and promote the kept one to Tier-A with a
+// tier_promotion_log audit row; park marks resolved without modifying either
+// lesson. Behind OPENCLAW_ALLOW_SWARM_WRITE=1 (mirrors swarm_pin_lesson).
+server.tool(
+  "swarm_resolve_contradict",
+  "Resolve a §10.3 swarm contradict pair. Decision 'a' = keep lesson a, delete lesson b, promote a to Tier-A. 'b' = mirror. 'park' = mark resolved without modifying either lesson. Writes a tier_promotion_log audit row on a/b when a tier change occurs (reason starts with 'operator-resolved-contradict'). REQUIRES OPENCLAW_ALLOW_SWARM_WRITE=1 — refuses with structured error otherwise. Also writes a 'decisions'-category memory tagged 'swarm' on success (best-effort).",
+  swarmResolveContradictSchema.shape,
+  withErrorHandling((input) =>
+    swarmResolveContradictHandler(
+      swarmResolveContradictService,
+      memoryService,
+      swarmResolveContradictSchema.parse(input),
     ),
   ),
 );
