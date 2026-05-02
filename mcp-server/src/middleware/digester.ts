@@ -23,6 +23,13 @@ export interface DigesterOptions {
   supabaseKey:     string;
   ollamaUrl?:      string;
   embeddingModel?: string;
+  /**
+   * Optional embedding callback. When provided, takes precedence over the
+   * built-in Ollama fetch — wire `createEmbeddingProvider().embed.bind(p)`
+   * here so the digest pipeline respects `MYCELIUM_LLM_PROVIDER=llama-cpp`
+   * (issue #178, native-app track #176).
+   */
+  embed?:          (text: string) => Promise<number[]>;
   /** Tick interval in ms. Default 60s. */
   tickMs?:         number;
 }
@@ -45,6 +52,7 @@ export class Digester {
   private db: PostgrestClient;
   private ollamaUrl: string;
   private embeddingModel: string;
+  private embedOverride: ((text: string) => Promise<number[]>) | null;
   private tracker: SessionTracker;
   private tickMs: number;
   private timer: ReturnType<typeof setInterval> | null = null;
@@ -63,6 +71,7 @@ export class Digester {
     });
     this.ollamaUrl      = opts.ollamaUrl ?? "http://127.0.0.1:11434";
     this.embeddingModel = opts.embeddingModel ?? "nomic-embed-text";
+    this.embedOverride  = opts.embed ?? null;
     this.tickMs         = opts.tickMs ?? 60_000;
   }
 
@@ -190,6 +199,7 @@ export class Digester {
   }
 
   private async embed(text: string): Promise<number[]> {
+    if (this.embedOverride) return this.embedOverride(text);
     const r = await fetch(new URL("/api/embed", this.ollamaUrl), {
       method:  "POST",
       headers: { "Content-Type": "application/json" },

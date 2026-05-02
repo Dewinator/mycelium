@@ -35,6 +35,14 @@ export interface AbsorberOptions {
   supabaseKey:    string;
   ollamaUrl?:     string;
   embeddingModel?: string;
+  /**
+   * Optional embedding callback. When provided, takes precedence over the
+   * built-in Ollama fetch — wire `createEmbeddingProvider().embed.bind(p)`
+   * here so the middleware respects `MYCELIUM_LLM_PROVIDER=llama-cpp`
+   * (issue #178, native-app track #176). Tests stay on the direct-fetch
+   * failure path by leaving this unset.
+   */
+  embed?:         (text: string) => Promise<number[]>;
   /** TTL for the in-process dedupe Set. Default 10min. */
   dedupeTtlMs?:   number;
   /** Soft cap on absorbs per chat turn — guards against pathological inputs. */
@@ -65,6 +73,7 @@ export class Absorber {
   private db: PostgrestClient;
   private ollamaUrl: string;
   private embeddingModel: string;
+  private embedOverride: ((text: string) => Promise<number[]>) | null;
   private dedupe: TtlLruCache<true>;
   private maxPerTurn: number;
   private absorbedCount = 0;
@@ -82,6 +91,7 @@ export class Absorber {
     });
     this.ollamaUrl      = opts.ollamaUrl ?? "http://127.0.0.1:11434";
     this.embeddingModel = opts.embeddingModel ?? "nomic-embed-text";
+    this.embedOverride  = opts.embed ?? null;
     this.dedupe = new TtlLruCache<true>({
       ttlMs:   opts.dedupeTtlMs ?? DEFAULT_DEDUPE_TTL,
       maxSize: 500,
@@ -155,6 +165,7 @@ export class Absorber {
   }
 
   private async embed(text: string): Promise<number[]> {
+    if (this.embedOverride) return this.embedOverride(text);
     const r = await fetch(new URL("/api/embed", this.ollamaUrl), {
       method:  "POST",
       headers: { "Content-Type": "application/json" },

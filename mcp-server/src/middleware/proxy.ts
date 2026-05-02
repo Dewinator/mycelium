@@ -39,6 +39,7 @@ import { Absorber } from "./absorber.js";
 import { SessionTracker } from "./session-tracker.js";
 import { Digester } from "./digester.js";
 import { injectContext, lastUserText, type ChatMessage } from "./inject.js";
+import { createEmbeddingProvider } from "../services/embeddings.js";
 
 // ---------------------------------------------------------------------------
 // docker/.env bootstrap — same pattern as scripts/dashboard-server.mjs.
@@ -117,11 +118,22 @@ if (!SUPABASE_URL || !SUPABASE_KEY) {
 
 const EMBED_MODEL = envOr("EMBEDDING_MODEL", "nomic-embed-text")!;
 
+// Shared embedding provider — picks Ollama (default) or llama-cpp via
+// MYCELIUM_LLM_PROVIDER. Wiring it here lets the middleware respect the
+// native-app provider switch (issue #178) without each class re-implementing
+// the env-driven selection. The bound `embed` callback also gives us
+// `sampleForEmbedding` (head+middle+tail truncation) for free on long
+// auto-absorbed texts that the previous direct-fetch path silently
+// truncated from the end.
+const embeddingProvider = createEmbeddingProvider();
+const sharedEmbed = (text: string) => embeddingProvider.embed(text);
+
 const fetcher = new PrimeFetcher({
   supabaseUrl:    SUPABASE_URL,
   supabaseKey:    SUPABASE_KEY,
   ollamaUrl:      OLLAMA_URL,
   embeddingModel: EMBED_MODEL,
+  embed:          sharedEmbed,
   recallLimit:    RECALL_LIMIT,
 });
 
@@ -135,6 +147,7 @@ const absorber = AUTO_ABSORB_ON ? new Absorber({
   supabaseKey:    SUPABASE_KEY,
   ollamaUrl:      OLLAMA_URL,
   embeddingModel: EMBED_MODEL,
+  embed:          sharedEmbed,
 }) : null;
 
 // Auto-Digest (#4 + N9 spec). Per-session state, idle-30min trigger.
@@ -150,6 +163,7 @@ const digester = AUTO_DIGEST_ON ? new Digester(tracker, {
   supabaseKey:    SUPABASE_KEY,
   ollamaUrl:      OLLAMA_URL,
   embeddingModel: EMBED_MODEL,
+  embed:          sharedEmbed,
   tickMs:         TICK_MS,
 }) : null;
 digester?.start();
