@@ -194,6 +194,51 @@ provisioniert pro Rolle (privat / coden / kochen / …) eine Instanz und
 verbindet seinen MCP-Client damit. Das Gehirn weiß nichts von anderen
 Gehirnen. Schwarm/Föderation kommt später als zusätzlicher Layer obendrauf.
 
+### Native-App Track (Reed 2026-05-02) — höchste laufende Priorität
+
+Roadmap-Schritt 2 ("Installation so einfach wie möglich") ist konkretisiert
+worden zu **Path A: native standalone App** (macOS / Windows / Linux,
+Doppelklick-Installer, kein Docker, kein externes Ollama). Epic: **Issue
+#176**. Spike-Phase abgeschlossen — alle 10 Sub-Tasks haben einen Design-
+Spike auf `main`:
+
+- `docs/native-pg-spike.md` + `docs/native-pg-platforms-spike.md` —
+  PGlite (WASM, in-process, pgvector 0.8.1 built-in) statt
+  `embedded-postgres-binaries` (das kennt kein pgvector). 79/79 aktive
+  Migrationen grün auf PG 17.5 + pgvector 0.8.1.
+- `docs/native-llm-spike.md` + `docs/native-llm-platforms-spike.md` +
+  `docs/native-llm-regen-migration.md` — `node-llama-cpp` ersetzt Ollama
+  HTTP. Embeddings sind **nicht** zwischen Providern mixbar (cosine-
+  Validierung); ein Provider-Wechsel erzwingt Re-Embed-Migration.
+- `docs/native-tauri-shell-spike.md` — Tauri 2 Shell + Sidecar (Node
+  Subprozess hostet PGlite + llama.cpp). IPC bleibt localhost HTTP für die
+  Dashboard-WebView.
+- `docs/native-update-ops-spike.md` + `docs/native-update-banner-spike.md`
+  — `tauri-plugin-updater` (eine Toolchain) ersetzt Sparkle/MSIX/AppImage-
+  Triple aus dem Original-Plan. Banner detektiert
+  `window.__TAURI_INTERNALS__` und schaltet zwischen Native-Update-Button
+  und Browser-Fallback.
+- `docs/native-migration-spike.md` — Docker → Native Wizard via
+  `pg_dump --inserts`; Vector-Spalten sind plain-text-portierbar.
+- `docs/native-ci-release-spike.md` — single GitHub Release per Tag,
+  alle 3 Plattform-Artefakte signiert/notarized.
+- `docs/native-docs-refresh-spike.md` — Docker und Native koexistieren in
+  README+setup.md; Flip auf signierte v1.0-Native-Releases gegated.
+
+**Aktiver Code-Bestand**: `mcp-server/src/native/` (PGlite Adapter — PR #185),
+`services/embeddings.ts` mit `LlamaCppEmbeddingProvider` hinter
+`MYCELIUM_LLM_PROVIDER` (PR-Stack #187 → #188 → #189),
+`middleware/proxy.ts` mit `EmbeddingProvider`-Injection (PR #190),
+`services/chat.ts` mit `ChatProvider`-Abstraction (PR #192). Alle 9 PRs sind
+green und MERGEABLE; Empirisch validiert dass die komplette Queue in
+beliebiger Reihenfolge konfliktfrei zusammen-merged (998/999 Tests grün,
+1 pre-existing Skip).
+
+**Was noch fehlt**: Implementierung von Sub-Tasks 3 (Tauri Shell), 6
+(Update Channels), 7 (Migration Wizard), 8 (CI Matrix), 9 (Banner Refit),
+10 (Docs Flip). Spikes liegen, Implementierung wartet auf Drain der
+aktuellen 9-PR-Queue.
+
 ### Deferred (geparkter Code)
 
 Pairing/Population/Federation/Teacher sind vollständig vom aktiven Build
