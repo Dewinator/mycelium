@@ -628,6 +628,8 @@ swarm-labelled phase merges to `main`.
 | 4f — TrustEdge auto-tuning + quarantine (migration 075) | §10.1, §10.2 | [#107](https://github.com/Dewinator/mycelium/issues/107) | `25bf3a8` | ✅ on `main` |
 | 4f.1 — Trust-edge decay + quarantine release sweeps (migration 083) | §10.1, §10.2 | [#141](https://github.com/Dewinator/mycelium/issues/141) | `014d154` | ✅ on `main` |
 | 4g — ConscienceAgent contradicts-trigger (migration 080) | §10.3 | [#108](https://github.com/Dewinator/mycelium/issues/108) | `6d59674` | ✅ on `main` |
+| 4g.2 — `LessonContradictionRunner` substrate (sweep + idempotent persist) | §10.3 | [#137](https://github.com/Dewinator/mycelium/issues/137) | `19a71d1` | ✅ on `main` |
+| 4g.2 follow-up — digest.ts step 3.55 wiring of §10.3 contradicts pass | §10.3 | [#137](https://github.com/Dewinator/mycelium/issues/137) | — | 🟡 PR open (this branch) |
 | 4h — REM self-audit pass (§10.5 falsification arrow) | §10.5 | [#109](https://github.com/Dewinator/mycelium/issues/109) | `8cad92f` | ✅ on `main` |
 | 4i.1 — Two-tier pinning + broadcast firewall (migration 078) | §10.4, §10.6 | [#114](https://github.com/Dewinator/mycelium/issues/114) | `db98ea0` | ✅ on `main` |
 | 4i.2 — REM promotion-audit Tier-B → Tier-A (migration 081, §10.6 promote arrow) | §10.6 | [#114](https://github.com/Dewinator/mycelium/issues/114) | `69dd87c` | ✅ on `main` |

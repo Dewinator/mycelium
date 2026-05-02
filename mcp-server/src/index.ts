@@ -28,6 +28,7 @@ import { ExperienceService } from "./services/experiences.js";
 import { RemAuditService } from "./services/rem-audit.js";
 import { RemPromotionService } from "./services/rem-promotion.js";
 import { RemDiversityService } from "./services/rem-diversity.js";
+import { LessonContradictionRunner } from "./services/lesson-contradiction-runner.js";
 import {
   recordExperienceSchema,
   recordExperience,
@@ -244,6 +245,7 @@ const swarmAdmitService     = new SwarmAdmitService(SUPABASE_URL, SUPABASE_KEY);
 const remAuditService       = new RemAuditService(SUPABASE_URL, SUPABASE_KEY);
 const remPromotionService   = new RemPromotionService(SUPABASE_URL, SUPABASE_KEY);
 const remDiversityService   = new RemDiversityService(SUPABASE_URL, SUPABASE_KEY);
+const lessonContradictionRunner = new LessonContradictionRunner(SUPABASE_URL, SUPABASE_KEY);
 // DEFERRED 2026-04-26 — federation service parked until federation phase.
 // const federationService = new FederationService(
 //   SUPABASE_URL,
@@ -656,6 +658,10 @@ server.tool(
     {
       service: remDiversityService,
       deps: remDiversityService.defaultDeps(),
+    },
+    {
+      service: lessonContradictionRunner,
+      deps: lessonContradictionRunner.defaultDeps(),
     }
   ))
 );

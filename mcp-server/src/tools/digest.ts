@@ -13,6 +13,11 @@ import type {
   RemDiversityService,
   RemDiversityDeps,
 } from "../services/rem-diversity.js";
+import type {
+  LessonContradictionRunner,
+  RunOptions as LessonContradictionRunOptions,
+  RunDeps as LessonContradictionRunDeps,
+} from "../services/lesson-contradiction-runner.js";
 
 /**
  * `digest` — the end-of-conversation soul development pipeline.
@@ -85,7 +90,12 @@ export async function digest(
   input: z.infer<typeof digestSchema>,
   remAudit?: { service: RemAuditService; deps: RemAuditDeps },
   remPromotion?: { service: RemPromotionService; deps: RemPromotionDeps },
-  remDiversity?: { service: RemDiversityService; deps: RemDiversityDeps }
+  remDiversity?: { service: RemDiversityService; deps: RemDiversityDeps },
+  lessonContradictionRunner?: {
+    service: LessonContradictionRunner;
+    deps: LessonContradictionRunDeps;
+    opts?: LessonContradictionRunOptions;
+  }
 ) {
   const report: string[] = [];
   report.push("# Digest Report\n");
@@ -273,6 +283,44 @@ export async function digest(
       // Non-fatal — the audit pipeline must never poison the digest cycle.
       report.push(
         `**REM self-audit:** skipped — ${err instanceof Error ? err.message : String(err)}`
+      );
+    }
+  }
+
+  // =========================================================================
+  // Step 3.55: §10.3 between-peer contradiction sweep (SWARM_SPEC §10.3)
+  //
+  // After self-audit (3.5, §10.5) clears local-vs-swarm falsifications, scan
+  // recently-arrived swarm_lessons against priors to surface peer-vs-peer
+  // contradictions. Each finding writes to swarm_lesson_contradictions and
+  // demotes both sides to Tier-B (the migration-080 RPC handles both atomically),
+  // so promotion (3.6) cannot fast-track a contested lesson in the same cycle.
+  //
+  // Spec sequence per issue #137 acceptance:
+  //   §10.5 (audit) → §10.3 (contradicts) → §10.6 (promote) → §10.4 (diversity)
+  // matches digest steps 3.5 → 3.55 → 3.6 → 3.7.
+  //
+  // Skipped silently when no runner deps are injected (tests / minimal client
+  // builds). Per-newcomer failures are caught inside the runner; this outer
+  // try/catch only fires on a load-side failure.
+  // =========================================================================
+  if (lessonContradictionRunner) {
+    try {
+      const summary = await lessonContradictionRunner.service.runContradictionPass(
+        lessonContradictionRunner.opts ?? {},
+        lessonContradictionRunner.deps,
+      );
+      if (summary.newcomers_scanned > 0) {
+        const failed = summary.outcomes.filter((o) => o.error).length;
+        const failedSummary = failed > 0 ? ` (${failed} failed)` : "";
+        report.push(
+          `**REM contradicts:** ${summary.total_findings} contradiction edge(s) across ${summary.newcomers_scanned} newcomer(s) vs ${summary.priors_loaded} prior(s)${failedSummary}`
+        );
+      }
+    } catch (err) {
+      // Non-fatal — the contradicts pipeline must never poison the digest cycle.
+      report.push(
+        `**REM contradicts:** skipped — ${err instanceof Error ? err.message : String(err)}`
       );
     }
   }
