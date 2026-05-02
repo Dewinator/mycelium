@@ -1,5 +1,13 @@
 -- 036_fix_ancestors_trigger.sql — Fix für BEFORE-INSERT-Trigger
 --
+-- DEFERRED 2026-05-02: depends on the `ancestors` column added by
+-- 034_breeding_diversity.sql (which already lives here in
+-- supabase/migrations.deferred/). Ran in active migrations against a
+-- fresh install before the column existed → DO block at line 50–69
+-- failed with `column p.ancestors does not exist`. Moved here so the
+-- whole breeding-related stack travels together; revive together
+-- whenever the breeding/population phase is un-parked.
+--
 -- Bug: _genome_refresh_ancestors_trigger rief _genome_compute_ancestors(NEW.id)
 -- — aber bei BEFORE INSERT ist die Zeile noch nicht in der Tabelle, also gibt
 -- die rekursive Query 0 Ergebnisse. Konsequenz: Kinder hatten ancestors={}
