@@ -1,0 +1,555 @@
+{
+  "spike": "wave-3-mdns-cold-rebrowse",
+  "started_at": "2026-05-02T23:26:02.451Z",
+  "platform": "darwin-arm64",
+  "node": "v25.9.0",
+  "package": "bonjour-service + node:http + node:child_process",
+  "config": {
+    "publishers": 3,
+    "stable_node_ids": [
+      "cold-A",
+      "cold-B",
+      "cold-C"
+    ],
+    "heartbeat_interval_ms": 5000,
+    "heartbeat_timeout_ms": 2000,
+    "body_self_cap_bytes": 65536,
+    "fail_threshold": 3,
+    "settle_heartbeats": 2,
+    "mdns_settle_ms": 4000,
+    "cold_settle_ms": 2000,
+    "rejoin_delay_ms": 1000,
+    "observe_after_rejoin_ms": 15000,
+    "kill_victim_index": 0,
+    "expected_detection_ms": 15000
+  },
+  "spawn": {
+    "children_pids": [
+      {
+        "node_id": "cold-A",
+        "pid": 87372
+      },
+      {
+        "node_id": "cold-B",
+        "pid": 87373
+      },
+      {
+        "node_id": "cold-C",
+        "pid": 87374
+      }
+    ],
+    "spawn_ms": 4
+  },
+  "discover": {
+    "settle_window_ms": 4000,
+    "expected": 3,
+    "seen": 3,
+    "all_seen": true,
+    "instances": [
+      {
+        "name": "mycelium-cold-B",
+        "node_id": "cold-B",
+        "port": 55416,
+        "first_seen_ms": 398
+      },
+      {
+        "name": "mycelium-cold-C",
+        "node_id": "cold-C",
+        "port": 55417,
+        "first_seen_ms": 532
+      },
+      {
+        "name": "mycelium-cold-A",
+        "node_id": "cold-A",
+        "port": 55418,
+        "first_seen_ms": 588
+      }
+    ]
+  },
+  "kill_target": {
+    "name": "mycelium-cold-A",
+    "node_id": "cold-A",
+    "initial_url": "http://127.0.0.1:55418/.well-known/mycelium-node",
+    "initial_port": 55418,
+    "pid": 87372
+  },
+  "kill": {
+    "at": "2026-05-02T23:26:12.228Z",
+    "signal": "SIGKILL",
+    "at_heartbeat_round": 2,
+    "victim_pid": 87372,
+    "victim_node_id": "cold-A"
+  },
+  "respawn": {
+    "at": "2026-05-02T23:26:28.232Z",
+    "delay_ms_after_eviction": 1000,
+    "new_pid": 87387,
+    "stable_node_id": "cold-A"
+  },
+  "cold_rebrowse": {
+    "triggered_at_ms_from_respawn": 2,
+    "settle_window_ms": 2000,
+    "wall_time_ms": 2003,
+    "harvested_count": 3,
+    "harvested": [
+      {
+        "name": "mycelium-cold-C",
+        "node_id": "cold-C",
+        "url": "http://127.0.0.1:55417/.well-known/mycelium-node",
+        "port": 55417,
+        "first_seen_ms": 6
+      },
+      {
+        "name": "mycelium-cold-B",
+        "node_id": "cold-B",
+        "url": "http://127.0.0.1:55416/.well-known/mycelium-node",
+        "port": 55416,
+        "first_seen_ms": 6
+      },
+      {
+        "name": "mycelium-cold-A",
+        "node_id": "cold-A",
+        "url": "http://127.0.0.1:55597/.well-known/mycelium-node",
+        "port": 55597,
+        "first_seen_ms": 1325
+      }
+    ],
+    "raw_event_count": 3,
+    "all_publishers_seen": true,
+    "victim": {
+      "node_id": "cold-A",
+      "old_url": "http://127.0.0.1:55418/.well-known/mycelium-node",
+      "new_url": "http://127.0.0.1:55597/.well-known/mycelium-node",
+      "url_changed": true,
+      "old_port": 55418,
+      "new_port": 55597,
+      "first_seen_ms_in_cold_browse": 1325
+    }
+  },
+  "heartbeat": {
+    "rounds_completed": 9,
+    "total_heartbeats": 27,
+    "total_bytes_on_wire": 6192,
+    "avg_ms_per_heartbeat": 5,
+    "avg_bytes_per_heartbeat": 229
+  },
+  "long_lived_browser": {
+    "up_events_after_respawn_count": 0,
+    "up_events_after_respawn": [],
+    "note": "spike-mdns-rejoin (commit 0b3ec74) showed zero up-events on the long-lived browser after respawn. This field documents that result was not a measurement artifact: the long-lived browser is held throughout the cold-rebrowse cycle so any up-event it would fire is recorded here for direct comparison."
+  },
+  "victim_summary": {
+    "name": "mycelium-cold-A",
+    "node_id": "cold-A",
+    "initial_url": "http://127.0.0.1:55418/.well-known/mycelium-node",
+    "final_url": "http://127.0.0.1:55597/.well-known/mycelium-node",
+    "readmitted_via_cold_rebrowse": true,
+    "cold_rebrowse_url_changed": true,
+    "successful_heartbeats_post_readmit": 4,
+    "readmitted_at_heartbeat_round": 5,
+    "readmitted_at_ms_from_respawn": 2005
+  },
+  "survivors": {
+    "count": 2,
+    "all_alive_at_end": true,
+    "any_false_positive_eviction": false,
+    "max_final_fail_count": 0,
+    "total_failed_heartbeats": 0
+  },
+  "per_publisher": {
+    "mycelium-cold-B": {
+      "node_id": "cold-B",
+      "url": "http://127.0.0.1:55416/.well-known/mycelium-node",
+      "total_heartbeats": 9,
+      "successful_heartbeats": 9,
+      "failed_heartbeats": 0,
+      "final_fail_count": 0,
+      "currently_evicted": false,
+      "readmitted_at_heartbeat_round": null,
+      "readmitted_at_ms_from_respawn": null,
+      "successful_heartbeats_post_readmit": 0,
+      "heartbeats": [
+        {
+          "round": 1,
+          "t_ms_from_start": 0,
+          "t_ms_from_kill": null,
+          "t_ms_from_respawn": null,
+          "url_used": "http://127.0.0.1:55416/.well-known/mycelium-node",
+          "ok": true,
+          "status": 200,
+          "ms": 22,
+          "bytes": 258,
+          "timed_out": false,
+          "error": null
+        },
+        {
+          "round": 2,
+          "t_ms_from_start": 5001,
+          "t_ms_from_kill": null,
+          "t_ms_from_respawn": null,
+          "url_used": "http://127.0.0.1:55416/.well-known/mycelium-node",
+          "ok": true,
+          "status": 200,
+          "ms": 4,
+          "bytes": 258,
+          "timed_out": false,
+          "error": null
+        },
+        {
+          "round": 3,
+          "t_ms_from_start": 10003,
+          "t_ms_from_kill": 4997,
+          "t_ms_from_respawn": null,
+          "url_used": "http://127.0.0.1:55416/.well-known/mycelium-node",
+          "ok": true,
+          "status": 200,
+          "ms": 6,
+          "bytes": 258,
+          "timed_out": false,
+          "error": null
+        },
+        {
+          "round": 4,
+          "t_ms_from_start": 15003,
+          "t_ms_from_kill": 9997,
+          "t_ms_from_respawn": null,
+          "url_used": "http://127.0.0.1:55416/.well-known/mycelium-node",
+          "ok": true,
+          "status": 200,
+          "ms": 5,
+          "bytes": 258,
+          "timed_out": false,
+          "error": null
+        },
+        {
+          "round": 5,
+          "t_ms_from_start": 20005,
+          "t_ms_from_kill": 14998,
+          "t_ms_from_respawn": null,
+          "url_used": "http://127.0.0.1:55416/.well-known/mycelium-node",
+          "ok": true,
+          "status": 200,
+          "ms": 3,
+          "bytes": 258,
+          "timed_out": false,
+          "error": null
+        },
+        {
+          "round": 6,
+          "t_ms_from_start": 25007,
+          "t_ms_from_kill": 20000,
+          "t_ms_from_respawn": 3996,
+          "url_used": "http://127.0.0.1:55416/.well-known/mycelium-node",
+          "ok": true,
+          "status": 200,
+          "ms": 3,
+          "bytes": 258,
+          "timed_out": false,
+          "error": null
+        },
+        {
+          "round": 7,
+          "t_ms_from_start": 30009,
+          "t_ms_from_kill": 25002,
+          "t_ms_from_respawn": 8998,
+          "url_used": "http://127.0.0.1:55416/.well-known/mycelium-node",
+          "ok": true,
+          "status": 200,
+          "ms": 3,
+          "bytes": 258,
+          "timed_out": false,
+          "error": null
+        },
+        {
+          "round": 8,
+          "t_ms_from_start": 35010,
+          "t_ms_from_kill": 30004,
+          "t_ms_from_respawn": 14000,
+          "url_used": "http://127.0.0.1:55416/.well-known/mycelium-node",
+          "ok": true,
+          "status": 200,
+          "ms": 3,
+          "bytes": 258,
+          "timed_out": false,
+          "error": null
+        },
+        {
+          "round": 9,
+          "t_ms_from_start": 40012,
+          "t_ms_from_kill": 35006,
+          "t_ms_from_respawn": 19002,
+          "url_used": "http://127.0.0.1:55416/.well-known/mycelium-node",
+          "ok": true,
+          "status": 200,
+          "ms": 3,
+          "bytes": 258,
+          "timed_out": false,
+          "error": null
+        }
+      ]
+    },
+    "mycelium-cold-C": {
+      "node_id": "cold-C",
+      "url": "http://127.0.0.1:55417/.well-known/mycelium-node",
+      "total_heartbeats": 9,
+      "successful_heartbeats": 9,
+      "failed_heartbeats": 0,
+      "final_fail_count": 0,
+      "currently_evicted": false,
+      "readmitted_at_heartbeat_round": null,
+      "readmitted_at_ms_from_respawn": null,
+      "successful_heartbeats_post_readmit": 0,
+      "heartbeats": [
+        {
+          "round": 1,
+          "t_ms_from_start": 0,
+          "t_ms_from_kill": null,
+          "t_ms_from_respawn": null,
+          "url_used": "http://127.0.0.1:55417/.well-known/mycelium-node",
+          "ok": true,
+          "status": 200,
+          "ms": 16,
+          "bytes": 258,
+          "timed_out": false,
+          "error": null
+        },
+        {
+          "round": 2,
+          "t_ms_from_start": 5001,
+          "t_ms_from_kill": null,
+          "t_ms_from_respawn": null,
+          "url_used": "http://127.0.0.1:55417/.well-known/mycelium-node",
+          "ok": true,
+          "status": 200,
+          "ms": 4,
+          "bytes": 258,
+          "timed_out": false,
+          "error": null
+        },
+        {
+          "round": 3,
+          "t_ms_from_start": 10003,
+          "t_ms_from_kill": 4997,
+          "t_ms_from_respawn": null,
+          "url_used": "http://127.0.0.1:55417/.well-known/mycelium-node",
+          "ok": true,
+          "status": 200,
+          "ms": 6,
+          "bytes": 258,
+          "timed_out": false,
+          "error": null
+        },
+        {
+          "round": 4,
+          "t_ms_from_start": 15003,
+          "t_ms_from_kill": 9997,
+          "t_ms_from_respawn": null,
+          "url_used": "http://127.0.0.1:55417/.well-known/mycelium-node",
+          "ok": true,
+          "status": 200,
+          "ms": 4,
+          "bytes": 258,
+          "timed_out": false,
+          "error": null
+        },
+        {
+          "round": 5,
+          "t_ms_from_start": 20005,
+          "t_ms_from_kill": 14998,
+          "t_ms_from_respawn": null,
+          "url_used": "http://127.0.0.1:55417/.well-known/mycelium-node",
+          "ok": true,
+          "status": 200,
+          "ms": 2,
+          "bytes": 258,
+          "timed_out": false,
+          "error": null
+        },
+        {
+          "round": 6,
+          "t_ms_from_start": 25007,
+          "t_ms_from_kill": 20000,
+          "t_ms_from_respawn": 3996,
+          "url_used": "http://127.0.0.1:55417/.well-known/mycelium-node",
+          "ok": true,
+          "status": 200,
+          "ms": 3,
+          "bytes": 258,
+          "timed_out": false,
+          "error": null
+        },
+        {
+          "round": 7,
+          "t_ms_from_start": 30009,
+          "t_ms_from_kill": 25002,
+          "t_ms_from_respawn": 8998,
+          "url_used": "http://127.0.0.1:55417/.well-known/mycelium-node",
+          "ok": true,
+          "status": 200,
+          "ms": 3,
+          "bytes": 258,
+          "timed_out": false,
+          "error": null
+        },
+        {
+          "round": 8,
+          "t_ms_from_start": 35010,
+          "t_ms_from_kill": 30004,
+          "t_ms_from_respawn": 14000,
+          "url_used": "http://127.0.0.1:55417/.well-known/mycelium-node",
+          "ok": true,
+          "status": 200,
+          "ms": 3,
+          "bytes": 258,
+          "timed_out": false,
+          "error": null
+        },
+        {
+          "round": 9,
+          "t_ms_from_start": 40012,
+          "t_ms_from_kill": 35006,
+          "t_ms_from_respawn": 19002,
+          "url_used": "http://127.0.0.1:55417/.well-known/mycelium-node",
+          "ok": true,
+          "status": 200,
+          "ms": 3,
+          "bytes": 258,
+          "timed_out": false,
+          "error": null
+        }
+      ]
+    },
+    "mycelium-cold-A": {
+      "node_id": "cold-A",
+      "url": "http://127.0.0.1:55597/.well-known/mycelium-node",
+      "total_heartbeats": 9,
+      "successful_heartbeats": 6,
+      "failed_heartbeats": 3,
+      "final_fail_count": 0,
+      "currently_evicted": false,
+      "readmitted_at_heartbeat_round": 5,
+      "readmitted_at_ms_from_respawn": 2005,
+      "successful_heartbeats_post_readmit": 4,
+      "heartbeats": [
+        {
+          "round": 1,
+          "t_ms_from_start": 0,
+          "t_ms_from_kill": null,
+          "t_ms_from_respawn": null,
+          "url_used": "http://127.0.0.1:55418/.well-known/mycelium-node",
+          "ok": true,
+          "status": 200,
+          "ms": 16,
+          "bytes": 258,
+          "timed_out": false,
+          "error": null
+        },
+        {
+          "round": 2,
+          "t_ms_from_start": 5001,
+          "t_ms_from_kill": null,
+          "t_ms_from_respawn": null,
+          "url_used": "http://127.0.0.1:55418/.well-known/mycelium-node",
+          "ok": true,
+          "status": 200,
+          "ms": 4,
+          "bytes": 258,
+          "timed_out": false,
+          "error": null
+        },
+        {
+          "round": 3,
+          "t_ms_from_start": 10003,
+          "t_ms_from_kill": 4997,
+          "t_ms_from_respawn": null,
+          "url_used": "http://127.0.0.1:55418/.well-known/mycelium-node",
+          "ok": false,
+          "status": 0,
+          "ms": 4,
+          "bytes": 0,
+          "timed_out": false,
+          "error": "connect ECONNREFUSED 127.0.0.1:55418"
+        },
+        {
+          "round": 4,
+          "t_ms_from_start": 15003,
+          "t_ms_from_kill": 9997,
+          "t_ms_from_respawn": null,
+          "url_used": "http://127.0.0.1:55418/.well-known/mycelium-node",
+          "ok": false,
+          "status": 0,
+          "ms": 2,
+          "bytes": 0,
+          "timed_out": false,
+          "error": "connect ECONNREFUSED 127.0.0.1:55418"
+        },
+        {
+          "round": 5,
+          "t_ms_from_start": 20005,
+          "t_ms_from_kill": 14998,
+          "t_ms_from_respawn": null,
+          "url_used": "http://127.0.0.1:55418/.well-known/mycelium-node",
+          "ok": false,
+          "status": 0,
+          "ms": 1,
+          "bytes": 0,
+          "timed_out": false,
+          "error": "connect ECONNREFUSED 127.0.0.1:55418"
+        },
+        {
+          "round": 6,
+          "t_ms_from_start": 25007,
+          "t_ms_from_kill": 20000,
+          "t_ms_from_respawn": 3996,
+          "url_used": "http://127.0.0.1:55597/.well-known/mycelium-node",
+          "ok": true,
+          "status": 200,
+          "ms": 12,
+          "bytes": 258,
+          "timed_out": false,
+          "error": null
+        },
+        {
+          "round": 7,
+          "t_ms_from_start": 30009,
+          "t_ms_from_kill": 25002,
+          "t_ms_from_respawn": 8998,
+          "url_used": "http://127.0.0.1:55597/.well-known/mycelium-node",
+          "ok": true,
+          "status": 200,
+          "ms": 3,
+          "bytes": 258,
+          "timed_out": false,
+          "error": null
+        },
+        {
+          "round": 8,
+          "t_ms_from_start": 35010,
+          "t_ms_from_kill": 30004,
+          "t_ms_from_respawn": 14000,
+          "url_used": "http://127.0.0.1:55597/.well-known/mycelium-node",
+          "ok": true,
+          "status": 200,
+          "ms": 3,
+          "bytes": 258,
+          "timed_out": false,
+          "error": null
+        },
+        {
+          "round": 9,
+          "t_ms_from_start": 40012,
+          "t_ms_from_kill": 35006,
+          "t_ms_from_respawn": 19002,
+          "url_used": "http://127.0.0.1:55597/.well-known/mycelium-node",
+          "ok": true,
+          "status": 200,
+          "ms": 3,
+          "bytes": 258,
+          "timed_out": false,
+          "error": null
+        }
+      ]
+    }
+  },
+  "finished_at": "2026-05-02T23:26:47.240Z"
+}
