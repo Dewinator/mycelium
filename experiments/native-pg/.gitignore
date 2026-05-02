@@ -1,0 +1,7 @@
+node_modules/
+tmp-data/
+tmp-pglite/
+package-lock.json
+# Committed: report-embedded-postgres.json + report-pglite.json — spike reference data.
+# Future ad-hoc runs go here:
+report-local-*.json

@@ -1,0 +1,104 @@
+{
+  "spike": "issue-177-embedded-pg",
+  "started_at": "2026-05-02T11:55:54.478Z",
+  "platform": "darwin-arm64",
+  "node": "v25.9.0",
+  "package": "embedded-postgres@18.3.0-beta.17",
+  "steps": {
+    "initdb": {
+      "ok": true,
+      "ms": 3208.6972920000003
+    },
+    "start": {
+      "ok": true,
+      "ms": 113.5177920000001
+    },
+    "version": "18.3",
+    "available_extensions": [
+      "amcheck",
+      "autoinc",
+      "bloom",
+      "bool_plperl",
+      "bool_plperlu",
+      "btree_gin",
+      "btree_gist",
+      "citext",
+      "cube",
+      "dblink",
+      "dict_int",
+      "dict_xsyn",
+      "earthdistance",
+      "file_fdw",
+      "fuzzystrmatch",
+      "hstore",
+      "hstore_plperl",
+      "hstore_plperlu",
+      "hstore_plpython3u",
+      "insert_username",
+      "intagg",
+      "intarray",
+      "isn",
+      "jsonb_plperl",
+      "jsonb_plperlu",
+      "jsonb_plpython3u",
+      "lo",
+      "ltree",
+      "ltree_plpython3u",
+      "moddatetime",
+      "pageinspect",
+      "pg_buffercache",
+      "pg_freespacemap",
+      "pg_logicalinspect",
+      "pg_prewarm",
+      "pg_stat_statements",
+      "pg_surgery",
+      "pg_trgm",
+      "pg_visibility",
+      "pg_walinspect",
+      "pgcrypto",
+      "pgrowlocks",
+      "pgstattuple",
+      "pldbgapi",
+      "plperl",
+      "plperlu",
+      "plpgsql",
+      "plpython3u",
+      "pltcl",
+      "pltclu",
+      "postgres_fdw",
+      "refint",
+      "seg",
+      "sslinfo",
+      "system_stats",
+      "tablefunc",
+      "tcn",
+      "tsm_system_rows",
+      "tsm_system_time",
+      "unaccent",
+      "uuid-ossp",
+      "xml2"
+    ],
+    "has_vector_in_catalog": false,
+    "create_extension_vector": {
+      "ok": false,
+      "error": "extension \"vector\" is not available"
+    },
+    "migrations": {
+      "count_attempted": 1,
+      "walked": [
+        {
+          "file": "001_enable_pgvector.sql",
+          "ok": false,
+          "error": "extension \"vector\" is not available"
+        }
+      ],
+      "first_failure": {
+        "file": "001_enable_pgvector.sql",
+        "error": "extension \"vector\" is not available"
+      }
+    },
+    "data_dir_bytes": 40947005,
+    "data_dir_human": "39.1 MB"
+  },
+  "finished_at": "2026-05-02T11:55:58.146Z"
+}
