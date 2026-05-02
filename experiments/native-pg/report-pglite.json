@@ -1,13 +1,13 @@
 {
   "spike": "issue-177-pglite",
-  "started_at": "2026-05-02T11:55:58.419Z",
+  "started_at": "2026-05-02T17:34:01.310Z",
   "platform": "darwin-arm64",
   "node": "v25.9.0",
   "package": "@electric-sql/pglite",
   "steps": {
     "init": {
       "ok": true,
-      "ms": 5341.294
+      "ms": 4597.545333
     },
     "version": "17.5",
     "relevant_extensions": [
@@ -33,8 +33,8 @@
       "installed_version": "0.8.1"
     },
     "migrations": {
-      "total_files": 78,
-      "attempted": 35,
+      "total_files": 79,
+      "attempted": 79,
       "walked": [
         {
           "file": "001_enable_pgvector.sql",
@@ -44,32 +44,32 @@
         {
           "file": "002_create_memories_table.sql",
           "ok": true,
-          "ms": 54
+          "ms": 44
         },
         {
           "file": "003_create_search_functions.sql",
           "ok": true,
-          "ms": 3
+          "ms": 2
         },
         {
           "file": "004_optimize_indexes.sql",
           "ok": true,
-          "ms": 14
+          "ms": 16
         },
         {
           "file": "005_create_anon_role.sql",
           "ok": true,
-          "ms": 24
+          "ms": 20
         },
         {
           "file": "006_fix_fts_language.sql",
           "ok": true,
-          "ms": 14
+          "ms": 7
         },
         {
           "file": "007_cognitive_memory.sql",
           "ok": true,
-          "ms": 67
+          "ms": 78
         },
         {
           "file": "008_cognitive_search.sql",
@@ -79,145 +79,362 @@
         {
           "file": "009_cognitive_cron.sql",
           "ok": true,
-          "ms": 4
+          "ms": 5
         },
         {
           "file": "010_cognitive_v2.sql",
           "ok": true,
-          "ms": 14
+          "ms": 13
         },
         {
           "file": "011_service_role.sql",
           "ok": true,
-          "ms": 19
+          "ms": 15
         },
         {
           "file": "012_dashboard_stats.sql",
           "ok": true,
-          "ms": 2
+          "ms": 3
         },
         {
           "file": "013_dashboard_stats_v2.sql",
           "ok": true,
-          "ms": 3
+          "ms": 2
         },
         {
           "file": "014_fix_forgotten_inserts.sql",
           "ok": true,
-          "ms": 3
+          "ms": 5
         },
         {
           "file": "015_experiences.sql",
           "ok": true,
-          "ms": 117
+          "ms": 84
         },
         {
           "file": "016_experiences_polish.sql",
           "ok": true,
-          "ms": 33
+          "ms": 26
         },
         {
           "file": "017_soul_complete.sql",
           "ok": true,
-          "ms": 61
+          "ms": 50
         },
         {
           "file": "018_longer_previews.sql",
           "ok": true,
-          "ms": 5
+          "ms": 2
         },
         {
           "file": "019_agent_affect.sql",
           "ok": true,
-          "ms": 15
+          "ms": 11
         },
         {
           "file": "020_experience_causes.sql",
           "ok": true,
-          "ms": 31
+          "ms": 28
         },
         {
           "file": "021_skill_outcomes.sql",
           "ok": true,
-          "ms": 26
+          "ms": 25
         },
         {
           "file": "022_motivation.sql",
           "ok": true,
-          "ms": 63
+          "ms": 70
         },
         {
           "file": "023_self_model.sql",
           "ok": true,
-          "ms": 15
+          "ms": 19
         },
         {
           "file": "024_agent_genome.sql",
           "ok": true,
-          "ms": 48
+          "ms": 37
         },
         {
           "file": "025_emergence.sql",
           "ok": true,
-          "ms": 24
+          "ms": 22
         },
         {
           "file": "026_sleep_cycles.sql",
           "ok": true,
-          "ms": 16
+          "ms": 13
         },
         {
           "file": "027_genome_inheritance.sql",
           "ok": true,
-          "ms": 27
+          "ms": 17
         },
         {
           "file": "028_agent_registry.sql",
           "ok": true,
-          "ms": 29
+          "ms": 26
         },
         {
           "file": "029_provenance.sql",
           "ok": true,
-          "ms": 34
+          "ms": 45
         },
         {
           "file": "030_genome_models.sql",
           "ok": true,
-          "ms": 17
+          "ms": 4
         },
         {
           "file": "031_genome_lifecycle.sql",
           "ok": true,
-          "ms": 8
+          "ms": 7
         },
         {
           "file": "032_guard_events.sql",
           "ok": true,
-          "ms": 22
+          "ms": 21
         },
         {
           "file": "037_pki_lineage.sql",
           "ok": true,
-          "ms": 166
+          "ms": 139
         },
         {
-          "file": "039_host_identity.sql",
+          "file": "038_trust_substrate_minimal.sql",
           "ok": true,
           "ms": 33
         },
         {
+          "file": "039_host_identity.sql",
+          "ok": true,
+          "ms": 31
+        },
+        {
           "file": "040_signed_revocations.sql",
-          "ok": false,
-          "error": "relation \"revoked_keys\" does not exist"
+          "ok": true,
+          "ms": 6
+        },
+        {
+          "file": "042_neurochemistry.sql",
+          "ok": true,
+          "ms": 52
+        },
+        {
+          "file": "043_motivation_neurochem_coupling.sql",
+          "ok": true,
+          "ms": 3
+        },
+        {
+          "file": "044_narrate_neurochem.sql",
+          "ok": true,
+          "ms": 1
+        },
+        {
+          "file": "045_projects.sql",
+          "ok": true,
+          "ms": 52
+        },
+        {
+          "file": "046_memory_relations.sql",
+          "ok": true,
+          "ms": 34
+        },
+        {
+          "file": "047_memory_events.sql",
+          "ok": true,
+          "ms": 38
+        },
+        {
+          "file": "048_bitemporal_coactivation.sql",
+          "ok": true,
+          "ms": 10
+        },
+        {
+          "file": "049_memory_patterns.sql",
+          "ok": true,
+          "ms": 1
+        },
+        {
+          "file": "050_grant_coactivate_memories.sql",
+          "ok": true,
+          "ms": 1
+        },
+        {
+          "file": "051_fix_coactivate_memories.sql",
+          "ok": true,
+          "ms": 1
+        },
+        {
+          "file": "052_knn_within_cohort.sql",
+          "ok": true,
+          "ms": 1
+        },
+        {
+          "file": "053_universal_salience.sql",
+          "ok": true,
+          "ms": 35
+        },
+        {
+          "file": "054_spread_activation_cross.sql",
+          "ok": true,
+          "ms": 2
+        },
+        {
+          "file": "055_memory_kind_foundation.sql",
+          "ok": true,
+          "ms": 8
+        },
+        {
+          "file": "056_emergence_from_events.sql",
+          "ok": true,
+          "ms": 7
+        },
+        {
+          "file": "057_emergence_heuristics.sql",
+          "ok": true,
+          "ms": 7
+        },
+        {
+          "file": "058_task_refused_event.sql",
+          "ok": true,
+          "ms": 3
+        },
+        {
+          "file": "060_scope_aware_recall.sql",
+          "ok": true,
+          "ms": 2
+        },
+        {
+          "file": "061_agent_kind_and_visiting_clients.sql",
+          "ok": true,
+          "ms": 7
+        },
+        {
+          "file": "062_compute_affect.sql",
+          "ok": true,
+          "ms": 65
+        },
+        {
+          "file": "063_grant_agent_affect_history.sql",
+          "ok": true,
+          "ms": 3
+        },
+        {
+          "file": "064_affect_history_rpc.sql",
+          "ok": true,
+          "ms": 5
+        },
+        {
+          "file": "065_affect_neurochem_loop.sql",
+          "ok": true,
+          "ms": 13
+        },
+        {
+          "file": "066_fix_neurochem_history_nesting.sql",
+          "ok": true,
+          "ms": 6
+        },
+        {
+          "file": "070_node_identity.sql",
+          "ok": true,
+          "ms": 16
+        },
+        {
+          "file": "071_swarm_storage.sql",
+          "ok": true,
+          "ms": 45
+        },
+        {
+          "file": "072_lessons_pattern_name.sql",
+          "ok": true,
+          "ms": 7
+        },
+        {
+          "file": "073_cluster_diversity.sql",
+          "ok": true,
+          "ms": 5
+        },
+        {
+          "file": "074_lesson_chain.sql",
+          "ok": true,
+          "ms": 22
+        },
+        {
+          "file": "075_trust_edge_dynamics.sql",
+          "ok": true,
+          "ms": 33
+        },
+        {
+          "file": "077_lesson_evidence_origin.sql",
+          "ok": true,
+          "ms": 26
+        },
+        {
+          "file": "078_lesson_tiers.sql",
+          "ok": true,
+          "ms": 29
+        },
+        {
+          "file": "079_rem_self_audit.sql",
+          "ok": true,
+          "ms": 4
+        },
+        {
+          "file": "080_lesson_contradictions.sql",
+          "ok": true,
+          "ms": 27
+        },
+        {
+          "file": "081_rem_promotion_audit.sql",
+          "ok": true,
+          "ms": 3
+        },
+        {
+          "file": "082_swarm_lesson_diversity.sql",
+          "ok": true,
+          "ms": 17
+        },
+        {
+          "file": "083_phase4_grants.sql",
+          "ok": true,
+          "ms": 2
+        },
+        {
+          "file": "083_trust_edge_lifecycle.sql",
+          "ok": true,
+          "ms": 2
+        },
+        {
+          "file": "084_get_lesson_evidence_position_quote.sql",
+          "ok": true,
+          "ms": 1
+        },
+        {
+          "file": "085_self_broadcast_safety.sql",
+          "ok": true,
+          "ms": 3
+        },
+        {
+          "file": "086_swarm_operator_actions.sql",
+          "ok": true,
+          "ms": 10
+        },
+        {
+          "file": "087_swarm_publish_tier_a.sql",
+          "ok": true,
+          "ms": 3
+        },
+        {
+          "file": "088_broadcast_diversity_filter.sql",
+          "ok": true,
+          "ms": 3
         }
       ],
-      "first_failure": {
-        "file": "040_signed_revocations.sql",
-        "error": "relation \"revoked_keys\" does not exist"
-      },
-      "all_green": false
+      "first_failure": null,
+      "all_green": true
     }
   },
-  "finished_at": "2026-05-02T11:56:05.255Z"
+  "finished_at": "2026-05-02T17:34:07.961Z"
 }

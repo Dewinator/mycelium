@@ -1,8 +1,8 @@
 # Spike 1 — embedded Postgres without Docker
 
-> Status: **complete (recommendation ready)**
+> Status: **complete — Path A.2 (PGlite) validated end-to-end at migration level**
 > Issue: [#177](https://github.com/Dewinator/mycelium/issues/177) (sub-task of [#176](https://github.com/Dewinator/mycelium/issues/176))
-> Branch / PR: `agent/spike-1-embedded-pg`
+> Branch / PR: `agent/spike-1-embedded-pg` (initial), `agent/pglite-spike-revalidate-79-green` (re-run after #180 fix)
 > Code: [`experiments/native-pg/`](../experiments/native-pg/)
 > Reports: [`report-embedded-postgres.json`](../experiments/native-pg/report-embedded-postgres.json), [`report-pglite.json`](../experiments/native-pg/report-pglite.json)
 > Platform measured: macOS arm64 (Apple Silicon), Node v25.9
@@ -11,7 +11,7 @@
 
 The embedded-postgres subprocess approach the issue proposed (`@embedded-postgres/*`) **does not work for mycelium today** — the upstream zonky binaries do not include `pgvector`, and the bundle has no `pg_config` or server headers, so we cannot build the extension on the user's machine. Adopting it would force us to build and host our own per-platform `vector.so` artifacts and copy them into the bundle at install time.
 
-There is a much better path: **`@electric-sql/pglite`** (WASM Postgres) ships with pgvector built in, runs in-process inside Node, and is one cross-platform npm dep. It runs **34 of our 78 migrations green** with eight contrib extensions wired in. The first failure is a latent bug in our own migration sequence (`revoked_keys`), not a pglite limitation. See [Path forward](#path-forward).
+There is a much better path: **`@electric-sql/pglite`** (WASM Postgres) ships with pgvector built in, runs in-process inside Node, and is one cross-platform npm dep. After the [#180 fix](https://github.com/Dewinator/mycelium/issues/180) landed (active migration `038_trust_substrate_minimal.sql`), the spike now runs **all 79 active migrations green** with eight contrib extensions wired in. Cold-start is ~4.9 s (WASM init + pgvector load); the full migration walk completes in ~1.7 s. See [Path forward](#path-forward).
 
 ## Spike scope (per #177 acceptance)
 
@@ -65,17 +65,15 @@ Estimated 2–3 days of additional work just to make `CREATE EXTENSION vector` s
 
 PGlite is a WASM build of Postgres 17.5 that runs inside the Node process. It distributes a `~23 MB` npm package (3.7 MB gzipped) and bundles pgvector 0.8.1 plus 30+ contrib extensions as opt-in submodules.
 
-Cold-start on the same machine: **~5 s** (WASM compile + extension wiring + initdb-equivalent + pgvector load). After warm-up, queries are direct in-process function calls.
+Cold-start on the same machine: **~4.9 s** (WASM compile + extension wiring + initdb-equivalent + pgvector load). After warm-up, queries are direct in-process function calls.
 
-With the eight extensions our migrations actually use wired in (`vector`, `pg_trgm`, `pgcrypto`, `uuid_ossp`, `btree_gin`, `btree_gist`, `citext`, `hstore`, `tablefunc`), the spike walked **34 of our 78 migrations green** before halting at `040_signed_revocations.sql`.
+With the eight extensions our migrations actually use wired in (`vector`, `pg_trgm`, `pgcrypto`, `uuid_ossp`, `btree_gin`, `btree_gist`, `citext`, `hstore`, `tablefunc`), the spike now walks **all 79 active migrations green**. Total migration time end-to-end: **~1.7 s**. Slowest individual migrations (single-digit-percent of total): `037_pki_lineage.sql` (190 ms), `015_experiences.sql` (118 ms), `062_compute_affect.sql` (88 ms).
 
-That halt is **not a pglite limitation** — it's a latent bug in our own migration sequence:
+#### Re-run history
 
-- `040_signed_revocations.sql` does `ALTER TABLE revoked_keys ADD COLUMN ...`
-- `revoked_keys` is created in `supabase/migrations.deferred/038_federation_trust.sql`
-- Active migrations never create `revoked_keys`
+The first run of this spike halted at `040_signed_revocations.sql` because `revoked_keys` was created **only** in `supabase/migrations.deferred/038_federation_trust.sql` and active migrations never created it. That was a fresh-install bug for **any** Postgres distribution, not a PGlite limitation — filed as [#180](https://github.com/Dewinator/mycelium/issues/180), fixed in active migration `038_trust_substrate_minimal.sql` (parks the minimum substrate — `trust_roots` + `revoked_keys` schemas — in the active path, leaving the federation RPCs deferred). After that fix landed on `main`, the spike was re-run end-to-end and reaches the latest active migration without errors.
 
-So a fresh install of the active sequence on **any** Postgres distribution should hit the same wall. This is the same class of bug as #174 (036_fix_ancestors_trigger). Filing a separate issue for that — it will need fixing whether we adopt PGlite or not.
+This means there are **no remaining latent fresh-install ordering bugs** in the 79 active migrations as of the re-run date — at least none that surface against PGlite-Postgres-17.5 with the eight extensions wired in.
 
 ## Path forward
 
@@ -101,10 +99,10 @@ Trade-offs to be honest about:
 
 These are issue-shaped work items, ordered by dependency. Each is its own PR. Estimates assume tick pace.
 
-1. **Latent migration bug fix** — `revoked_keys` is in deferred 038 but referenced by active 040. Either add an active migration that creates the table (subset of 038), or move 040 to deferred. ~½ tick. *Independent of native-app decision — file as separate issue.*
-2. **PGlite adapter under `mcp-server/src/native/pglite.ts`** — same shape as `services/supabase.ts`, with a serialized query queue. ~1 tick.
+1. ~~**Latent migration bug fix** — `revoked_keys` is in deferred 038 but referenced by active 040.~~ **Done.** Filed as [#180](https://github.com/Dewinator/mycelium/issues/180), fixed in active migration `038_trust_substrate_minimal.sql`. Spike re-run confirms all 79 active migrations green.
+2. **PGlite adapter under `mcp-server/src/native/pglite.ts`** — same shape as `services/supabase.ts`, with a serialized query queue. ~1 tick. *Foundation in flight as PR [#185](https://github.com/Dewinator/mycelium/pull/185) (issue [#184](https://github.com/Dewinator/mycelium/issues/184)).*
 3. **Drop PostgREST in the native build** — dashboard-server gets a `/db` endpoint that routes through the PGlite adapter. ~1–2 ticks (existing PostgREST proxy stays for the Docker build during transition).
-4. **Spike 2 adapted** — `node-llama-cpp` for embeddings + chat (issue #178). Independent of this spike's outcome.
+4. **Spike 2 adapted** — `node-llama-cpp` for embeddings + chat (issue [#178](https://github.com/Dewinator/mycelium/issues/178)). Independent of this spike's outcome. *In flight: PRs [#187](https://github.com/Dewinator/mycelium/pull/187), [#188](https://github.com/Dewinator/mycelium/pull/188), [#189](https://github.com/Dewinator/mycelium/pull/189), [#190](https://github.com/Dewinator/mycelium/pull/190), [#191](https://github.com/Dewinator/mycelium/pull/191), [#192](https://github.com/Dewinator/mycelium/pull/192), [#193](https://github.com/Dewinator/mycelium/pull/193).*
 5. **Tauri shell wraps Node + PGlite + llama.cpp** — single binary, tray icon, OS data dir. Multi-tick.
 6. **Cross-platform CI** — even with WASM, we still need to build and sign per-platform Tauri installers. Multi-tick.
 
@@ -114,11 +112,11 @@ These are issue-shaped work items, ordered by dependency. Each is its own PR. Es
 cd experiments/native-pg
 npm install                        # downloads embedded-postgres binary + pglite WASM (~145 MB total)
 
-node spike.mjs --migrate           # tries embedded-postgres path; fails at 001
-node spike-pglite.mjs --migrate    # tries pglite path; succeeds through 034, halts at 040
+node spike.mjs --migrate           # tries embedded-postgres path; fails at 001 (CREATE EXTENSION vector)
+node spike-pglite.mjs --migrate    # tries pglite path; expect "migrations all green (79)"
 ```
 
-Both scripts dump a JSON report to stdout and a one-line verdict to stderr. The committed `report-*.json` files in this directory are from the spike's reference run.
+Both scripts dump a JSON report to stdout and a one-line verdict to stderr. The committed `report-*.json` files in this directory are from the spike's reference run after the [#180 fix](https://github.com/Dewinator/mycelium/issues/180) landed.
 
 ## Pillar check
 
