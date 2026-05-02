@@ -17,6 +17,17 @@
 //     check on the payload;
 //   - the round-trip stays inside the 2-second budget on a single host.
 //
+// Body cap (added 2026-05-03): `fetchUrl` enforces a 64 KiB self-cap on
+// the response body. spike-fetch-hostile.mjs (commit 498564e) named the
+// absence of this cap as the spike's only hardening gap — without it, a
+// hostile publisher streaming MiBs of filler can wedge a discoverer until
+// the timeout expires. With the cap, the read aborts the moment a peer
+// exceeds the (generous) advertisement-size budget. NodeAdvertisement
+// payloads are <1 KiB in practice; 64 KiB leaves plenty of headroom for
+// future signed-receipt fields without leaving a DoS vector open. The
+// implementation PR for issue 1 in docs/swarm-discovery-spike.md's
+// "Concrete next steps" can now lift `fetchUrl` here verbatim.
+//
 // What this is NOT:
 //   - signature verification (the mock advertisement is unsigned — that
 //     belongs in the Wave-2 trust-handshake spike, not the discovery one);
@@ -56,6 +67,12 @@ const MODE_BOTH = !MODE_PUBLISH && !MODE_DISCOVER;
 const SERVICE_TYPE = "mycelium";
 const DISCOVER_TIMEOUT_MS = MODE_DISCOVER ? 30_000 : 5_000;
 const FETCH_TIMEOUT_MS = 2_000;
+// 64 KiB — `NodeAdvertisement` payloads are <1 KiB in practice; a publisher
+// streaming more than this is hostile or buggy. spike-fetch-hostile.mjs
+// (2026-05-03) named the absence of this cap as the spike's only
+// hardening gap; backporting it here so the implementation can lift
+// `fetchUrl` verbatim instead of having to add a cap retroactively.
+const BODY_SELF_CAP_BYTES = 64 * 1024;
 const PUBLISH_LIFETIME_MS = MODE_PUBLISH
   ? Number(process.env.SPIKE_PUBLISH_MS) || 0
   : 0;
@@ -70,7 +87,12 @@ const report = {
   node: process.version,
   package: "bonjour-service + node:http",
   mode: MODE_BOTH ? "both" : MODE_PUBLISH ? "publish-only" : "discover-only",
-  budget: { discover_ms: DISCOVER_TIMEOUT_MS, fetch_ms: FETCH_TIMEOUT_MS, total_target_ms: 2000 },
+  budget: {
+    discover_ms: DISCOVER_TIMEOUT_MS,
+    fetch_ms: FETCH_TIMEOUT_MS,
+    total_target_ms: 2000,
+    body_self_cap_bytes: BODY_SELF_CAP_BYTES,
+  },
   steps: {},
 };
 
@@ -145,27 +167,59 @@ async function publish() {
   }
 }
 
-function fetchUrl(url) {
-  // Thin wrapper around node:http with a hard timeout — `fetch` would work
-  // but pulls in undici and obscures where time is spent. The spike wants
-  // every millisecond accounted for.
+function fetchUrl(url, { selfCapBytes = BODY_SELF_CAP_BYTES } = {}) {
+  // Thin wrapper around node:http with a hard timeout AND a body self-cap.
+  // `fetch` would work but pulls in undici and obscures where time is spent.
+  // The spike wants every millisecond accounted for, and the cap closes the
+  // bytes-on-the-wire DoS vector that spike-fetch-hostile.mjs documented:
+  // a hostile publisher streaming MiBs of filler can wedge a discoverer
+  // until the timeout expires unless we cut the read short ourselves.
   return new Promise((resolve, reject) => {
     const t0 = performance.now();
+    const chunks = [];
+    let total = 0;
+    let capped = false;
     const req = httpRequest(url, { method: "GET" }, (res) => {
-      const chunks = [];
-      res.on("data", (c) => chunks.push(c));
+      res.on("data", (c) => {
+        if (capped) return;
+        total += c.length;
+        if (selfCapBytes && total > selfCapBytes) {
+          capped = true;
+          req.destroy(new Error(`body self-cap reached at ${total} bytes (max ${selfCapBytes})`));
+          return;
+        }
+        chunks.push(c);
+      });
       res.on("end", () => {
         const ms = Math.round(performance.now() - t0);
         resolve({
-          ok: res.statusCode === 200,
+          ok: res.statusCode === 200 && !capped,
           status: res.statusCode ?? 0,
           ms,
           body: Buffer.concat(chunks).toString("utf8"),
+          bytes: total,
+          capped,
           content_type: res.headers["content-type"] ?? "",
         });
       });
     });
-    req.on("error", (err) => reject(err));
+    req.on("error", (err) => {
+      if (capped) {
+        const ms = Math.round(performance.now() - t0);
+        resolve({
+          ok: false,
+          status: 0,
+          ms,
+          body: "",
+          bytes: total,
+          capped: true,
+          content_type: "",
+          error: String(err),
+        });
+        return;
+      }
+      reject(err);
+    });
     req.setTimeout(FETCH_TIMEOUT_MS, () => {
       req.destroy(new Error(`fetch timeout after ${FETCH_TIMEOUT_MS} ms`));
     });
@@ -238,8 +292,16 @@ async function discover() {
           ms: fetchResult.ms,
           content_type: fetchResult.content_type,
           body_bytes: fetchResult.body.length,
+          bytes_seen: fetchResult.bytes,
+          capped: fetchResult.capped === true,
         };
         if (!fetchResult.ok) {
+          if (fetchResult.capped) {
+            report.steps.shape = {
+              ok: false,
+              reason: `body exceeded self-cap (${BODY_SELF_CAP_BYTES} bytes)`,
+            };
+          }
           finish();
           return;
         }

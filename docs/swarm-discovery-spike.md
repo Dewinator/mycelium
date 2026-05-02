@@ -118,20 +118,23 @@ This spike answers four concrete questions:
     2005 ms with `timed_out=true`. The 2 s budget is honoured to within
     5 ms on loopback. No hang.
   - `huge_body` — server streams 12 MiB; the spike's own body cap fires
-    at 5.29 MiB in 33 ms. **Hardening gap:** the production fetch path
-    in `spike-mdns-fetch.mjs:fetchUrl` has no body cap — only this
-    hostile spike does. The first implementation PR for issue 1 in the
-    "Concrete next steps" table MUST add a `selfCapBytes` parameter to
-    the fetch call (recommended cap: 64 KiB — a NodeAdvertisement is
-    typically <1 KiB; anything past 64 KiB is hostile or buggy).
+    at 5.29 MiB in 33 ms. **Hardening gap (closed 2026-05-03 —
+    `report-mdns-fetch-with-cap.json`):** when the gap was first named,
+    only the hostile spike enforced a body cap; the happy-path
+    `spike-mdns-fetch.mjs:fetchUrl` did not. That has now been fixed —
+    `fetchUrl` takes a `selfCapBytes` option defaulting to **64 KiB** (a
+    `NodeAdvertisement` is typically <1 KiB in practice). Re-run of the
+    happy path: 263 bytes seen, `capped=false`, 686 ms total — well
+    inside budget. The implementation PR for issue 1 in the "Concrete
+    next steps" table can now lift `fetchUrl` from the happy-path spike
+    verbatim instead of having to reimplement the cap.
 
   Two of these (slow + huge) are bytes-on-the-wire DoS vectors. With the
   cap and the timeout in place, a hostile peer on the LAN cannot wedge a
-  discoverer past ~2 s × 1 connection. Without them, it can. The fact
-  that the spike-mdns-fetch happy-path code lacks both is fine for the
-  spike (its job is to validate the wire, not to be production-grade) —
-  but the implementation issue ("Concrete next steps" #1) MUST inherit
-  these as acceptance criteria.
+  discoverer past ~2 s × 1 connection. Both protections are now present
+  in the happy-path spike's `fetchUrl`, so the implementation issue
+  ("Concrete next steps" #1) inherits them as a reference shape rather
+  than as bolt-on acceptance criteria.
 - **WAN discovery: `js-libp2p` with a Kademlia DHT** (`@libp2p/kad-dht`),
   using only **public bootstrap nodes operated by mycelium users
   themselves** — never IPFS-network bootstrap. The DHT key is the
