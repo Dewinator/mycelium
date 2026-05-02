@@ -1,10 +1,8 @@
 {
   "brand.subtitle": "your AI",
 
-  "nav.cortex": "cortex",
-  "nav.agents": "agenten",
   "nav.settings": "einstellungen",
-  "nav.badge.soon": "bald",
+  "nav.system": "system",
 
   "cortex.group.memory": "erinnerung",
   "cortex.group.inner": "innenleben",
@@ -34,36 +32,6 @@
   "stub.settings.title": "einstellungen",
   "stub.settings.desc": "Die bisherige Setup-Seite zieht hierhin um.",
   "stub.settings.link": "aktuelle Setup-Seite öffnen",
-
-  "intro.agents": "<b>Agenten</b> sind die Körper, die mycelium als gemeinsames Gehirn nutzen. Hier siehst du alle Clients, die sich gerade registriert haben — Heartbeat, Status, Genome, Fähigkeiten. Read-Only — die Steuerung jedes Agenten passiert im jeweiligen Client (Claude Code, Codex, openClaw, …).<span class=\"sub\">Ein Agent gilt als <b>live</b>, wenn der letzte Heartbeat weniger als 120 Sekunden her ist. „offline\" heißt nicht weg, sondern ungebunden — sein Wissen bleibt im Gehirn.</span>",
-
-  "agents.heading": "verbundene agenten",
-  "agents.loading": "lade…",
-  "agents.updated": "stand",
-  "agents.error": "fehler",
-  "agents.empty": "Noch kein Agent registriert. Starte einen MCP-Client mit mycelium-Verbindung, dann erscheint er hier.",
-  "agents.pill.live": "live",
-  "agents.pill.offline": "offline",
-  "agents.host": "host",
-  "agents.heartbeat": "heartbeat",
-  "agents.version": "version",
-  "agents.workspace": "workspace",
-  "agents.fit": "fitness",
-  "agents.fitness.help": "Genome-Fitness aus letzter Messung — wie gut sich das „Wesen\" dieses Agenten entwickelt hat.",
-  "agents.kpi.live": "live",
-  "agents.kpi.live.hint": "heartbeat <120s",
-  "agents.kpi.total": "registriert",
-  "agents.kpi.total.hint": "alle bekannten",
-  "agents.kpi.hosts": "hosts",
-  "agents.kpi.hosts.hint": "physische rechner",
-  "agents.kpi.genomes": "genome",
-  "agents.kpi.genomes.hint": "verschiedene wesen",
-
-  "rel.future": "in der zukunft",
-  "rel.seconds": "vor {n}s",
-  "rel.minutes": "vor {n} min",
-  "rel.hours": "vor {n} h",
-  "rel.days": "vor {n} tagen",
 
   "header.burger.aria": "menü",
   "header.status.connecting": "verbinde…",

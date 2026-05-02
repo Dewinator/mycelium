@@ -6,6 +6,12 @@
 <title>mycelium — dashboard</title>
 <link rel="icon" type="image/png" href="/assets/logo.png" />
 <link rel="apple-touch-icon" href="/assets/logo.png" />
+<!-- Vision-UI typography per docs/dashboard-design-spec.md §3. preconnect
+     hints keep first-paint fast; system-ui acts as fallback if Google
+     Fonts is unreachable (offline / sovereign-mode). -->
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
 <script>
   // i18n synchronisation handle. Resolved by the i18n module after dictionaries
   // have loaded; legacy non-module script awaits this before its first render
@@ -14,55 +20,87 @@
 </script>
 <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
 <style>
+  /* Design tokens — Vision UI Pro inspired (deep-space dark only).
+     Spec: docs/dashboard-design-spec.md. Token names stay backwards-
+     compatible (--bg, --accent, --good, …) so existing rules pick up
+     the new palette without hand-editing every selector. */
   :root {
-    --bg:            #0b0d10;
-    --bg-elev:       #14181d;
-    --bg-elev-2:     #1b2027;
-    --border:        #232a33;
-    --text:          #e6e9ef;
-    --text-dim:      #8a94a6;
-    --text-faint:    #5a6473;
-    --accent:        #7aa2f7;
-    --accent-2:      #bb9af7;
-    --accent-3:      #7dcfff;
-    --accent-soft:   #2a3a5a;
-    --good:          #9ece6a;
-    --warn:          #e0af68;
-    --bad:           #f7768e;
-    --shadow:        0 1px 0 rgba(255,255,255,0.03), 0 8px 24px rgba(0,0,0,0.35);
-    --radius:        12px;
-    --radius-sm:     8px;
-    --mono:          ui-monospace, "SF Mono", Menlo, Consolas, monospace;
-    --sans:          -apple-system, BlinkMacSystemFont, "Inter", "Segoe UI", system-ui, sans-serif;
-  }
-  :root[data-theme="light"] {
-    --bg:            #f6f7f9;
-    --bg-elev:       #ffffff;
-    --bg-elev-2:     #f0f2f5;
-    --border:        #e3e6eb;
-    --text:          #181c22;
-    --text-dim:      #5b6573;
-    --text-faint:    #98a1ad;
-    --accent:        #3b6cd9;
-    --accent-2:      #8a4dd9;
-    --accent-3:      #2c8fb8;
-    --accent-soft:   #dde6fa;
-    --good:          #3b8a3b;
-    --warn:          #b07b1a;
-    --bad:           #c0364b;
-    --shadow:        0 1px 0 rgba(0,0,0,0.02), 0 4px 16px rgba(20,30,50,0.06);
+    /* Surfaces */
+    --bg-base:           #030418;
+    --bg-deep:           #060B28;
+    --bg:                #060B28;
+    --bg-elev:           #0F1535;
+    --bg-elev-2:         #1A1F37;
+    --surface-card:      linear-gradient(127deg, rgba(15,21,53,0.90) 0%, rgba(6,11,40,0.95) 100%);
+    --surface-glass:     rgba(255,255,255,0.04);
+
+    /* Lines */
+    --border:            rgba(255,255,255,0.08);
+    --border-strong:     rgba(255,255,255,0.16);
+
+    /* Text */
+    --text:              #FFFFFF;
+    --text-dim:          #A0AEC0;
+    --text-faint:        #718096;
+
+    /* Accents (one Blue→Cyan axis; pink reserved for anomalies) */
+    --accent:            #0075FF;   /* primary blue */
+    --accent-2:          #21D4FD;   /* cyan       */
+    --accent-3:          #7551FF;   /* violet     */
+    --accent-pink:       #FF0080;
+    --accent-gradient:   linear-gradient(135deg, #0075FF 0%, #21D4FD 100%);
+    --accent-soft:       rgba(0,117,255,0.16);
+
+    /* Status */
+    --good:              #01B574;
+    --warn:              #FFB547;
+    --bad:               #E31A1A;
+
+    /* Effects */
+    --shadow:            0 20px 27px 0 rgba(0,0,0,0.05),
+                         inset 0 1px 0 0 rgba(255,255,255,0.06);
+    --glow-cyan:         0 0 0 1px rgba(33,212,253,0.40),
+                         0 0 32px 0 rgba(33,212,253,0.25),
+                         0 8px 24px rgba(0,117,255,0.18);
+    --radius:            20px;
+    --radius-sm:         12px;
+    --radius-pill:       999px;
+
+    /* Type */
+    --mono:              "JetBrains Mono", ui-monospace, "SF Mono", Menlo, Consolas, monospace;
+    --sans:              "Plus Jakarta Display", "Plus Jakarta Sans", -apple-system,
+                         BlinkMacSystemFont, "Inter", "Segoe UI", system-ui, sans-serif;
   }
   *,*::before,*::after { box-sizing: border-box; }
-  html, body { margin: 0; padding: 0; background: var(--bg); color: var(--text); font-family: var(--sans); -webkit-font-smoothing: antialiased; }
-  body { min-height: 100vh; min-height: 100dvh; display: grid; grid-template-columns: 200px 1fr; }
-  a { color: var(--accent); text-decoration: none; }
+  html, body {
+    margin: 0; padding: 0; color: var(--text); font-family: var(--sans);
+    -webkit-font-smoothing: antialiased;
+  }
+  html { background: var(--bg-deep); }
+  body {
+    min-height: 100vh; min-height: 100dvh;
+    display: grid; grid-template-columns: 264px 1fr;
+    /* Deep-space gradient — anchored to viewport so cards layer on top
+       of a continuous backdrop, not a per-section repaint. */
+    background:
+      radial-gradient(ellipse 90% 60% at 80% -10%, rgba(33,212,253,0.10), transparent 60%),
+      radial-gradient(ellipse 80% 50% at 0% 110%, rgba(117,81,255,0.10), transparent 60%),
+      linear-gradient(180deg, var(--bg-base) 0%, var(--bg-deep) 100%);
+    background-attachment: fixed;
+  }
+  a { color: var(--accent-2); text-decoration: none; }
 
   .sidebar {
-    background: var(--bg-elev); border-right: 1px solid var(--border);
-    padding: 18px 12px 16px; display: flex; flex-direction: column; gap: 12px;
+    /* Slightly darker than the main bg so the sidebar reads as a recessed
+       rail rather than another card. 1 px hairline on the right. */
+    background: linear-gradient(180deg, rgba(3,4,24,0.78) 0%, rgba(6,11,40,0.85) 100%);
+    border-right: 1px solid var(--border);
+    padding: 22px 14px 16px; display: flex; flex-direction: column; gap: 12px;
     position: sticky; top: 0; align-self: start;
     height: 100vh; height: 100dvh;
     overflow-y: auto; z-index: 30;
+    backdrop-filter: blur(8px);
+    -webkit-backdrop-filter: blur(8px);
   }
   .main { padding: 20px 28px 48px; min-width: 0; }
   .backdrop { display: none; position: fixed; inset: 0; background: rgba(0,0,0,0.5); z-index: 20; }
@@ -74,23 +112,50 @@
   }
 
   header.top {
+    /* Floating glass pill, sticky to the top of the viewport. Spec §6.2 —
+       the rounded surface with translucent fill + backdrop-blur sits
+       above the page content rather than sharing the page background. */
+    position: sticky; top: 12px; z-index: 25;
     display: flex; align-items: center; justify-content: space-between;
-    margin-bottom: 24px; gap: 16px; flex-wrap: wrap;
+    margin-bottom: 24px; padding: 10px 16px; gap: 16px; flex-wrap: wrap;
+    background: var(--surface-glass);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    backdrop-filter: saturate(140%) blur(14px);
+    -webkit-backdrop-filter: saturate(140%) blur(14px);
+    box-shadow: 0 8px 24px rgba(0,0,0,0.18);
+    min-height: 56px;
   }
-  .brand { display: flex; flex-direction: column; align-items: flex-start; gap: 2px; min-width: 0; margin: 0 0 14px; }
-  .brand .logo { width: auto; max-width: 96px; height: auto; display: block; }
+  .brand { display: flex; flex-direction: column; align-items: center; gap: 2px; min-width: 0; margin: 0 0 14px; text-align: center; }
+  .brand a { text-align: center; }
+  .brand .logo { width: auto; max-width: 96px; height: auto; display: inline-block; margin: 0 auto; }
   .brand h1 { margin: 0; font-size: 18px; font-weight: 600; letter-spacing: -0.01em; color: var(--text); }
   .brand .sub { display: none; }  /* logo image already carries the "your AI" wordmark */
   .brand .visually-hidden { position: absolute; width: 1px; height: 1px; margin: -1px; padding: 0; overflow: hidden; clip: rect(0,0,0,0); white-space: nowrap; border: 0; }
   .status-line { color: var(--text-dim); font-size: 13px; flex: 1; min-width: 0; }
   .controls { display: flex; align-items: center; gap: 8px; }
   button.btn {
-    background: var(--bg-elev); color: var(--text); border: 1px solid var(--border);
-    padding: 8px 14px; border-radius: var(--radius-sm); font: inherit; font-size: 13px;
-    cursor: pointer; transition: background .15s, border-color .15s;
+    background: var(--bg-elev-2); color: var(--text);
+    border: 1px solid var(--border-strong);
+    padding: 9px 16px; border-radius: var(--radius-sm);
+    font: inherit; font-size: 13px; font-weight: 500; min-height: 40px;
+    cursor: pointer;
+    transition: background .15s, border-color .15s, transform .15s, box-shadow .15s;
   }
-  button.btn:hover { background: var(--bg-elev-2); border-color: var(--text-faint); }
-  button.btn.active { background: var(--accent-soft); border-color: var(--accent); color: var(--accent); }
+  button.btn:hover {
+    background: var(--bg-elev-2); border-color: var(--accent);
+    box-shadow: 0 0 0 1px rgba(33,212,253,0.30);
+  }
+  button.btn:active { transform: translateY(1px); }
+  button.btn.primary {
+    background: var(--accent-gradient); color: #fff; border-color: transparent;
+    box-shadow: 0 4px 12px rgba(0,117,255,0.32);
+  }
+  button.btn.primary:hover { box-shadow: 0 6px 18px rgba(0,117,255,0.42); }
+  button.btn.active {
+    background: var(--accent-soft); border-color: var(--accent-2);
+    color: var(--accent-2); font-weight: 600;
+  }
   .status-dot { width: 8px; height: 8px; border-radius: 50%; background: var(--text-faint); display: inline-block; }
   .status-dot.ok { background: var(--good); }
   .status-dot.bad { background: var(--bad); }
@@ -103,16 +168,28 @@
   @media (max-width: 1280px) { .grid-charts, .grid-charts-2, .grid-tables { grid-template-columns: 1fr; } }
 
   .card {
-    background: var(--bg-elev); border: 1px solid var(--border);
-    border-radius: var(--radius); padding: 18px 20px; box-shadow: var(--shadow);
+    /* Glassmorphism per spec §5: gradient surface, soft border, ambient
+       drop-shadow + 1 px inner top-highlight, 20 px radius. backdrop-blur
+       only kicks in for translucent layers; the gradient already gives
+       the card a sense of depth on its own. */
+    background: var(--surface-card);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    padding: 24px; box-shadow: var(--shadow);
     min-width: 0;
   }
   .card h2 {
-    margin: 0 0 14px; font-size: 12px; font-weight: 600;
-    text-transform: uppercase; letter-spacing: 0.08em; color: var(--text-dim);
+    margin: 0 0 14px; font-size: 12px; font-weight: 700;
+    text-transform: uppercase; letter-spacing: 0.12em; color: var(--text-dim);
   }
-  .kpi .label { font-size: 11px; text-transform: uppercase; letter-spacing: 0.08em; color: var(--text-dim); margin-bottom: 8px; }
-  .kpi .value { font-size: 30px; font-weight: 600; letter-spacing: -0.02em; line-height: 1; }
+  .kpi .label {
+    font-size: 10px; font-weight: 700; letter-spacing: 0.12em;
+    text-transform: uppercase; color: var(--text-dim); margin-bottom: 10px;
+  }
+  .kpi .value {
+    font-size: 34px; font-weight: 700; letter-spacing: -0.02em;
+    line-height: 1.15; color: var(--text);
+  }
   .kpi .hint { margin-top: 8px; font-size: 12px; color: var(--text-faint); }
 
   .chart-wrap { position: relative; height: 220px; }
@@ -123,12 +200,14 @@
   .bar-row { display: grid; grid-template-columns: 140px 1fr 56px; align-items: center; gap: 12px; font-size: 13px; }
   .bar-row .name { color: var(--text); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
   .bar-row .count { color: var(--text-dim); text-align: right; font-variant-numeric: tabular-nums; font-family: var(--mono); font-size: 12px; }
-  .bar-track { height: 8px; background: var(--bg-elev-2); border-radius: 4px; overflow: hidden; }
-  .bar-fill { height: 100%; background: var(--accent); border-radius: 4px; }
+  .bar-track { height: 8px; background: var(--bg-elev-2); border-radius: var(--radius-pill); overflow: hidden; }
+  .bar-fill { height: 100%; background: var(--accent-gradient); border-radius: var(--radius-pill); }
 
-  table.mem { width: 100%; border-collapse: collapse; font-size: 13px; }
-  table.mem th, table.mem td { text-align: left; padding: 10px 8px; border-bottom: 1px solid var(--border); vertical-align: top; }
-  table.mem th { font-size: 11px; text-transform: uppercase; letter-spacing: 0.06em; color: var(--text-dim); font-weight: 600; }
+  table.mem { width: 100%; border-collapse: collapse; font-size: 13px; font-variant-numeric: tabular-nums; }
+  table.mem th, table.mem td { text-align: left; padding: 12px 10px; border-bottom: 1px solid var(--border); vertical-align: top; }
+  table.mem th { font-size: 10px; text-transform: uppercase; letter-spacing: 0.12em; color: var(--text-faint); font-weight: 700; }
+  table.mem tbody tr { transition: background .12s; }
+  table.mem tbody tr:hover { background: rgba(255,255,255,0.03); }
   table.mem td.content { color: var(--text); max-width: 480px; white-space: pre-wrap; word-break: break-word; }
   table.mem td.content .more {
     color: var(--accent); cursor: pointer; font-size: 11px;
@@ -142,14 +221,15 @@
   table.mem td.meta { color: var(--text-dim); white-space: nowrap; font-family: var(--mono); font-size: 12px; }
   table.mem tr:last-child td { border-bottom: 0; }
   .tag {
-    display: inline-block; padding: 2px 8px; margin-right: 4px; font-size: 11px;
-    background: var(--accent-soft); color: var(--accent); border-radius: 999px;
+    display: inline-block; padding: 3px 10px; margin-right: 4px; font-size: 11px;
+    background: var(--accent-soft); color: var(--accent-2);
+    border-radius: var(--radius-pill);
   }
   .stage-tag { font-size: 10px; padding: 2px 6px; border-radius: 4px; background: var(--bg-elev-2); color: var(--text-dim); text-transform: uppercase; letter-spacing: 0.06em; }
   .pinned { color: var(--warn); font-size: 11px; margin-left: 6px; }
 
   .empty { color: var(--text-faint); font-size: 13px; padding: 24px 0; text-align: center; }
-  .err { color: var(--bad); font-size: 13px; padding: 12px 14px; border: 1px solid var(--bad); border-radius: var(--radius-sm); background: rgba(247,118,142,0.06); margin-bottom: 16px; }
+  .err { color: var(--bad); font-size: 13px; padding: 12px 14px; border: 1px solid var(--bad); border-radius: var(--radius-sm); background: rgba(227,26,26,0.10); margin-bottom: 16px; }
 
   .health-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 10px 16px; font-size: 12px; }
   .health-grid .k { color: var(--text-dim); }
@@ -161,9 +241,9 @@
   .bar-row .bar-val { color: var(--text-dim); text-align: right; font-variant-numeric: tabular-nums; font-family: var(--mono); font-size: 12px; }
   .mono { font-family: var(--mono); font-size: 12px; color: var(--text); }
 
-  .badge { display: inline-block; padding: 1px 8px; border-radius: 10px; font-size: 11px; font-weight: 500; margin-right: 6px; vertical-align: middle; }
-  .badge.good { background: rgba(158,206,106,0.16); color: var(--good); }
-  .badge.bad  { background: rgba(247,118,142,0.16); color: var(--bad); }
+  .badge { display: inline-block; padding: 2px 10px; border-radius: var(--radius-pill); font-size: 11px; font-weight: 500; margin-right: 6px; vertical-align: middle; }
+  .badge.good { background: rgba(1,181,116,0.16); color: var(--good); }
+  .badge.bad  { background: rgba(227,26,26,0.16); color: var(--bad); }
   .badge.dim  { background: var(--bg-elev-2); color: var(--text-dim); }
   .causal-edge { padding: 10px 12px; margin: 8px 0; background: var(--bg-elev); border-radius: var(--radius-sm); border-left: 2px solid var(--accent); }
   .causal-head { margin: 2px 0; font-size: 12px; }
@@ -172,113 +252,62 @@
   footer { margin-top: 32px; color: var(--text-faint); font-size: 12px; text-align: center; }
   footer code { font-family: var(--mono); }
 
-  /* sidebar nav */
-  .tabs { display: flex; flex-direction: column; gap: 0; }
-  .tab {
-    background: transparent; border: 0; color: var(--text-dim);
-    padding: 6px 10px; font: inherit; font-size: 13px; line-height: 1.3; cursor: pointer;
-    text-align: left; border-radius: var(--radius-sm);
-    transition: background .12s, color .12s;
-  }
-  .tab:hover { background: var(--bg-elev-2); color: var(--text); }
-  .tab.active { background: var(--bg-elev-2); color: var(--text); font-weight: 500; }
+  /* Tab panels — content area only. Sidebar buttons that double as tabs
+     (class="nav-item tab") inherit the .nav-item visual rules below. */
   .tab-panel { display: none; }
   .tab-panel.active { display: block; }
 
-  /* sidebar app-nav (top-level: cortex / chat / agents / tasks / providers / settings) */
-  .app-nav { display: flex; flex-direction: column; gap: 2px; }
+  /* Sidebar nav rail. Section eyebrow + 44 px items + 3 px gradient
+     accent-strip on the active item (placeholder for the spec's icon-tile
+     until per-tab icons are picked). */
+  .app-nav { display: flex; flex-direction: column; gap: 4px; }
   .nav-item {
-    display: flex; align-items: center; gap: 8px;
+    position: relative;
+    display: flex; align-items: center; gap: 10px;
     background: transparent; border: 0; color: var(--text-dim);
-    padding: 9px 10px; font: inherit; font-size: 13px; line-height: 1.3; cursor: pointer;
-    text-align: left; border-radius: var(--radius-sm);
-    transition: background .12s, color .12s;
-  }
-  .nav-item:hover { background: var(--bg-elev-2); color: var(--text); }
-  .nav-item.active { background: var(--bg-elev-2); color: var(--text); font-weight: 600; }
-  .nav-item .badge {
-    margin-left: auto; font-size: 10px; padding: 2px 7px;
-    border-radius: 8px; background: var(--bg, var(--bg-elev-2));
-    color: var(--text-faint); text-transform: uppercase; letter-spacing: 0.5px;
-    border: 1px solid var(--border);
-  }
-
-  /* outer nav-panel switching */
-  .nav-panel { display: none; }
-  .nav-panel.active { display: block; }
-
-  /* cortex two-level inner navigation */
-  .cortex-groups {
-    display: flex; gap: 4px; flex-wrap: wrap;
-    padding-bottom: 8px; margin: 0 0 12px;
-    border-bottom: 1px solid var(--border);
-  }
-  .cortex-group-btn {
-    background: transparent; border: 1px solid transparent; color: var(--text-dim);
-    padding: 6px 14px; font: inherit; font-size: 13px; cursor: pointer;
+    padding: 11px 14px 11px 18px; min-height: 44px;
+    font: inherit; font-size: 14px; font-weight: 500; line-height: 1.3;
+    cursor: pointer; text-align: left;
     border-radius: var(--radius-sm);
-    transition: background .12s, color .12s, border-color .12s;
+    transition: background .15s cubic-bezier(.4,0,.2,1),
+                color .15s cubic-bezier(.4,0,.2,1);
   }
-  .cortex-group-btn:hover { background: var(--bg-elev-2); color: var(--text); }
-  .cortex-group-btn.active {
+  .nav-item::before {
+    /* The 3 px gradient accent-strip — invisible at rest, lights up when
+       the item becomes the active tab. Sits at the left edge of the row. */
+    content: ""; position: absolute; left: 6px; top: 50%;
+    transform: translateY(-50%);
+    width: 3px; height: 0; border-radius: 2px;
+    background: var(--accent-gradient);
+    transition: height .2s cubic-bezier(.4,0,.2,1);
+  }
+  .nav-item:hover { background: rgba(255,255,255,0.04); color: var(--text); }
+  .nav-item.active {
     background: var(--bg-elev-2); color: var(--text); font-weight: 600;
-    border-color: var(--accent, var(--border));
+    box-shadow: inset 0 1px 0 rgba(255,255,255,0.04);
   }
-  .cortex-subtabs {
-    display: flex; gap: 4px; flex-wrap: wrap;
-    margin: 0 0 18px;
+  .nav-item.active::before { height: 22px; }
+  .nav-item:focus-visible {
+    outline: 2px solid var(--accent-2); outline-offset: 2px;
   }
-  .cortex-subtabs .tab { padding: 6px 12px; font-size: 12.5px; }
-  .cortex-subtabs .tab[hidden] { display: none; }
 
-  /* agent registry */
-  .agents-grid {
-    display: grid; gap: 12px;
-    grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+  /* Tab-panel-only .tab buttons (none in tree right now — the sidebar
+     items above carry both classes — kept for back-compat if anyone adds
+     a horizontal tab strip back later). */
+  .tabs { display: flex; flex-direction: column; gap: 0; }
+
+  /* Spec §14 says no light-mode parallel — hide the legacy theme toggle
+     until we revisit a daylight palette. */
+  #theme { display: none; }
+
+  /* Sidebar section labels — group the sidebar tabs (erinnerung/innenleben/
+     lernen/schwarm/system) without making them clickable. */
+  .nav-section {
+    font-size: 10px; font-weight: 700; letter-spacing: 0.12em;
+    text-transform: uppercase; color: var(--text-faint);
+    padding: 14px 10px 4px; margin: 0;
   }
-  .agent-card {
-    padding: 14px 16px; background: var(--bg-elev-2);
-    border: 1px solid var(--border); border-radius: var(--radius);
-    display: flex; flex-direction: column; gap: 10px;
-  }
-  .agent-card.live { border-left: 3px solid var(--good); }
-  .agent-card.dead { border-left: 3px solid var(--text-faint); opacity: 0.78; }
-  .agent-card .head {
-    display: flex; align-items: center; justify-content: space-between; gap: 8px;
-  }
-  .agent-card .name { font-weight: 600; font-size: 14px; }
-  .agent-card .gen { font-family: var(--mono); font-size: 11px; color: var(--text-dim); }
-  .agent-card .status-pill {
-    font-size: 10px; padding: 2px 8px; border-radius: 10px; font-weight: 500;
-    text-transform: uppercase; letter-spacing: 0.4px;
-  }
-  .agent-card .status-pill.live { background: var(--good); color: #000; }
-  .agent-card .status-pill.dead { background: var(--bg); color: var(--text-faint); border: 1px solid var(--border); }
-  .agent-card .meta-row {
-    display: grid; grid-template-columns: 80px 1fr; gap: 4px 10px;
-    font-size: 12px; color: var(--text-dim);
-  }
-  .agent-card .meta-row .k { color: var(--text-faint); }
-  .agent-card .meta-row .v { color: var(--text); font-family: var(--mono); font-size: 11.5px; word-break: break-word; }
-  .agent-card .caps { display: flex; flex-wrap: wrap; gap: 4px; }
-  .agent-card .cap-chip {
-    font-size: 10px; padding: 2px 7px; border-radius: 8px;
-    background: var(--bg); color: var(--text-dim);
-    border: 1px solid var(--border); font-family: var(--mono);
-  }
-  .agent-card .fitness {
-    display: flex; align-items: center; gap: 8px; font-size: 11px;
-  }
-  .agent-card .fitness .bar {
-    flex: 1; height: 4px; background: var(--bg); border-radius: 2px; overflow: hidden;
-  }
-  .agent-card .fitness .bar > span {
-    display: block; height: 100%; background: var(--accent); border-radius: 2px;
-  }
-  .agents-empty {
-    padding: 32px 16px; text-align: center; color: var(--text-dim);
-    border: 1px dashed var(--border); border-radius: var(--radius);
-  }
+  .nav-section:first-of-type { padding-top: 4px; }
 
   /* coming-soon stub panel for not-yet-implemented top-level menu items */
   .stub-panel {
@@ -840,29 +869,6 @@
   .stat-row .stat-value { font-family: var(--mono); font-variant-numeric: tabular-nums; color: var(--text); font-size: 14px; font-weight: 500; }
 
   /* ================================================================== */
-  /*   Mobile bottom-nav — primary thumb-zone navigation (≤ 900 px)     */
-  /*   Mirrors sidebar app-nav. Identity-aware: subtle accent line,     */
-  /*   translucent panel like syn-legend — fits the cognitive/bio feel. */
-  /* ================================================================== */
-  .bottom-nav { display: none; }
-  .bottom-nav .nav-item {
-    flex: 1; flex-direction: column; align-items: center; justify-content: center;
-    gap: 2px; padding: 6px 4px; min-height: 56px; border-radius: 10px;
-    color: var(--text-faint); font-size: 11px; line-height: 1.1;
-  }
-  .bottom-nav .nav-item .bn-icon { font-size: 18px; line-height: 1; }
-  .bottom-nav .nav-item .bn-label {
-    font-size: 11px; letter-spacing: 0.02em;
-    max-width: 100%; white-space: nowrap;
-    overflow: hidden; text-overflow: ellipsis;
-  }
-  .bottom-nav .nav-item.active {
-    background: var(--accent-soft); color: var(--accent); font-weight: 600;
-  }
-  .bottom-nav .nav-item:hover { color: var(--text); }
-  .bottom-nav .nav-item.active:hover { color: var(--accent); }
-
-  /* ================================================================== */
   /*   Mobile refinements 2026-04-27 — sticky header, sheets, scroll-   */
   /*   rails, touch-targets ≥ 40 px, safe-area insets, dvh viewports.   */
   /*   Layered AFTER all earlier rules so it cleanly overrides them.    */
@@ -928,54 +934,15 @@
     #refresh::before { content: "↻"; }
     #theme::before   { content: "◐"; }
 
-    /* Content gets a small bottom buffer so the bottom-nav never overlaps
-       the last card (footer included). Calc accounts for safe-area-bottom. */
+    /* Content gets a small bottom buffer for safe-area-bottom (iPhone home
+       indicator clearance). */
     .main {
-      padding-bottom: calc(72px + env(safe-area-inset-bottom));
+      padding-bottom: calc(24px + env(safe-area-inset-bottom));
     }
 
-    /* Cortex two-level nav: groups stay wrapped chips, sub-tabs become a
-       single-row scroll-snap rail — swipe horizontally instead of
-       wall-of-buttons wrap. Edges fade so users see there is more. */
-    .cortex-groups {
-      gap: 6px; padding-bottom: 6px; margin-bottom: 10px;
-      overflow-x: auto; flex-wrap: nowrap; scrollbar-width: none;
-      scroll-snap-type: x proximity;
-    }
-    .cortex-groups::-webkit-scrollbar { display: none; }
-    .cortex-group-btn {
-      flex: 0 0 auto; min-height: 36px; scroll-snap-align: start;
-    }
-    .cortex-subtabs {
-      gap: 4px; margin-bottom: 14px;
-      overflow-x: auto; flex-wrap: nowrap; scrollbar-width: none;
-      scroll-snap-type: x proximity;
-      -webkit-mask-image: linear-gradient(to right, transparent 0, #000 12px, #000 calc(100% - 12px), transparent 100%);
-              mask-image: linear-gradient(to right, transparent 0, #000 12px, #000 calc(100% - 12px), transparent 100%);
-    }
-    .cortex-subtabs::-webkit-scrollbar { display: none; }
-    .cortex-subtabs .tab {
-      flex: 0 0 auto; min-height: 36px; padding: 7px 12px; font-size: 12.5px;
-      scroll-snap-align: start;
-    }
-
-    /* Bottom-nav: only here. Floating panel above the home-indicator. */
-    .bottom-nav {
-      display: flex;
-      position: fixed; left: 8px; right: 8px;
-      bottom: max(8px, env(safe-area-inset-bottom));
-      z-index: 28;
-      gap: 4px; padding: 6px;
-      background: color-mix(in srgb, var(--bg-elev) 92%, transparent);
-      backdrop-filter: saturate(140%) blur(12px);
-      -webkit-backdrop-filter: saturate(140%) blur(12px);
-      border: 1px solid var(--border); border-radius: 16px;
-      box-shadow: var(--shadow);
-    }
-    /* Hide the redundant sidebar app-nav on mobile — bottom-nav owns it.
-       Sidebar drawer remains for settings / brand / future per-cortex
-       deep-links; if drawer is empty we still let the user open it. */
-    .sidebar .app-nav { display: none; }
+    /* Sidebar drawer on mobile carries the full tab list; the burger opens
+       it. No bottom-nav anymore — the flat sidebar replaced the two-level
+       cortex nav, so a separate primary-nav surface would be redundant. */
     .sidebar .brand { margin-bottom: 8px; }
     .sidebar { padding: 14px 12px 12px; }
 
@@ -1032,10 +999,10 @@
     .syn-toolbar .syn-btn-icon { min-height: 36px; }
 
     /* Toast/notification host already lives at right:20px;bottom:20px —
-       lift it above the bottom-nav and the iPhone home-indicator. */
+       lift it above the iPhone home-indicator. */
     body > div[style*="right:20px"][style*="bottom:20px"],
     body > div[style*="right: 20px"][style*="bottom: 20px"] {
-      bottom: calc(80px + env(safe-area-inset-bottom)) !important;
+      bottom: calc(28px + env(safe-area-inset-bottom)) !important;
       right: 12px !important;
     }
   }
@@ -1047,7 +1014,6 @@
     .grid-kpi { grid-template-columns: 1fr 1fr; gap: 8px; }
     .kpi .value { font-size: 20px; }
     .card { padding: 12px; }
-    .bottom-nav .nav-item .bn-label { font-size: 10px; }
     .panel-intro { padding: 9px 11px; font-size: 12px; line-height: 1.5; }
     .section-head { margin: 16px 0 6px; }
     /* Synapsen-toolbar: stack vertically so search + stats both breathe. */
@@ -1291,16 +1257,29 @@
       <div class="sub" data-i18n="brand.subtitle">your AI</div>
     </div>
     <nav class="app-nav">
-      <button class="nav-item active" data-nav="cortex">
-        <span data-i18n="nav.cortex">cortex</span>
-      </button>
-      <button class="nav-item" data-nav="agents">
-        <span data-i18n="nav.agents">agenten</span>
-        <span class="badge" data-i18n="nav.badge.soon">bald</span>
-      </button>
-      <button class="nav-item" data-nav="settings">
-        <span data-i18n="nav.settings">einstellungen</span>
-      </button>
+      <div class="nav-section" data-i18n="cortex.group.memory">erinnerung</div>
+      <button class="nav-item tab active" data-tab="memory" data-i18n="nav.memory">gedächtnis</button>
+      <button class="nav-item tab" data-tab="synapses" data-i18n="nav.synapses">synapsen</button>
+      <button class="nav-item tab" data-tab="projects" data-i18n="nav.projects">projekte</button>
+      <button class="nav-item tab" data-tab="regulator" data-i18n="nav.regulator">regulator</button>
+
+      <div class="nav-section" data-i18n="cortex.group.inner">innenleben</div>
+      <button class="nav-item tab" data-tab="soul" data-i18n="nav.soul">seele</button>
+      <button class="nav-item tab" data-tab="neurochemistry" data-i18n="nav.neurochemistry">neurochemie</button>
+      <button class="nav-item tab" data-tab="motivation" data-i18n="nav.motivation">motivation</button>
+      <button class="nav-item tab" data-tab="identity" data-i18n="nav.identity">identität</button>
+
+      <div class="nav-section" data-i18n="cortex.group.learning">lernen</div>
+      <button class="nav-item tab" data-tab="learning" data-i18n="nav.learning">lernen</button>
+      <button class="nav-item tab" data-tab="sleep" data-i18n="nav.sleep">schlaf</button>
+      <button class="nav-item tab" data-tab="emergence" data-i18n="nav.emergence">emergenz</button>
+
+      <div class="nav-section" data-i18n="cortex.group.swarm">schwarm</div>
+      <button class="nav-item tab" data-tab="guard" data-i18n="nav.guard">guard</button>
+      <button class="nav-item tab" data-tab="swarm" data-i18n="nav.swarm">schwarm</button>
+
+      <div class="nav-section" data-i18n="nav.system">system</div>
+      <button class="nav-item tab" data-tab="settings" data-i18n="nav.settings">einstellungen</button>
     </nav>
   </aside>
   <div class="backdrop" id="sidebar-backdrop"></div>
@@ -1319,40 +1298,6 @@
 
   <div id="error-box"></div>
 
-  <div class="nav-panel active" id="nav-panel-cortex">
-  <nav class="cortex-groups" aria-label="cortex group">
-    <button class="cortex-group-btn active" data-group="erinnerung" data-i18n="cortex.group.memory">erinnerung</button>
-    <button class="cortex-group-btn" data-group="innenleben" data-i18n="cortex.group.inner">innenleben</button>
-    <button class="cortex-group-btn" data-group="lernen" data-i18n="cortex.group.learning">lernen</button>
-    <button class="cortex-group-btn" data-group="schwarm" data-i18n="cortex.group.swarm">schwarm</button>
-  </nav>
-  <nav class="cortex-subtabs" aria-label="cortex sub-tab">
-    <!-- Erinnerung -->
-    <button class="tab active" data-tab="memory" data-group="erinnerung" data-i18n="nav.memory">gedächtnis</button>
-    <button class="tab" data-tab="synapses" data-group="erinnerung" data-i18n="nav.synapses">synapsen</button>
-    <button class="tab" data-tab="projects" data-group="erinnerung" data-i18n="nav.projects">projekte</button>
-    <button class="tab" data-tab="regulator" data-group="erinnerung" data-i18n="nav.regulator">regulator</button>
-    <!-- Innenleben -->
-    <button class="tab" data-tab="soul" data-group="innenleben" data-i18n="nav.soul">seele</button>
-    <button class="tab" data-tab="neurochemistry" data-group="innenleben" data-i18n="nav.neurochemistry">neurochemie</button>
-    <button class="tab" data-tab="motivation" data-group="innenleben" data-i18n="nav.motivation">motivation</button>
-    <button class="tab" data-tab="identity" data-group="innenleben" data-i18n="nav.identity">identität</button>
-    <!-- Lernen -->
-    <button class="tab" data-tab="learning" data-group="lernen" data-i18n="nav.learning">lernen</button>
-    <button class="tab" data-tab="sleep" data-group="lernen" data-i18n="nav.sleep">schlaf</button>
-    <button class="tab" data-tab="emergence" data-group="lernen" data-i18n="nav.emergence">emergenz</button>
-    <!-- DEFERRED 2026-04-26 — re-enable with feature flag
-    <button class="tab" data-tab="teacher" data-group="lernen" data-i18n="nav.teacher">teacher</button>
-    -->
-    <!-- Schwarm -->
-    <button class="tab" data-tab="guard" data-group="schwarm" data-i18n="nav.guard">guard</button>
-    <button class="tab" data-tab="swarm" data-group="schwarm" data-i18n="nav.swarm">schwarm</button>
-    <!-- DEFERRED 2026-04-26 — re-enable with feature flag
-    <button class="tab" data-tab="population" data-group="schwarm" data-i18n="nav.population">population</button>
-    <button class="tab" data-tab="tinder" data-group="schwarm" data-i18n="nav.tinder">tinder</button>
-    <button class="tab" data-tab="federation" data-group="schwarm" data-i18n="nav.federation">föderation</button>
-    -->
-  </nav>
 
   <div class="tab-panel active" id="panel-memory">
   <div class="panel-intro" data-i18n-html="intro.memory"></div>
@@ -2162,23 +2107,7 @@
     </section>
   </div><!-- /panel-teacher -->
   </template>
-  </div><!-- /nav-panel-cortex -->
-
-  <div class="nav-panel" id="nav-panel-agents">
-    <div class="panel-intro" data-i18n-html="intro.agents"><b>Agenten</b> sind die Körper, die mycelium als gemeinsames Gehirn nutzen. Hier siehst du alle Clients, die sich gerade registriert haben — Heartbeat, Status, Genome, Fähigkeiten. Read-Only — die Steuerung jedes Agenten passiert im jeweiligen Client (Claude Code, Codex, openClaw, …).<span class="sub">Ein Agent gilt als <b>live</b>, wenn der letzte Heartbeat weniger als 120 Sekunden her ist. „offline" heißt nicht weg, sondern ungebunden — sein Wissen bleibt im Gehirn.</span></div>
-
-    <section class="grid grid-kpi" id="agents-kpis"></section>
-
-    <section class="card" style="margin-top:16px">
-      <div style="display:flex;align-items:center;justify-content:space-between;gap:8px;margin-bottom:8px">
-        <h2 style="margin:0" data-i18n="agents.heading">verbundene agenten</h2>
-        <div class="sub" id="agents-status" data-i18n="agents.loading">lade…</div>
-      </div>
-      <div id="agents-grid" class="agents-grid"></div>
-    </section>
-  </div>
-
-  <div class="nav-panel" id="nav-panel-settings">
+  <div class="tab-panel" id="panel-settings">
     <div class="stub-panel">
       <div class="stub-tag" data-i18n="stub.phase.alpha">alpha</div>
       <h2 data-i18n="stub.settings.title">einstellungen</h2>
@@ -2237,25 +2166,6 @@
     quelle: <code>POST /api/rpc/dashboard_stats</code> &middot; proxy: <code>scripts/dashboard-server.mjs</code>
   </footer>
   </main>
-
-  <!-- Mobile bottom-nav: thumb-zone primary navigation. Mirrors the sidebar
-       app-nav (cortex / agents / settings); active-state is kept in sync via
-       the shared .nav-item click handler that toggles every button matching
-       data-nav. Visible only ≤ 900 px (display rule in mobile media query). -->
-  <nav class="bottom-nav" id="bottom-nav" aria-label="primary">
-    <button class="nav-item active" data-nav="cortex">
-      <span class="bn-icon" aria-hidden="true">◉</span>
-      <span class="bn-label" data-i18n="nav.cortex">cortex</span>
-    </button>
-    <button class="nav-item" data-nav="agents">
-      <span class="bn-icon" aria-hidden="true">◐</span>
-      <span class="bn-label" data-i18n="nav.agents">agenten</span>
-    </button>
-    <button class="nav-item" data-nav="settings">
-      <span class="bn-icon" aria-hidden="true">◇</span>
-      <span class="bn-label" data-i18n="nav.settings">einstellungen</span>
-    </button>
-  </nav>
 
 <script type="module">
   // Bootstrap i18n before the main dashboard script runs.
@@ -5067,139 +4977,6 @@ document.querySelectorAll(".tab").forEach(btn => {
   });
 });
 
-// outer app-nav switching (cortex / agents / settings).
-// Mirrors active state across all .nav-item buttons that share the same
-// data-nav — sidebar (desktop) and bottom-nav (mobile) stay in sync.
-document.querySelectorAll(".nav-item").forEach(btn => {
-  btn.addEventListener("click", () => {
-    const name = btn.dataset.nav;
-    document.querySelectorAll(".nav-item").forEach(b => b.classList.toggle("active", b.dataset.nav === name));
-    document.querySelectorAll(".nav-panel").forEach(p => p.classList.toggle("active", p.id === "nav-panel-" + name));
-    if (name === "agents") loadAgentRegistry();
-    else stopAgentRegistryPolling();
-    closeSidebar();
-    window.scrollTo({ top: 0, behavior: "instant" });
-  });
-});
-
-// --- agents registry (live mirror of connected mycelium clients) -------------
-// NOTE: the deferred pairing/tinder code already defines `renderAgents(agentsData, matchesData)`.
-// We use a distinct name (`renderAgentRegistry`) to avoid hoisting collisions.
-let _agentsPoll = null;
-function stopAgentRegistryPolling() {
-  if (_agentsPoll) { clearInterval(_agentsPoll); _agentsPoll = null; }
-}
-async function loadAgentRegistry() {
-  await refreshAgentRegistry();
-  stopAgentRegistryPolling();
-  _agentsPoll = setInterval(refreshAgentRegistry, 15000);
-}
-async function refreshAgentRegistry() {
-  const status = document.getElementById("agents-status");
-  try {
-    const r = await fetch(`${ENDPOINT}/rpc/agents_live`, {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: "{}",
-    });
-    if (!r.ok) throw new Error("HTTP " + r.status);
-    const rows = await r.json();
-    renderAgentRegistry(Array.isArray(rows) ? rows : []);
-    if (status) status.textContent = `${tt("agents.updated")} ${new Date().toLocaleTimeString("de-DE")}`;
-  } catch (e) {
-    if (status) status.textContent = `${tt("agents.error")}: ${e.message}`;
-  }
-}
-function relativeTime(iso) {
-  if (!iso) return "—";
-  const ms = Date.now() - new Date(iso).getTime();
-  if (ms < 0) return tt("rel.future");
-  const s = Math.round(ms / 1000);
-  if (s < 60) return tt("rel.seconds", { n: s });
-  const m = Math.round(s / 60);
-  if (m < 60) return tt("rel.minutes", { n: m });
-  const h = Math.round(m / 60);
-  if (h < 48) return tt("rel.hours", { n: h });
-  const d = Math.round(h / 24);
-  return tt("rel.days", { n: d });
-}
-function renderAgentRegistry(rows) {
-  const grid = document.getElementById("agents-grid");
-  const kpis = document.getElementById("agents-kpis");
-  if (!grid) return;
-  if (!Array.isArray(rows)) rows = [];
-  const live = rows.filter(a => a.live).length;
-  const total = rows.length;
-  const hosts = new Set(rows.map(a => a.host).filter(Boolean)).size;
-  const genomes = new Set(rows.map(a => a.genome_label).filter(Boolean)).size;
-  if (kpis) {
-    kpis.innerHTML = [
-      kpiCard(tt("agents.kpi.live"),    fmt.format(live),    tt("agents.kpi.live.hint")),
-      kpiCard(tt("agents.kpi.total"),   fmt.format(total),   tt("agents.kpi.total.hint")),
-      kpiCard(tt("agents.kpi.hosts"),   fmt.format(hosts),   tt("agents.kpi.hosts.hint")),
-      kpiCard(tt("agents.kpi.genomes"), fmt.format(genomes), tt("agents.kpi.genomes.hint")),
-    ].join("");
-  }
-  if (!rows.length) {
-    grid.innerHTML = `<div class="agents-empty">${tt("agents.empty")}</div>`;
-    return;
-  }
-  grid.innerHTML = rows.map(renderAgentCard).join("");
-}
-function renderAgentCard(a) {
-  const liveCls = a.live ? "live" : "dead";
-  const pillTxt = a.live ? tt("agents.pill.live") : tt("agents.pill.offline");
-  const caps = (a.capabilities || []).map(c => `<span class="cap-chip">${escapeHtml(c)}</span>`).join("");
-  const fitness = a.latest_fitness != null ? Math.max(0, Math.min(1, Number(a.latest_fitness))) : null;
-  const fitnessRow = fitness != null ? `
-    <div class="fitness" title="${tt("agents.fitness.help")}">
-      <span class="k">${tt("agents.fit")}</span>
-      <div class="bar"><span style="width:${(fitness * 100).toFixed(0)}%"></span></div>
-      <span class="v">${fmt2.format(fitness)}</span>
-    </div>` : "";
-  return `
-    <div class="agent-card ${liveCls}" data-label="${escapeHtml(a.label)}">
-      <div class="head">
-        <div>
-          <div class="name">${escapeHtml(a.label)}</div>
-          <div class="gen">${escapeHtml(a.genome_label || "?")} · gen ${escapeHtml(String(a.generation ?? "?"))}</div>
-        </div>
-        <span class="status-pill ${liveCls}">${pillTxt}</span>
-      </div>
-      <div class="meta-row">
-        <span class="k">${tt("agents.host")}</span><span class="v">${escapeHtml(a.host || "—")}</span>
-        <span class="k">${tt("agents.heartbeat")}</span><span class="v">${escapeHtml(relativeTime(a.last_heartbeat))}</span>
-        <span class="k">${tt("agents.version")}</span><span class="v">${escapeHtml(a.version || "—")}</span>
-        <span class="k">${tt("agents.workspace")}</span><span class="v">${escapeHtml(a.workspace_path || "—")}</span>
-      </div>
-      ${caps ? `<div class="caps">${caps}</div>` : ""}
-      ${fitnessRow}
-    </div>`;
-}
-
-// cortex group switcher (innenleben / erinnerung / lernen / schwarm) — shows only matching sub-tabs
-function setCortexGroup(group) {
-  document.querySelectorAll(".cortex-group-btn").forEach(b =>
-    b.classList.toggle("active", b.dataset.group === group)
-  );
-  const subtabs = document.querySelectorAll(".cortex-subtabs .tab");
-  subtabs.forEach(t => { t.hidden = t.dataset.group !== group; });
-  // if currently active sub-tab is in another group, switch to first visible sub-tab of new group
-  const activeSub = document.querySelector(".cortex-subtabs .tab.active");
-  if (!activeSub || activeSub.dataset.group !== group) {
-    const firstVisible = Array.from(subtabs).find(t => t.dataset.group === group && !t.hidden);
-    firstVisible?.click();
-  }
-}
-document.querySelectorAll(".cortex-group-btn").forEach(btn => {
-  btn.addEventListener("click", () => setCortexGroup(btn.dataset.group));
-});
-// initial group activation: pick the group of the currently active sub-tab
-{
-  const _initActive = document.querySelector(".cortex-subtabs .tab.active");
-  if (_initActive) setCortexGroup(_initActive.dataset.group);
-}
-
 // --- teacher (claude-code-sessions Plugin) -------------------------------------
 let TCH_POLL_HANDLE = null;
 let TCH_OPEN_ESC = null;
@@ -5330,8 +5107,9 @@ function applyTheme(t) {
   if (lastData) load();  // re-render so chart colors follow the theme
 }
 function initTheme() {
-  const saved = localStorage.getItem("vm-theme");
-  document.documentElement.dataset.theme = saved || (matchMedia("(prefers-color-scheme: light)").matches ? "light" : "dark");
+  // Spec §14: dark-only MVP. Force dark regardless of prior localStorage or
+  // OS preference so Chart.js (isDark()) and CSS pick the right palette.
+  document.documentElement.dataset.theme = "dark";
 }
 
 // breed modal wiring
