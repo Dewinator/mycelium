@@ -1,0 +1,48 @@
+{
+  "spike": "wave-3-mdns-fetch",
+  "started_at": "2026-05-02T22:06:14.020Z",
+  "platform": "darwin-arm64",
+  "node": "v25.9.0",
+  "package": "bonjour-service + node:http",
+  "mode": "discover-only",
+  "budget": {
+    "discover_ms": 30000,
+    "fetch_ms": 2000,
+    "total_target_ms": 2000
+  },
+  "steps": {
+    "discover": {
+      "ok": true,
+      "name": "mycelium-spike-82511",
+      "host": "Mac",
+      "port": 61402,
+      "txt": {
+        "url": "http://127.0.0.1:61402/.well-known/mycelium-node",
+        "node_id": "spike-82511",
+        "spec": "v1"
+      },
+      "seen_after_ms": 21
+    },
+    "fetch": {
+      "ok": true,
+      "status": 200,
+      "ms": 14,
+      "content_type": "application/json; charset=utf-8",
+      "body_bytes": 263
+    },
+    "shape": {
+      "ok": true,
+      "kind": "node_advertisement",
+      "node_id": "spike-82511"
+    },
+    "total": {
+      "ms": 37,
+      "within_2s_budget": true
+    }
+  },
+  "service": {
+    "type": "mycelium",
+    "fqdn": "_mycelium._tcp.local"
+  },
+  "finished_at": "2026-05-02T22:06:14.066Z"
+}

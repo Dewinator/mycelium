@@ -70,11 +70,32 @@ This spike answers four concrete questions:
   Pure-JS, zero native deps, works on all three OSes via UDP multicast.
   Avoid `mdns` (npm) — it requires building against system Avahi/Bonjour
   headers and breaks the "one Tauri sidecar artifact per OS" promise.
-  Empirically validated on macOS — see [`experiments/swarm-discovery/`](../experiments/swarm-discovery/)
-  ([`report-mdns.json`](../experiments/swarm-discovery/report-mdns.json):
-  publish 254 ms, self-discover 613 ms, well under the 2 s budget; coexists
-  with the OS mDNSResponder daemon). Linux (Avahi) and Windows are still
-  open — re-run the same spike on each platform before locking the pick.
+  Empirically validated on macOS — see [`experiments/swarm-discovery/`](../experiments/swarm-discovery/):
+  - mDNS layer alone ([`report-mdns.json`](../experiments/swarm-discovery/report-mdns.json),
+    [`report-mdns-two-process.json`](../experiments/swarm-discovery/report-mdns-two-process.json)):
+    publish 254 ms, self-discover 613 ms in single-process; in a separate
+    discoverer process, first-seen at 32 ms — well under the 2 s budget,
+    coexists with the OS mDNSResponder daemon.
+  - **Full pointer→fetch loop** ([`spike-mdns-fetch.mjs`](../experiments/swarm-discovery/spike-mdns-fetch.mjs),
+    [`report-mdns-fetch-discoverer.json`](../experiments/swarm-discovery/report-mdns-fetch-discoverer.json)):
+    publisher serves a mock `/.well-known/mycelium-node` on an ephemeral
+    HTTP port + advertises the URL via mDNS TXT; a separate discoverer
+    process resolves the service in 21 ms, fetches the URL in 14 ms,
+    JSON-parses the body, and runs the same shape check as
+    `wire-types.ts:kindOf` on the response. Total **37 ms** discover →
+    fetch → shape-validated `node_advertisement`. This is the single
+    end-to-end empirical evidence that the "mDNS-as-pointer" architecture
+    works as a wire — not just that mDNS multicast resolves.
+
+  Loopback note: the fetch spike binds to `127.0.0.1` for the URL because
+  cross-host `.local` hostname resolution is environment-dependent and
+  orthogonal to the pointer-fetch question this spike answers; bonjour-service
+  surfaces the discovered peer's IP addresses in its `up` event, so a
+  cross-host validation will use those rather than re-prove `.local` lookup.
+
+  Linux (Avahi) and Windows are still open — re-run all three spikes on
+  each platform before locking the pick. Cross-host (two machines on the
+  same LAN) is also still open and is the next item.
 - **WAN discovery: `js-libp2p` with a Kademlia DHT** (`@libp2p/kad-dht`),
   using only **public bootstrap nodes operated by mycelium users
   themselves** — never IPFS-network bootstrap. The DHT key is the
