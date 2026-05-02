@@ -161,3 +161,22 @@ Follow-up issue #178 part 1 (PR pending). Lands the embedding side of the spike'
 **Default not flipped.** Per the tokenizer-divergence warning above, switching the default would invalidate stored vectors on existing installs. The default stays `ollama`; native installs (#176 sub-task 4, Tauri shell) will set the env explicitly when they ship a fresh data dir.
 
 **Out of this PR.** Cosine-similarity cross-validation against Ollama (deferred to a CI gate before any default flip), automatic model SHA-256 verification (Pillar 6 follow-up #4 above), chat provider, and the REM-digest re-route.
+
+---
+
+## Implementation 2 — GGUF SHA-256 verification (Pillar 6)
+
+Closes the SHA-256 gap from Implementation 1. Lives in `mcp-server/src/services/llama-gguf-checksum.ts`; `LlamaCppEmbeddingProvider.init()` calls it after `resolveModelFile` and before `loadModel`.
+
+**Manifest.** `KNOWN_GGUF_CHECKSUMS` maps the exact `hf:` URI to `{ sha256, size }`. Entries are sourced from each repo's HF Hub LFS metadata (`/api/models/<repo>/tree/main` — the `lfs.oid` field IS the file's SHA-256). Adding a new default model is a 3-line PR. Captured 2026-05-02 for the default `nomic-embed-text-v1.5.Q5_K_M.gguf`.
+
+**Override.** `MYCELIUM_LLAMA_EMBEDDING_MODEL_SHA256` overrides the manifest. Reason: power users running custom GGUFs via `MYCELIUM_LLAMA_EMBEDDING_MODEL_URI` should still be able to opt into verification with their own known-good hash.
+
+**Unknown URI policy.** Custom URI without override: WARN to stderr and skip the check. Fail-closed would lock out anyone running a non-bundled GGUF — the manifest can never enumerate every Hugging Face repo. Default URIs always resolve via the manifest, so the happy-path install gets verification for free.
+
+**Mismatch behaviour.** Stream-hash the file, compare against expected, on mismatch `fs.rm(file, { force: true })` and throw `GgufChecksumMismatch` with both expected/actual hex (and sizes if pre-check caught it). The next process start re-downloads cleanly. Streamed chunk-by-chunk — a 100 MB GGUF never lives in RAM.
+
+**Knobs.** Same as Implementation 1, plus:
+- `MYCELIUM_LLAMA_EMBEDDING_MODEL_SHA256` — opt-in hash for custom URIs (lower-cased, stripped).
+
+**Tests.** `mcp-server/src/__tests__/llama-gguf-checksum.test.ts` — 11 unit tests covering: hash match, size pre-check + delete, hash mismatch + delete, idempotent rm on race, lookup precedence (override > manifest > null), case folding, and a structural assertion that the default URI is always in the manifest (so a future URI bump can't silently lose its check).

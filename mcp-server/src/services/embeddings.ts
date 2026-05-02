@@ -2,6 +2,10 @@ import { Ollama } from "ollama";
 import { mkdir } from "node:fs/promises";
 import os from "node:os";
 import path from "node:path";
+import {
+  lookupExpectedChecksum,
+  verifyGgufChecksum,
+} from "./llama-gguf-checksum.js";
 
 export interface EmbeddingProvider {
   embed(text: string): Promise<number[]>;
@@ -91,6 +95,12 @@ export interface LlamaCppEmbeddingProviderOptions {
   modelUri?: string;
   dimensions?: number;
   charBudget?: number;
+  /**
+   * Override / supply the expected SHA-256 of the model GGUF.
+   * If absent, falls back to the built-in `KNOWN_GGUF_CHECKSUMS` manifest.
+   * If neither resolves a hash, integrity check is skipped with a warning.
+   */
+  expectedSha256?: string | null;
 }
 
 const DEFAULT_LLAMA_EMBEDDING_MODEL_URI =
@@ -121,6 +131,7 @@ export class LlamaCppEmbeddingProvider implements EmbeddingProvider {
   private readonly modelsDir: string;
   private readonly modelUri: string;
   private readonly charBudget: number;
+  private readonly expectedSha256: string | null;
   private ready: Promise<{
     ctx: { getEmbeddingFor: (text: string) => Promise<{ vector: number[] }> };
     dispose: () => Promise<void>;
@@ -132,6 +143,7 @@ export class LlamaCppEmbeddingProvider implements EmbeddingProvider {
     this.modelUri = opts.modelUri ?? DEFAULT_LLAMA_EMBEDDING_MODEL_URI;
     this.dimensions = opts.dimensions ?? 768;
     this.charBudget = opts.charBudget ?? 6000;
+    this.expectedSha256 = opts.expectedSha256 ?? null;
   }
 
   private async init() {
@@ -159,6 +171,22 @@ export class LlamaCppEmbeddingProvider implements EmbeddingProvider {
       await mkdir(this.modelsDir, { recursive: true });
       const llama = await getLlama({ logLevel: LlamaLogLevel.warn });
       const modelPath = await resolveModelFile(this.modelUri, this.modelsDir);
+
+      // Pillar 6 — verify the GGUF matches a known SHA-256 before loading.
+      // Mismatch deletes the file and throws; the next run re-downloads.
+      const expected = lookupExpectedChecksum(this.modelUri, this.expectedSha256);
+      if (expected !== null) {
+        await verifyGgufChecksum(modelPath, expected);
+      } else {
+        console.error(
+          `LlamaCppEmbeddingProvider: no SHA-256 manifest entry for ` +
+            `'${this.modelUri}' and no override supplied — skipping ` +
+            `integrity check (Pillar 6). Set ` +
+            `MYCELIUM_LLAMA_EMBEDDING_MODEL_SHA256 to enable verification ` +
+            `for custom models.`
+        );
+      }
+
       const model = await llama.loadModel({ modelPath });
       if (model.embeddingVectorSize !== this.dimensions) {
         await model.dispose();
@@ -226,6 +254,7 @@ export function createEmbeddingProvider(): EmbeddingProvider {
       modelUri: process.env.MYCELIUM_LLAMA_EMBEDDING_MODEL_URI,
       dimensions,
       charBudget,
+      expectedSha256: process.env.MYCELIUM_LLAMA_EMBEDDING_MODEL_SHA256,
     });
   }
 
