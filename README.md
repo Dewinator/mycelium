@@ -229,6 +229,27 @@ cd mycelium
 
 After install, open `http://127.0.0.1:8787/setup` for copy-paste config snippets per agent (Claude Code, Claude Desktop, Codex, Cursor, Cline, Continue, Zed, openClaw). Adjust paths to wherever you cloned.
 
+### Updating
+
+When a new version lands on `main`, update in place:
+
+```bash
+cd /path/to/mycelium
+bash scripts/update.sh
+```
+
+On macOS you can also double-click `update.command` in Finder.
+
+`update.sh` is the runtime pendant to `install.sh`. It:
+
+1. fetches and rebases your current branch from `origin`
+2. runs `npm ci && npm run build` in `mcp-server/`
+3. applies any new SQL migrations via `scripts/migrate.sh` (idempotent)
+4. pulls any missing Ollama models (idempotent)
+5. reloads the `com.mycelium.dashboard` and `com.mycelium.middleware` LaunchAgents (or `mycelium-{dashboard,middleware}.service` on Linux)
+
+Every step is a no-op when there is nothing new to do, so you can run it as often as you like. Useful flags: `--yes`, `--branch <name>`, `--skip-models`, `--skip-services`, `--skip-migrations`, `--print-only`. After it finishes, restart your MCP client (Claude Code, Cursor, …) to pick up new tools.
+
 ### Import existing memories
 
 ```bash
