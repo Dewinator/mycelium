@@ -1,0 +1,170 @@
+{
+  "spike": "wave-3-mdns-fanout",
+  "started_at": "2026-05-02T22:35:22.269Z",
+  "platform": "darwin-arm64",
+  "node": "v25.9.0",
+  "package": "bonjour-service + node:http + node:child_process",
+  "config": {
+    "publishers": 3,
+    "discover_window_ms": 5000,
+    "publisher_lifetime_ms": 7000,
+    "body_self_cap_bytes": 65536
+  },
+  "spawn": {
+    "children_pids": [
+      84350,
+      84351,
+      84352
+    ],
+    "spawn_ms": 5
+  },
+  "discover": {
+    "window_ms": 5000,
+    "services_seen_total": 3,
+    "services_seen_ours": 3,
+    "expected": 3,
+    "duplicate_up_events": 0,
+    "services": [
+      {
+        "name": "mycelium-spike-84352",
+        "host": "Mac",
+        "port": 55144,
+        "addresses": [
+          "fe80::ea:a057:2619:b8d7",
+          "2a02:810b:e13:9f00:48d:a041:d9e5:9e10",
+          "192.168.0.6",
+          "2a02:810b:e13:9f00:e09b:89cd:953e:3340",
+          "2a02:810b:e13:9f00:ecc1:7a26:102b:ea63",
+          "2a02:810b:e13:9f00:e0bc:74ed:cad3:b1f6",
+          "2a02:810b:e13:9f00:8170:c133:1854:e0a6",
+          "2a02:810b:e13:9f00:c4ae:ec1d:df51:a16e",
+          "2a02:810b:e13:9f00:b096:ebec:ce00:fe35",
+          "2a02:810b:e13:9f00:3085:8da7:8468:13da",
+          "2a02:810b:e13:9f00:bdf9:a4a2:a571:b260",
+          "fe80::80da:8aff:feaf:fe14",
+          "fe80::80da:8aff:feaf:fe14"
+        ],
+        "txt": {
+          "url": "http://127.0.0.1:55144/.well-known/mycelium-node",
+          "node_id": "spike-84352",
+          "spec": "v1"
+        },
+        "first_seen_ms": 503,
+        "up_events": 1
+      },
+      {
+        "name": "mycelium-spike-84350",
+        "host": "Mac",
+        "port": 55142,
+        "addresses": [
+          "fe80::ea:a057:2619:b8d7",
+          "2a02:810b:e13:9f00:48d:a041:d9e5:9e10",
+          "192.168.0.6",
+          "2a02:810b:e13:9f00:e09b:89cd:953e:3340",
+          "2a02:810b:e13:9f00:ecc1:7a26:102b:ea63",
+          "2a02:810b:e13:9f00:e0bc:74ed:cad3:b1f6",
+          "2a02:810b:e13:9f00:8170:c133:1854:e0a6",
+          "2a02:810b:e13:9f00:c4ae:ec1d:df51:a16e",
+          "2a02:810b:e13:9f00:b096:ebec:ce00:fe35",
+          "2a02:810b:e13:9f00:3085:8da7:8468:13da",
+          "2a02:810b:e13:9f00:bdf9:a4a2:a571:b260",
+          "fe80::80da:8aff:feaf:fe14",
+          "fe80::80da:8aff:feaf:fe14"
+        ],
+        "txt": {
+          "url": "http://127.0.0.1:55142/.well-known/mycelium-node",
+          "node_id": "spike-84350",
+          "spec": "v1"
+        },
+        "first_seen_ms": 575,
+        "up_events": 1
+      },
+      {
+        "name": "mycelium-spike-84351",
+        "host": "Mac",
+        "port": 55143,
+        "addresses": [
+          "fe80::ea:a057:2619:b8d7",
+          "2a02:810b:e13:9f00:48d:a041:d9e5:9e10",
+          "192.168.0.6",
+          "2a02:810b:e13:9f00:e09b:89cd:953e:3340",
+          "2a02:810b:e13:9f00:ecc1:7a26:102b:ea63",
+          "2a02:810b:e13:9f00:e0bc:74ed:cad3:b1f6",
+          "2a02:810b:e13:9f00:8170:c133:1854:e0a6",
+          "2a02:810b:e13:9f00:c4ae:ec1d:df51:a16e",
+          "2a02:810b:e13:9f00:b096:ebec:ce00:fe35",
+          "2a02:810b:e13:9f00:3085:8da7:8468:13da",
+          "2a02:810b:e13:9f00:bdf9:a4a2:a571:b260",
+          "fe80::80da:8aff:feaf:fe14",
+          "fe80::80da:8aff:feaf:fe14"
+        ],
+        "txt": {
+          "url": "http://127.0.0.1:55143/.well-known/mycelium-node",
+          "node_id": "spike-84351",
+          "spec": "v1"
+        },
+        "first_seen_ms": 625,
+        "up_events": 1
+      }
+    ]
+  },
+  "fetch": {
+    "parallel_total_ms": 28,
+    "max_fetch_ms": 23,
+    "sum_fetch_ms": 63,
+    "all_ok": true,
+    "all_txt_body_node_id_match": true,
+    "results": [
+      {
+        "name": "mycelium-spike-84352",
+        "url": "http://127.0.0.1:55144/.well-known/mycelium-node",
+        "ok": true,
+        "status": 200,
+        "ms": 23,
+        "bytes": 263,
+        "capped": false,
+        "shape": {
+          "ok": true,
+          "node_id": "spike-84352"
+        },
+        "txt_node_id_matches_body": true
+      },
+      {
+        "name": "mycelium-spike-84350",
+        "url": "http://127.0.0.1:55142/.well-known/mycelium-node",
+        "ok": true,
+        "status": 200,
+        "ms": 20,
+        "bytes": 263,
+        "capped": false,
+        "shape": {
+          "ok": true,
+          "node_id": "spike-84350"
+        },
+        "txt_node_id_matches_body": true
+      },
+      {
+        "name": "mycelium-spike-84351",
+        "url": "http://127.0.0.1:55143/.well-known/mycelium-node",
+        "ok": true,
+        "status": 200,
+        "ms": 20,
+        "bytes": 263,
+        "capped": false,
+        "shape": {
+          "ok": true,
+          "node_id": "spike-84351"
+        },
+        "txt_node_id_matches_body": true
+      }
+    ]
+  },
+  "totals": {
+    "all_seen": true,
+    "all_fetched_ok": true,
+    "all_txt_body_match": true,
+    "max_first_seen_ms": 625,
+    "parallel_speedup_vs_serial": 2.25
+  },
+  "finished_at": "2026-05-02T22:35:29.929Z"
+}

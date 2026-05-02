@@ -135,6 +135,43 @@ This spike answers four concrete questions:
   in the happy-path spike's `fetchUrl`, so the implementation issue
   ("Concrete next steps" #1) inherits them as a reference shape rather
   than as bolt-on acceptance criteria.
+
+  **Multi-publisher fan-out (2026-05-03 — `experiments/swarm-discovery/spike-mdns-fanout.mjs`,
+  `report-mdns-fanout.json`):** the prior spikes proved one publisher and
+  one discoverer. The use cases this layer actually has to serve are
+  multi-peer — Reed's "two laptops on home WiFi" is N=2; an office WiFi
+  is N≈5–20; the threat-model section caps the candidate-URL queue at
+  256 per cycle without any evidence about how `bonjour-service` behaves
+  at the *practical* small N. The fan-out spike spawns N publisher
+  subprocesses (each its own pid → its own `node_id`, ephemeral HTTP
+  port, and instance name `mycelium-spike-<pid>`) and runs a single
+  discoverer that browses for `_mycelium._tcp.local`, dedupes by
+  instance name, then fetches and shape-checks every distinct
+  advertisement in parallel. Empirical results on macOS-arm64
+  (Node 25.9):
+  - **N=3** (the home-WiFi case): all 3 services discovered, zero
+    duplicate `up` events, max first-seen at 625 ms, parallel fetch of
+    all 3 advertisements in 28 ms (vs 63 ms serial sum — 2.25× speedup
+    confirms true concurrency, not silent serialisation), all shape
+    checks pass, all 3 TXT-advertised `node_id` values match the
+    `node_id` inside the fetched body.
+  - **N=10** (the office-WiFi case): all 10 services discovered, zero
+    duplicates, max first-seen at 1088 ms, parallel fetch in 61 ms (max
+    single fetch 50 ms), all shape checks pass, all TXT↔body node_id
+    matches hold.
+
+  Three properties are now empirically backed instead of assumed:
+  *(i)* `bonjour-service` surfaces N concurrent publishers as N distinct
+  `up` events keyed by stable instance names — a discoverer can tell N
+  peers apart without seeing one peer N times. *(ii)* The fetch path
+  fans out in parallel — the implementation can issue all candidate
+  fetches concurrently without serialising on a single in-flight slot.
+  *(iii)* The TXT-claimed `node_id` and the body-served `node_id` are a
+  free cross-channel consistency check before the (more expensive)
+  Ed25519 verification — the implementation should keep this as the
+  cheap first filter. The 256-cap in the threat model is now the
+  defensive ceiling above proven small-N behaviour, not above an
+  unknown.
 - **WAN discovery: `js-libp2p` with a Kademlia DHT** (`@libp2p/kad-dht`),
   using only **public bootstrap nodes operated by mycelium users
   themselves** — never IPFS-network bootstrap. The DHT key is the
