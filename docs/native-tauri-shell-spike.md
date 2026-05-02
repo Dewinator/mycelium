@@ -157,6 +157,21 @@ The epic's per-OS paths (`~/Library/Application Support/mycelium/`, `%APPDATA%\m
 
 The mcp-server side does NOT learn any platform-specific path logic. It receives `MYCELIUM_DATA_DIR` as an env var at sidecar spawn (see decision 3). Sub-task 7's migration wizard (already speced in `docs/native-migration-spike.md`) writes into the same dir.
 
+## Wave-3 forward-compatibility — preserve, don't implement
+
+Sub-task 3 ships **before** Wave 3 (P2P discovery, see [`swarm-discovery-spike.md`](swarm-discovery-spike.md)). The implementer should make four small choices that cost nothing now but keep Wave 3 unblocked. Skipping them means a future tick has to retrofit Tauri capability config, which is a release-build change, not a code change.
+
+| Wave-3 need | What sub-task 3 should do | What sub-task 3 must NOT do |
+|---|---|---|
+| **mDNS responder/browser** in the Node sidecar (`bonjour-service`, UDP multicast on 224.0.0.251:5353) | Tauri 2 capability config: allow the sidecar process to bind UDP and accept inbound from the LAN. Document this in `app/src-tauri/capabilities/default.json` even if the dependency isn't pulled in yet. | Don't sandbox the sidecar with an outbound-only network capability. Reverting that later would require re-signing/re-notarizing, not just a sidecar rebuild. |
+| **Wire HTTPS listener** at a separate port from the dashboard HTTP | Spawn the sidecar with TWO env vars: `MYCELIUM_DASHBOARD_PORT=8787` (HTTP, localhost-only) and `MYCELIUM_WIRE_PORT=8443` (HTTPS, all interfaces — actual binding decided by sidecar at runtime). The dashboard webview keeps using `http://127.0.0.1:8787`; the wire port stays unused until Wave 2/3 needs it. | Don't assume a single port serves both surfaces. The wire endpoint MUST NOT be reachable from a regular browser tab — separating ports is the simplest enforcement. |
+| **Network-change / wake hooks** to re-announce mDNS after sleep or interface flip | Pass through Tauri's `RunEvent::Resumed` and macOS `NWPathMonitor` / Win `NetworkChange` / Linux `NetworkManager` D-Bus signals to the sidecar via either a Tauri command (`notify_network_change`) or a stdout sentinel. Wire only one or two minimal hooks; bonjour-service consumes them in Wave 3. | Don't write the bonjour-service integration itself. That's Wave 3 work. Just make the *signal* available. |
+| **Self-signed cert provisioning at first launch** for the wire HTTPS port | Add a `MYCELIUM_DATA_DIR/wire-cert/` directory creation step to the boot sequence (decision 3, step 2). Leave it empty for now. | Don't generate the cert in sub-task 3 — that's a Wave-2/3 ticket. Just reserve the path so the migration wizard (sub-task 7) doesn't have to special-case it later. |
+
+Net cost to sub-task 3: ~10 lines of `tauri.conf.json` capability spec + one extra env var + one directory `mkdir`. Net Wave-3 benefit: the only Wave-3 work that touches the *Rust* side disappears — Wave 3 becomes pure Node/sidecar code.
+
+This is the "design substrate" the discovery spike asked for at line 22 of `swarm-discovery-spike.md`: *"v1.x design decisions still in flight (Tauri shell, sidecar lifecycle, native net permissions) can keep Wave 3's needs in view instead of having to be retrofitted."*
+
 ## What this spike does NOT answer
 
 Honest list of unknowns that need empirical work in the implementation tick(s):
