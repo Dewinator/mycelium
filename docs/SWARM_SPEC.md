@@ -623,16 +623,16 @@ swarm-labelled phase merges to `main`.
 | 4b — `wire-types.ts` v1.1 fields + JCS validator update | §3.1 | [#102](https://github.com/Dewinator/mycelium/issues/102) | `a33a5e5`, `dd68ab0` | ✅ on `main` |
 | 4c — Evidence Merkle builder service | §3.7.1 | [#103](https://github.com/Dewinator/mycelium/issues/103) | `289ac96` | ✅ on `main` |
 | 4d — `prev_lesson_hash` chain table (migration 074) | §3.7.2 | [#104](https://github.com/Dewinator/mycelium/issues/104) | `09c64b8` | ✅ on `main` |
-| 4d follow-up — Producer-side `lesson_chain` hook (`signLessonAndAppendToChain`) | §3.7.2 | [#136](https://github.com/Dewinator/mycelium/issues/136) | — | 🟡 PR [#146](https://github.com/Dewinator/mycelium/pull/146) open |
+| 4d follow-up — Producer-side `lesson_chain` hook (`signLessonAndAppendToChain`) | §3.7.2 | [#136](https://github.com/Dewinator/mycelium/issues/136) | `caca93b` (substrate) | ✅ substrate on `main`; producer-flow wiring in [#162](https://github.com/Dewinator/mycelium/pull/162) (swarm_publish_tier_a_lesson) |
 | 4e — `/swarm/lessons/{id}/proof` endpoint | §4.6 | [#105](https://github.com/Dewinator/mycelium/issues/105) | `a78f436` (substrate), `170d7cc` (endpoint) | ✅ on `main` |
 | 4f — TrustEdge auto-tuning + quarantine (migration 075) | §10.1, §10.2 | [#107](https://github.com/Dewinator/mycelium/issues/107) | `25bf3a8` | ✅ on `main` |
-| 4f.1 — Trust-edge decay + quarantine release sweeps (migration 083) | §10.1, §10.2 | [#141](https://github.com/Dewinator/mycelium/issues/141) | — | 🟡 PR open (this branch) |
+| 4f.1 — Trust-edge decay + quarantine release sweeps (migration 083) | §10.1, §10.2 | [#141](https://github.com/Dewinator/mycelium/issues/141) | `014d154` | ✅ on `main` |
 | 4g — ConscienceAgent contradicts-trigger (migration 080) | §10.3 | [#108](https://github.com/Dewinator/mycelium/issues/108) | `6d59674` | ✅ on `main` |
 | 4h — REM self-audit pass (§10.5 falsification arrow) | §10.5 | [#109](https://github.com/Dewinator/mycelium/issues/109) | `8cad92f` | ✅ on `main` |
 | 4i.1 — Two-tier pinning + broadcast firewall (migration 078) | §10.4, §10.6 | [#114](https://github.com/Dewinator/mycelium/issues/114) | `db98ea0` | ✅ on `main` |
 | 4i.2 — REM promotion-audit Tier-B → Tier-A (migration 081, §10.6 promote arrow) | §10.6 | [#114](https://github.com/Dewinator/mycelium/issues/114) | `69dd87c` | ✅ on `main` |
 | 4i.3 — Anti-echo-chamber receiver-cohort diversity pass (migration 082) | §10.4 | [#114](https://github.com/Dewinator/mycelium/issues/114) | `dc88488` | ✅ on `main` |
-| 4i.3 follow-up — digest.ts step 3.7 wiring of §10.4 diversity pass | §10.4 | [#114](https://github.com/Dewinator/mycelium/issues/114) | — | 🟡 PR [#132](https://github.com/Dewinator/mycelium/pull/132) open |
+| 4i.3 follow-up — digest.ts step 3.7 wiring of §10.4 diversity pass | §10.4 | [#114](https://github.com/Dewinator/mycelium/issues/114) | `ba29e7c` | ✅ on `main` |
 | 4i.4 — Producer-side Tier-A tagging on local-lesson insert | §10.6 | _not yet issued_ | — | ⏳ spec-only |
 | 4j — Self-broadcast safety triggers (migration 085) | §10.6 | [#155](https://github.com/Dewinator/mycelium/pull/155) follow-up | `c4a545e` | ✅ on `main` |
 | 5 — Outbound peer discovery / gossip client | §3, §7 | _not yet issued_ | — | ⏳ spec-only |
@@ -641,17 +641,18 @@ swarm-labelled phase merges to `main`.
 | 8 — `HubAnchor` exchange | §4 | _not yet issued_ | — | ⏳ spec-only |
 | 9 — Diversity-preserving sync policy | §0.3, §10.4 | _not yet issued_ | — | ⏳ spec-only |
 
-Phase 4 substrate is fully on `main`: 4a–4i.3 plus the 4j self-broadcast
-safety triggers are all merged. Active wiring PRs in the queue tie this
-substrate into the agent + operator surfaces — issues
+Phase 4 substrate is fully on `main`: 4a–4i.3 plus the 4f.1 trust-edge
+decay sweeps and 4j self-broadcast safety triggers are all merged.
+Active wiring PRs in the queue tie this substrate into the agent +
+operator surfaces — issues
 [#136](https://github.com/Dewinator/mycelium/issues/136) (producer-side
-`lesson_chain` hook in `record_lesson`),
+`lesson_chain` hook — substrate merged, producer-flow wiring pending in
+PR [#162](https://github.com/Dewinator/mycelium/pull/162)),
 [#137](https://github.com/Dewinator/mycelium/issues/137) (REM digest
 wiring), [#138](https://github.com/Dewinator/mycelium/issues/138)
 (inbound `/swarm/lessons` admission),
 [#139](https://github.com/Dewinator/mycelium/issues/139) (outbound feed
-broadcaster), [#141](https://github.com/Dewinator/mycelium/issues/141)
-(trust-edge decay sweep),
+broadcaster),
 [#142](https://github.com/Dewinator/mycelium/issues/142) (operator
 contradict/quarantine actions) and
 [#143](https://github.com/Dewinator/mycelium/issues/143) (MCP tool
