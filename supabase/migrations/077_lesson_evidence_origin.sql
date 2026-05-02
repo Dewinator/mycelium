@@ -202,7 +202,7 @@ GRANT EXECUTE ON FUNCTION record_lesson_evidence(UUID, TEXT[])
 -- table separately — this RPC's job is just the leaf lookup.
 -- ---------------------------------------------------------------------------
 CREATE OR REPLACE FUNCTION get_lesson_evidence(p_lesson_id UUID)
-RETURNS TABLE (position INT, hashed_experience_id TEXT)
+RETURNS TABLE ("position" INT, hashed_experience_id TEXT)
 LANGUAGE sql STABLE
 AS $$
   SELECT position, hashed_experience_id
