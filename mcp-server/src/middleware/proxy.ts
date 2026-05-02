@@ -20,8 +20,9 @@
  * - **No auth in this layer.** Bearer tokens (if present) flow through
  *   transparently. mycelium runs on localhost; production deployment is
  *   out of scope for this skeleton.
- * - **Auto-Digest hook is a TODO marker, not active.** N4 wires the digest
- *   trigger; this proxy just leaves the hook-points labeled. Issue #4.
+ * - **Auto-Digest is active.** Idle-30min trigger via SessionTracker.reapIdle()
+ *   on a periodic tick. Disable with `MYCELIUM_PROXY_AUTO_DIGEST=0`. Issue #4
+ *   landed (N4 + N9).
  *
  * Default config:
  *   MYCELIUM_PROXY_PORT  = 18794   (1879x family, next free after motivation)
