@@ -1209,6 +1209,32 @@
     .contradicts-row { grid-template-columns: 1fr; }
     .contradicts-row .vs { padding: 4px 0; }
   }
+  /* Operator actions for §10.3 contradicts — three-button row, sits below the
+     A↯B preview. Inline confirm via window.confirm() to keep the slice tight
+     (modals would pull in dialog wiring this card doesn't otherwise need).    */
+  .contradicts-actions {
+    display: flex; gap: 8px; flex-wrap: wrap;
+    margin: -2px 0 14px 4px;
+  }
+  .contradicts-actions button {
+    background: var(--bg-elev); color: var(--text); border: 1px solid var(--border);
+    padding: 4px 10px; border-radius: var(--radius-sm); font: inherit; font-size: 12px;
+    cursor: pointer; transition: background .15s, border-color .15s;
+  }
+  .contradicts-actions button:hover {
+    background: var(--bg-elev-2); border-color: var(--text-faint);
+  }
+  .contradicts-actions button.keep {
+    border-color: color-mix(in srgb, var(--good) 40%, var(--border));
+    color: var(--good);
+  }
+  .contradicts-actions button.park {
+    border-color: color-mix(in srgb, var(--text-faint) 40%, var(--border));
+    color: var(--text-dim);
+  }
+  .contradicts-actions button:disabled {
+    opacity: 0.5; cursor: progress;
+  }
 
   /* Diversity heat — small horizontal bar showing concentration.             */
   .heat-bar {
@@ -3405,8 +3431,19 @@ async function loadSwarm() {
             <div class="preview">${escapeHtml((c.b_content || "").slice(0, 220))}</div>
           </div>
         </div>
-        <div class="meta" style="margin: -4px 0 14px 4px">erkannt ${formatDate(c.detected_at)} · ${escapeHtml(c.reason || "")}</div>
+        <div class="meta" style="margin: -4px 0 4px 4px">erkannt ${formatDate(c.detected_at)} · ${escapeHtml(c.reason || "")}</div>
+        <div class="contradicts-actions" data-pair-id="${escapeHtml(c.id)}">
+          <button class="keep" data-decision="a">${tt("swarm.contradict.keep_a")}</button>
+          <button class="keep" data-decision="b">${tt("swarm.contradict.keep_b")}</button>
+          <button class="park" data-decision="park">${tt("swarm.contradict.park")}</button>
+        </div>
       `).join("");
+      contraBox.querySelectorAll(".contradicts-actions button").forEach(btn => {
+        btn.addEventListener("click", () => {
+          const row = btn.closest(".contradicts-actions");
+          resolveContradict(row.dataset.pairId, btn.dataset.decision, row);
+        });
+      });
     }
 
     // ── Promotion timeline ───────────────────────────────────────────────
@@ -3479,6 +3516,35 @@ async function loadSwarm() {
 
 function kpiTile(label, value, hint, valueCls = "") {
   return `<div class="card kpi"><div class="label">${escapeHtml(label)}</div><div class="value ${valueCls}">${escapeHtml(String(value))}</div><div class="hint">${escapeHtml(hint || "")}</div></div>`;
+}
+
+// Operator-side resolution of a §10.3 contradict pair. POSTs to the
+// dashboard-server endpoint that wraps the operator_resolve_contradict RPC
+// (migration 086). Re-fetches the schwarm panel on success so the resolved
+// row drops out of the active view; on failure surfaces the RPC error string
+// so the operator can see why (already-resolved, unknown pair_id, etc.).
+async function resolveContradict(pairId, decision, rowEl) {
+  const promptKey = decision === "a" ? "swarm.contradict.confirm.keep_a"
+                  : decision === "b" ? "swarm.contradict.confirm.keep_b"
+                  : "swarm.contradict.confirm.park";
+  if (!window.confirm(tt(promptKey))) return;
+  const buttons = rowEl ? rowEl.querySelectorAll("button") : [];
+  buttons.forEach(b => { b.disabled = true; });
+  try {
+    const r = await fetch("/swarm/contradict-resolve", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ pair_id: pairId, decision }),
+    });
+    if (!r.ok) {
+      const body = await r.json().catch(() => ({}));
+      throw new Error(body.detail || body.error || `HTTP ${r.status}`);
+    }
+    await loadSwarm();
+  } catch (e) {
+    window.alert(tt("swarm.contradict.error", { detail: String(e.message || e) }));
+    buttons.forEach(b => { b.disabled = false; });
+  }
 }
 
 function shortNode(nodeId) {

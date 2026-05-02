@@ -972,8 +972,11 @@ async function handleSwarmOverview(_req, res) {
       pgGet("nodes?select=node_id,display_name,is_self,trust_weight,trust_reason,last_seen_at,quarantined_until,consecutive_rejections&is_self=eq.false&order=last_seen_at.desc.nullslast&limit=20"),
       // §10.1/10.2 trust_edge_log — last 15 movements (display_name resolved below)
       pgGet("trust_edge_log?select=id,node_id,weight_before,weight_after,reason,at&order=at.desc&limit=15"),
-      // §10.3 swarm_lesson_contradictions — top 10 most recent
-      pgGet("swarm_lesson_contradictions?select=id,a_id,b_id,cosine_similarity,confidence,reason,detected_at,evidence_count&order=detected_at.desc&limit=10"),
+      // §10.3 swarm_lesson_contradictions — top 10 most recent. Reads the
+      // "active" view (migration 086) so operator-resolved or REM-falsified
+      // pairs drop out of the dashboard automatically without an extra
+      // application-level filter.
+      pgGet("swarm_lesson_contradictions_active?select=id,a_id,b_id,cosine_similarity,confidence,reason,detected_at,evidence_count&order=detected_at.desc&limit=10"),
       // §10.6 tier_promotion_log — top 15 promotions
       pgGet("tier_promotion_log?select=id,lesson_id,from_tier,to_tier,reason,evidence_ids,at&order=at.desc&limit=15"),
       // §10.4 lesson_diversity_log — top 15 audits
@@ -984,7 +987,7 @@ async function handleSwarmOverview(_req, res) {
         pgGet("swarm_lessons?select=id&lesson_tier=eq.B&limit=1000"),
         pgGet("nodes?select=node_id&is_self=eq.false&limit=1000"),
         pgGet("nodes?select=node_id&is_self=eq.false&quarantined_until=gt.now&limit=1000"),
-        pgGet("swarm_lesson_contradictions?select=id&limit=1000"),
+        pgGet("swarm_lesson_contradictions_active?select=id&limit=1000"),
         pgGet(`tier_promotion_log?select=id&at=gte.${new Date(Date.now() - 30 * 86400_000).toISOString()}&limit=1000`),
         pgGet("lesson_diversity_log?select=id,over_concentration&limit=1000"),
       ]),
