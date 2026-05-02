@@ -1,0 +1,44 @@
+{
+  "spike": "issue-178-embed",
+  "started_at": "2026-05-02T12:25:06.902Z",
+  "platform": "darwin-arm64",
+  "node": "v25.9.0",
+  "quant": "Q5_K_M",
+  "sample_count": 20,
+  "steps": {
+    "runtime": {
+      "gpu": "metal",
+      "ms_init": 134.87524999999994
+    },
+    "model_load": {
+      "ok": true,
+      "ms": 8983.064375,
+      "uri": "hf:nomic-ai/nomic-embed-text-v1.5-GGUF/nomic-embed-text-v1.5.Q5_K_M.gguf",
+      "size_mb": 94,
+      "train_ctx": 2048,
+      "embedding_vector_size": 768
+    },
+    "dimension_check": {
+      "ok": true
+    },
+    "llama_bench": {
+      "samples": 20,
+      "total_ms": 545.2517900000021,
+      "avg_ms": 27.262589500000104,
+      "p95_ms": 256.1023330000007,
+      "rss_delta_mb": 3,
+      "rss_after_mb": 344,
+      "vec_dim": 768,
+      "vec_norm": "20.4110"
+    },
+    "ollama_bench": {
+      "model": "nomic-embed-text",
+      "samples": 20,
+      "total_ms": 430.23108100000354,
+      "avg_ms": 21.51155405000018,
+      "p95_ms": 32.51145800000086
+    }
+  },
+  "finished_at": "2026-05-02T12:25:18.413Z",
+  "verdict": "llama.cpp 20 embeds · avg 27.3 ms · p95 256.1 ms · 768d · rss 344 MB · ollama avg 21.5 ms · ratio 1.27x"
+}

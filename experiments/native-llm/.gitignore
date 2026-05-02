@@ -1,0 +1,7 @@
+node_modules/
+package-lock.json
+models/
+report-chat-response.txt
+# Committed: report-*.json under version control as spike reference data.
+# Future ad-hoc runs go here:
+report-local-*.json

@@ -1,0 +1,19 @@
+{
+  "name": "mycelium-spike-native-llm",
+  "version": "0.0.1",
+  "private": true,
+  "description": "Spike 2 (issue #178): validate node-llama-cpp as in-process replacement for Ollama (embeddings + chat). Throwaway-by-design — promote to mcp-server only if Path A is approved.",
+  "type": "module",
+  "scripts": {
+    "spike:embed": "node spike-embed.mjs",
+    "spike:chat": "node spike-chat.mjs",
+    "spike:probe": "node spike-probe.mjs"
+  },
+  "dependencies": {
+    "node-llama-cpp": "^3.4.0",
+    "ollama": "^0.5.9"
+  },
+  "engines": {
+    "node": ">=20"
+  }
+}
