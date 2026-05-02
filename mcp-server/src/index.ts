@@ -165,6 +165,10 @@ import { SwarmPeersService } from "./services/swarm-peers.js";
 import {
   swarmListPeersSchema, swarmListPeers,
 } from "./tools/swarm-peers.js";
+import { SwarmAdmitService } from "./services/swarm-admit.js";
+import {
+  swarmAdmitLessonSchema, swarmAdmitLessonHandler,
+} from "./tools/swarm-admit.js";
 import {
   getSelfModelSchema, getSelfModel,
   updateSelfModelSchema, updateSelfModel,
@@ -236,6 +240,7 @@ const relationsService      = new RelationsService(SUPABASE_URL, SUPABASE_KEY);
 const nodeIdentityService   = new NodeIdentityService(SUPABASE_URL, SUPABASE_KEY);
 const swarmPinService       = new SwarmPinService(SUPABASE_URL, SUPABASE_KEY);
 const swarmPeersService     = new SwarmPeersService(SUPABASE_URL, SUPABASE_KEY);
+const swarmAdmitService     = new SwarmAdmitService(SUPABASE_URL, SUPABASE_KEY);
 const remAuditService       = new RemAuditService(SUPABASE_URL, SUPABASE_KEY);
 const remPromotionService   = new RemPromotionService(SUPABASE_URL, SUPABASE_KEY);
 const remDiversityService   = new RemDiversityService(SUPABASE_URL, SUPABASE_KEY);
@@ -902,6 +907,25 @@ server.tool(
   "List swarm peers known to this node with their §10 trust state: trust_weight, quarantine flag, last_seen_at, last decay reason, latest trust_edge_log delta, and 24h admission count. Pass includeSelf=true to also return the self row. Read-only.",
   swarmListPeersSchema.shape,
   withErrorHandling((input) => swarmListPeers(swarmPeersService, swarmListPeersSchema.parse(input)))
+);
+
+// --- swarm phase 4 write-side: receiver-side admission (issue #143, last) ---
+// Fifth and final write-side slice of issue #143's MCP-tool surface. Runs a
+// v1.1 Lesson envelope through the same admission pipeline the
+// `POST /swarm/lessons` HTTP endpoint uses (PR #154 substrate, PR #163
+// wiring) — useful for local single-node integration testing without
+// spinning up a second peer. §10.6 firebreak: every admitted row lands at
+// lesson_tier='B' regardless of how it arrived; promotion to A is the
+// exclusive job of RemPromotionService (corroboration) or swarm_pin_lesson
+// (operator override). Behind OPENCLAW_ALLOW_SWARM_WRITE=1 (mirrors
+// swarm_pin_lesson and swarm_resolve_contradict).
+server.tool(
+  "swarm_admit_lesson",
+  "Receiver-side test entrypoint: take a v1.1 Lesson envelope (object) and run the same admission pipeline `POST /swarm/lessons` uses. Returns {ok, decision, lesson_id?, lesson_tier='B', contradicts_with?, trust_delta?, origin_node_id?, rule?, quarantined?, fix_hint?}. §10.6 firebreak: admitted rows always land at Tier-B. REQUIRES OPENCLAW_ALLOW_SWARM_WRITE=1 — refuses with a structured error otherwise. Also writes a 'decisions'-category memory tagged 'swarm' on a 201 (best-effort).",
+  swarmAdmitLessonSchema.shape,
+  withErrorHandling((input) =>
+    swarmAdmitLessonHandler(swarmAdmitService, memoryService, swarmAdmitLessonSchema.parse(input)),
+  ),
 );
 
 /* DEFERRED 2026-04-26 — pairing (tinder) + federation-PKI + federation Phase 2.
