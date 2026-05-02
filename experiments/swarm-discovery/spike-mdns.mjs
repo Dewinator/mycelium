@@ -37,6 +37,12 @@ const MODE_BOTH = !MODE_PUBLISH && !MODE_DISCOVER;
 const SERVICE_TYPE = "mycelium";
 const SERVICE_PORT = 8787; // mirrors the existing dashboard/HTTP port
 const DISCOVER_TIMEOUT_MS = MODE_DISCOVER ? 30_000 : 5_000;
+// In publish-only mode the responder must outlive a separate discoverer
+// process. Default is "run until SIGINT", or a fixed window via env so the
+// two-process test can be scripted (e.g. SPIKE_PUBLISH_MS=15000).
+const PUBLISH_LIFETIME_MS = MODE_PUBLISH
+  ? Number(process.env.SPIKE_PUBLISH_MS) || 0  // 0 = forever / SIGINT
+  : 0;
 const FAKE_NODE_ID = `spike-${process.pid}`;
 const FAKE_ADV_URL = `http://${hostname()}.local:${SERVICE_PORT}/.well-known/mycelium-node`;
 
@@ -130,12 +136,33 @@ async function main() {
   if (MODE_PUBLISH || MODE_BOTH) await publish();
   if (MODE_DISCOVER || MODE_BOTH) await discover();
 
+  if (MODE_PUBLISH) {
+    // Hold the responder open so a separate discoverer process can find us.
+    // Without this the publisher would shut down 250 ms after publish().
+    report.steps.serve = { lifetime_ms: PUBLISH_LIFETIME_MS || "until-sigint" };
+    await holdOpen(PUBLISH_LIFETIME_MS);
+  }
+
   // Clean shutdown — leaving an mDNS responder dangling pollutes the LAN.
   if (browser) browser.stop();
   if (publisher) publisher.stop();
   bonjour.destroy();
 
   finalize();
+}
+
+function holdOpen(ms) {
+  return new Promise((resolve) => {
+    let done = false;
+    const finish = () => {
+      if (done) return;
+      done = true;
+      resolve();
+    };
+    process.once("SIGINT", finish);
+    process.once("SIGTERM", finish);
+    if (ms > 0) setTimeout(finish, ms);
+  });
 }
 
 function finalize() {

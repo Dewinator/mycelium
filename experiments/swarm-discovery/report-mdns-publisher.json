@@ -1,0 +1,28 @@
+{
+  "spike": "wave-3-mdns",
+  "started_at": "2026-05-02T21:23:41.489Z",
+  "platform": "darwin-arm64",
+  "node": "v25.9.0",
+  "package": "bonjour-service",
+  "mode": "publish-only",
+  "service": {
+    "type": "mycelium",
+    "fqdn": "_mycelium._tcp.local",
+    "port": 8787,
+    "txt": {
+      "url": "http://Mac.local:8787/.well-known/mycelium-node",
+      "node_id": "spike-80250",
+      "spec": "v1"
+    }
+  },
+  "steps": {
+    "publish": {
+      "ok": true,
+      "ms": 253
+    },
+    "serve": {
+      "lifetime_ms": 20000
+    }
+  },
+  "finished_at": "2026-05-02T21:24:01.756Z"
+}
