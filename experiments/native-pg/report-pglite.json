@@ -1,0 +1,223 @@
+{
+  "spike": "issue-177-pglite",
+  "started_at": "2026-05-02T11:55:58.419Z",
+  "platform": "darwin-arm64",
+  "node": "v25.9.0",
+  "package": "@electric-sql/pglite",
+  "steps": {
+    "init": {
+      "ok": true,
+      "ms": 5341.294
+    },
+    "version": "17.5",
+    "relevant_extensions": [
+      {
+        "name": "pg_trgm",
+        "default_version": "1.6"
+      },
+      {
+        "name": "plpgsql",
+        "default_version": "1.0"
+      },
+      {
+        "name": "uuid-ossp",
+        "default_version": "1.1"
+      },
+      {
+        "name": "vector",
+        "default_version": "0.8.1"
+      }
+    ],
+    "create_extension_vector": {
+      "ok": true,
+      "installed_version": "0.8.1"
+    },
+    "migrations": {
+      "total_files": 78,
+      "attempted": 35,
+      "walked": [
+        {
+          "file": "001_enable_pgvector.sql",
+          "ok": true,
+          "ms": 1
+        },
+        {
+          "file": "002_create_memories_table.sql",
+          "ok": true,
+          "ms": 54
+        },
+        {
+          "file": "003_create_search_functions.sql",
+          "ok": true,
+          "ms": 3
+        },
+        {
+          "file": "004_optimize_indexes.sql",
+          "ok": true,
+          "ms": 14
+        },
+        {
+          "file": "005_create_anon_role.sql",
+          "ok": true,
+          "ms": 24
+        },
+        {
+          "file": "006_fix_fts_language.sql",
+          "ok": true,
+          "ms": 14
+        },
+        {
+          "file": "007_cognitive_memory.sql",
+          "ok": true,
+          "ms": 67
+        },
+        {
+          "file": "008_cognitive_search.sql",
+          "ok": true,
+          "ms": 7
+        },
+        {
+          "file": "009_cognitive_cron.sql",
+          "ok": true,
+          "ms": 4
+        },
+        {
+          "file": "010_cognitive_v2.sql",
+          "ok": true,
+          "ms": 14
+        },
+        {
+          "file": "011_service_role.sql",
+          "ok": true,
+          "ms": 19
+        },
+        {
+          "file": "012_dashboard_stats.sql",
+          "ok": true,
+          "ms": 2
+        },
+        {
+          "file": "013_dashboard_stats_v2.sql",
+          "ok": true,
+          "ms": 3
+        },
+        {
+          "file": "014_fix_forgotten_inserts.sql",
+          "ok": true,
+          "ms": 3
+        },
+        {
+          "file": "015_experiences.sql",
+          "ok": true,
+          "ms": 117
+        },
+        {
+          "file": "016_experiences_polish.sql",
+          "ok": true,
+          "ms": 33
+        },
+        {
+          "file": "017_soul_complete.sql",
+          "ok": true,
+          "ms": 61
+        },
+        {
+          "file": "018_longer_previews.sql",
+          "ok": true,
+          "ms": 5
+        },
+        {
+          "file": "019_agent_affect.sql",
+          "ok": true,
+          "ms": 15
+        },
+        {
+          "file": "020_experience_causes.sql",
+          "ok": true,
+          "ms": 31
+        },
+        {
+          "file": "021_skill_outcomes.sql",
+          "ok": true,
+          "ms": 26
+        },
+        {
+          "file": "022_motivation.sql",
+          "ok": true,
+          "ms": 63
+        },
+        {
+          "file": "023_self_model.sql",
+          "ok": true,
+          "ms": 15
+        },
+        {
+          "file": "024_agent_genome.sql",
+          "ok": true,
+          "ms": 48
+        },
+        {
+          "file": "025_emergence.sql",
+          "ok": true,
+          "ms": 24
+        },
+        {
+          "file": "026_sleep_cycles.sql",
+          "ok": true,
+          "ms": 16
+        },
+        {
+          "file": "027_genome_inheritance.sql",
+          "ok": true,
+          "ms": 27
+        },
+        {
+          "file": "028_agent_registry.sql",
+          "ok": true,
+          "ms": 29
+        },
+        {
+          "file": "029_provenance.sql",
+          "ok": true,
+          "ms": 34
+        },
+        {
+          "file": "030_genome_models.sql",
+          "ok": true,
+          "ms": 17
+        },
+        {
+          "file": "031_genome_lifecycle.sql",
+          "ok": true,
+          "ms": 8
+        },
+        {
+          "file": "032_guard_events.sql",
+          "ok": true,
+          "ms": 22
+        },
+        {
+          "file": "037_pki_lineage.sql",
+          "ok": true,
+          "ms": 166
+        },
+        {
+          "file": "039_host_identity.sql",
+          "ok": true,
+          "ms": 33
+        },
+        {
+          "file": "040_signed_revocations.sql",
+          "ok": false,
+          "error": "relation \"revoked_keys\" does not exist"
+        }
+      ],
+      "first_failure": {
+        "file": "040_signed_revocations.sql",
+        "error": "relation \"revoked_keys\" does not exist"
+      },
+      "all_green": false
+    }
+  },
+  "finished_at": "2026-05-02T11:56:05.255Z"
+}
