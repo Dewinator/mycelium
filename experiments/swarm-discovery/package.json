@@ -16,7 +16,9 @@
     "spike:self-filter": "node spike-mdns-self-filter.mjs",
     "spike:churn": "node spike-mdns-churn.mjs",
     "spike:heartbeat": "node spike-mdns-heartbeat.mjs",
-    "spike:rejoin": "node spike-mdns-rejoin.mjs"
+    "spike:rejoin": "node spike-mdns-rejoin.mjs",
+    "spike:cold-rebrowse": "node spike-mdns-cold-rebrowse.mjs",
+    "spike:wake": "node spike-mdns-wake.mjs"
   },
   "dependencies": {
     "bonjour-service": "^1.3.0"

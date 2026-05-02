@@ -356,6 +356,67 @@ This spike answers four concrete questions:
   — long-lived browser for fresh peers, cold-rebrowse on eviction for
   rejoiners — is the production shape this chain of spikes converges
   on.
+
+  **Publisher-side wake / network-change re-announce (2026-05-03 —
+  `experiments/swarm-discovery/spike-mdns-wake.mjs`,
+  `report-mdns-wake.json`):** the rejoin and cold-rebrowse spikes both
+  modeled the publisher dying as a SIGKILL'd subprocess and respawning
+  as a fresh process. That's the right shape for "laptop closed and
+  reopened" but not for "laptop woke from sleep and rebound its mDNS
+  to a new IP without the publisher process restarting." The "Failure
+  modes on real LANs" entry above asserts the implementation must
+  re-run `bonjour.publish()` on `wake` and `network-change` Tauri OS
+  hooks; this spike empirically validates the publisher-side action
+  the implementation will take. Method: in a single Node process,
+  bring up an HTTP server on ephemeral port P1, publish
+  `mycelium-wake-A` via Bonjour A1 with TXT pointing at P1, start a
+  long-lived browser (Bonjour L), then trigger "wake" by destroying
+  A1, closing the P1 listener, opening a new HTTP listener on a fresh
+  ephemeral port P2 (the kernel almost always assigns a different
+  port; the spike aborts if not), creating a fresh Bonjour A2, and
+  publishing the same `mycelium-wake-A` instance with TXT pointing at
+  P2. Cold-rebrowse before and after the wake; observe the long-lived
+  browser throughout. **Empirical result on macOS-arm64 (Node 25.9):
+  clean.**
+  - **In-process destroy()+republish() wall time: 260 ms** end-to-end
+    (Bonjour destroy + HTTP server close + fresh HTTP listener +
+    fresh Bonjour publish). Comfortably sub-second. A Tauri OS-hook
+    callback can issue this without blocking the sidecar event loop
+    for visible time.
+  - **Pre-wake cold-rebrowse: P1 only.** The harvested entry for
+    `mycelium-wake-A` had port=59022, raw-event distinct-ports
+    set=`[59022]`. No stale state pre-existed.
+  - **Post-wake cold-rebrowse: P2 only.** The harvested entry had
+    port=59057 (the new ephemeral), raw-event distinct-ports set=
+    `[59057]`. **Crucially: zero events referenced the dead port
+    59022.** The macOS mDNSResponder daemon does NOT serve stale
+    port records to fresh browsers after the publisher's destroy() —
+    fresh-browser disambiguation by node_id+port is unnecessary for
+    this case (it would still be needed for a stale browser, hence
+    the cold-rebrowse-on-eviction design).
+  - **Long-lived browser fired ZERO `up` events post-wake** in the
+    full 8 s observation window. This is the same blind spot the
+    SIGKILL+respawn case showed (commits 0b3ec74, 2ed2768) — now
+    re-confirmed for the in-process destroy+republish path. The
+    discoverer-side cold-rebrowse-on-eviction mechanism the
+    cold-rebrowse spike validated is therefore the necessary AND
+    sufficient response on remote peers; the publisher's wake-hook
+    handler does not need to coordinate with peers via any
+    out-of-band channel.
+
+  Net effect: the implementation's wake/network-change handler is now
+  fully specified by empirical evidence on both sides of the wire.
+  Publisher-side: on the Tauri `wake` and `network-change` hooks,
+  destroy the Bonjour instance, tear down the HTTP listener, bring
+  up a fresh HTTP listener on whatever port becomes available, and
+  re-publish via a fresh `Bonjour()` instance with the same instance
+  name and node_id. Wall-time budget: <1 s, observed 260 ms.
+  Discoverer-side: nothing new — the cold-rebrowse-on-eviction path
+  the cold-rebrowse spike validated already handles the new port the
+  same way it handles a respawned subprocess. No additional
+  out-of-band signalling, no coordinated re-handshake, no separate
+  "wake" wire message. The two events look identical to a remote
+  peer.
 - **WAN discovery: `js-libp2p` with a Kademlia DHT** (`@libp2p/kad-dht`),
   using only **public bootstrap nodes operated by mycelium users
   themselves** — never IPFS-network bootstrap. The DHT key is the
@@ -677,7 +738,7 @@ issues exist yet on GitHub.
 
 | order | proposed issue title | scope | depends on |
 |---|---|---|---|
-| 1 | `feat(discovery): mDNS responder + browser in Tauri sidecar (L1)` | Add `bonjour-service`, advertise `_mycelium._tcp.local`, browse for the same, feed candidate URLs into the existing peer-pending pipeline, **and run a heartbeat-eviction loop on top** because `spike-mdns-churn.mjs` proved bonjour-service emits no `down` events for crashed publishers (zero in 15 s). Concrete liveness contract from `spike-mdns-heartbeat.mjs`: re-fetch every candidate's `/.well-known/mycelium-node` every 5 s with the existing 2 s timeout / 64 KiB body cap; 3 consecutive failures evict (15 s detection, ±3 ms on macOS); index by `node_id` (the spike caught a bug where indexing by spawn-order ≠ mDNS-up-order). **Plus an on-eviction cold-rebrowse path** because `spike-mdns-rejoin.mjs` proved the long-lived browser does NOT auto-resurface a restarted publisher (zero `up` events in 30 s) and `spike-mdns-cold-rebrowse.mjs` proved that instantiating a fresh `Bonjour()` browser, `find()`-ing for 2 s, harvesting, and destroying it surfaces the rejoined peer at ~1.3 s with the new ephemeral port — re-admit landed at 2005 ms from respawn, full kill→re-admitted-with-clean-heartbeat budget ≈ 18–23 s. Cold-rebrowse harvest is full-replacement (all node_ids seen overwrite candidate state, not delta). Long-lived browser is kept for initial discovery + survivor bookkeeping; cold-rebrowse handles rejoin. **Default on for the native app.** | Wave 1 (Tauri sidecar landed, #176) |
+| 1 | `feat(discovery): mDNS responder + browser in Tauri sidecar (L1)` | Add `bonjour-service`, advertise `_mycelium._tcp.local`, browse for the same, feed candidate URLs into the existing peer-pending pipeline, **and run a heartbeat-eviction loop on top** because `spike-mdns-churn.mjs` proved bonjour-service emits no `down` events for crashed publishers (zero in 15 s). Concrete liveness contract from `spike-mdns-heartbeat.mjs`: re-fetch every candidate's `/.well-known/mycelium-node` every 5 s with the existing 2 s timeout / 64 KiB body cap; 3 consecutive failures evict (15 s detection, ±3 ms on macOS); index by `node_id` (the spike caught a bug where indexing by spawn-order ≠ mDNS-up-order). **Plus an on-eviction cold-rebrowse path** because `spike-mdns-rejoin.mjs` proved the long-lived browser does NOT auto-resurface a restarted publisher (zero `up` events in 30 s) and `spike-mdns-cold-rebrowse.mjs` proved that instantiating a fresh `Bonjour()` browser, `find()`-ing for 2 s, harvesting, and destroying it surfaces the rejoined peer at ~1.3 s with the new ephemeral port — re-admit landed at 2005 ms from respawn, full kill→re-admitted-with-clean-heartbeat budget ≈ 18–23 s. Cold-rebrowse harvest is full-replacement (all node_ids seen overwrite candidate state, not delta). Long-lived browser is kept for initial discovery + survivor bookkeeping; cold-rebrowse handles rejoin. **Plus a publisher-side wake/network-change hook** that, on Tauri `wake` and `network-change` events, destroys the existing Bonjour instance, tears down the HTTP listener, brings up a fresh listener on whatever port becomes available, and re-publishes via a fresh `Bonjour()` — `spike-mdns-wake.mjs` proved this completes in 260 ms in-process, that the macOS mDNS daemon does NOT serve stale port records to fresh browsers after destroy, and that remote peers' cold-rebrowse-on-eviction path handles the new port identically to a SIGKILL+respawn (no separate "wake" wire message needed). **Default on for the native app.** | Wave 1 (Tauri sidecar landed, #176) |
 | 2 | `feat(discovery): "candidate peers" dashboard panel + promote action` | Surface mDNS hits to the operator with a "promote to trusted peer" button that flips `TrustEdge.weight` from 0 to `base_weight`. | issue 1 |
 | 3 | `feat(discovery): private libp2p Kademlia DHT client (L2), default-off` | Add `js-libp2p` + `@libp2p/kad-dht` behind `MYCELIUM_ENABLE_DHT=1`. Define the `/mycelium/kad/1.0.0` protocol id. Bootstrap list: Wave-2 nodes only. | Wave 2 (≥ 2 stable public peers) |
 | 4 | `feat(discovery): DHT pointer publish + lookup tool` | Sign and publish the URL pointer record on join; resolve `node_id → URL` on demand from the MCP tool surface. | issue 3 |

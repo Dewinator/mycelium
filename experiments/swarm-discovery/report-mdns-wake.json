@@ -1,0 +1,96 @@
+{
+  "spike": "wave-3-mdns-wake",
+  "started_at": "2026-05-02T23:37:08.449Z",
+  "platform": "darwin-arm64",
+  "node": "v25.9.0",
+  "package": "bonjour-service + node:http",
+  "config": {
+    "node_id": "wake-A",
+    "instance_name": "mycelium-wake-A",
+    "service_type": "mycelium",
+    "mdns_settle_ms": 4000,
+    "cold_settle_ms": 2000,
+    "post_wake_observe_ms": 8000,
+    "publish_grace_ms": 250
+  },
+  "publish_v1": {
+    "port": 59022,
+    "instance": "mycelium-wake-A",
+    "txt_url": "http://127.0.0.1:59022/"
+  },
+  "cold_rebrowse_pre_wake": {
+    "settle_window_ms": 2000,
+    "wall_time_ms": 2003,
+    "harvested_count": 1,
+    "harvested": [
+      {
+        "name": "mycelium-wake-A",
+        "node_id": "wake-A",
+        "url": "http://127.0.0.1:59022/",
+        "port": 59022,
+        "first_seen_ms": 4
+      }
+    ],
+    "raw_event_count": 1,
+    "sees_v1_port": true,
+    "distinct_ports_for_instance": [
+      59022
+    ]
+  },
+  "wake": {
+    "at": "2026-05-02T23:37:14.994Z",
+    "old_port": 59022,
+    "new_port": 59057,
+    "same_node_id": "wake-A",
+    "same_instance_name": "mycelium-wake-A",
+    "destroy_to_republish_ms": 260
+  },
+  "cold_rebrowse_post_wake": {
+    "settle_window_ms": 2000,
+    "wall_time_ms": 2002,
+    "harvested_count": 1,
+    "harvested": [
+      {
+        "name": "mycelium-wake-A",
+        "node_id": "wake-A",
+        "url": "http://127.0.0.1:59057/",
+        "port": 59057,
+        "first_seen_ms": 4
+      }
+    ],
+    "raw_event_count": 1,
+    "sees_v2_port": true,
+    "sees_stale_v1_port": false,
+    "distinct_ports_for_instance": [
+      59057
+    ],
+    "raw_events": [
+      {
+        "name": "mycelium-wake-A",
+        "node_id": "wake-A",
+        "url": "http://127.0.0.1:59057/",
+        "port": 59057,
+        "t_ms": 4
+      }
+    ]
+  },
+  "long_lived_browser": {
+    "total_up_events": 1,
+    "pre_wake_count": 1,
+    "post_wake_count": 0,
+    "pre_wake_events": [
+      {
+        "name": "mycelium-wake-A",
+        "node_id": "wake-A",
+        "url": "http://127.0.0.1:59022/",
+        "port": 59022,
+        "t_ms_from_start": 681,
+        "t_ms_from_wake": null,
+        "phase": "pre_wake"
+      }
+    ],
+    "post_wake_events": [],
+    "note": "If post_wake_count is zero, the long-lived browser shows the same blind spot as the SIGKILL+respawn case (spike-mdns-rejoin / spike-mdns-cold-rebrowse, commits 0b3ec74 and 2ed2768) — implementation must rely on cold-rebrowse on the discoverer side to surface the new port."
+  },
+  "finished_at": "2026-05-02T23:37:25.000Z"
+}
