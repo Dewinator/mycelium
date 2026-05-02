@@ -1,0 +1,138 @@
+{
+  "spike": "wave-3-mdns-self-echo-timing",
+  "started_at": "2026-05-02T23:45:40.987Z",
+  "platform": "darwin-arm64",
+  "node": "v25.9.0",
+  "package": "bonjour-service + node:http",
+  "config": {
+    "trials": 10,
+    "trial_window_ms": 5000,
+    "control_window_ms": 3000,
+    "teardown_guard_ms": 250
+  },
+  "trials": [
+    {
+      "trial": 0,
+      "own_node_id": "spike-self-echo-88583-t0",
+      "self_echo_ms": 800,
+      "timed_out": false,
+      "extraneous_self_ups": 0,
+      "other_ups": [],
+      "other_ups_total": 0
+    },
+    {
+      "trial": 1,
+      "own_node_id": "spike-self-echo-88583-t1",
+      "self_echo_ms": 936,
+      "timed_out": false,
+      "extraneous_self_ups": 0,
+      "other_ups": [],
+      "other_ups_total": 0
+    },
+    {
+      "trial": 2,
+      "own_node_id": "spike-self-echo-88583-t2",
+      "self_echo_ms": 802,
+      "timed_out": false,
+      "extraneous_self_ups": 0,
+      "other_ups": [],
+      "other_ups_total": 0
+    },
+    {
+      "trial": 3,
+      "own_node_id": "spike-self-echo-88583-t3",
+      "self_echo_ms": 946,
+      "timed_out": false,
+      "extraneous_self_ups": 0,
+      "other_ups": [],
+      "other_ups_total": 0
+    },
+    {
+      "trial": 4,
+      "own_node_id": "spike-self-echo-88583-t4",
+      "self_echo_ms": 765,
+      "timed_out": false,
+      "extraneous_self_ups": 0,
+      "other_ups": [],
+      "other_ups_total": 0
+    },
+    {
+      "trial": 5,
+      "own_node_id": "spike-self-echo-88583-t5",
+      "self_echo_ms": 827,
+      "timed_out": false,
+      "extraneous_self_ups": 0,
+      "other_ups": [],
+      "other_ups_total": 0
+    },
+    {
+      "trial": 6,
+      "own_node_id": "spike-self-echo-88583-t6",
+      "self_echo_ms": 898,
+      "timed_out": false,
+      "extraneous_self_ups": 0,
+      "other_ups": [],
+      "other_ups_total": 0
+    },
+    {
+      "trial": 7,
+      "own_node_id": "spike-self-echo-88583-t7",
+      "self_echo_ms": 983,
+      "timed_out": false,
+      "extraneous_self_ups": 0,
+      "other_ups": [],
+      "other_ups_total": 0
+    },
+    {
+      "trial": 8,
+      "own_node_id": "spike-self-echo-88583-t8",
+      "self_echo_ms": 952,
+      "timed_out": false,
+      "extraneous_self_ups": 0,
+      "other_ups": [],
+      "other_ups_total": 0
+    },
+    {
+      "trial": 9,
+      "own_node_id": "spike-self-echo-88583-t9",
+      "self_echo_ms": 772,
+      "timed_out": false,
+      "extraneous_self_ups": 0,
+      "other_ups": [],
+      "other_ups_total": 0
+    }
+  ],
+  "control": {
+    "own_node_id": "spike-self-echo-88583-control",
+    "window_ms": 3000,
+    "self_seen": false,
+    "other_seen": 0
+  },
+  "stats": {
+    "count": 10,
+    "min": 765,
+    "median": 898,
+    "p95": 983,
+    "max": 983,
+    "all_ms": [
+      765,
+      772,
+      800,
+      802,
+      827,
+      898,
+      936,
+      946,
+      952,
+      983
+    ]
+  },
+  "recommendation": {
+    "blocked_threshold_ms": 3932,
+    "reason": "4 × p95 (983 ms) = 3932 ms, floored at 500 ms, capped at 5000 ms → 3932 ms",
+    "safety_margin_over_max": 2949,
+    "versus_design_doc_30s": "recommended 3932 ms is 7.6× faster than the doc's 30 000 ms guess"
+  },
+  "notes": [],
+  "finished_at": "2026-05-02T23:45:55.349Z"
+}

@@ -523,10 +523,29 @@ zero build steps. **Net add to bundle size: negligible.**
 **Failure modes on real LANs:**
 
 - **mDNS blocked by enterprise WiFi.** Common in offices and hotels.
-  Detection: 30 s after starting the responder, if the browser has not
-  seen its own service echoed back from at least one router, log a
-  one-line "mDNS appears blocked on this network — bootstrap-list still
-  available" notice in the dashboard.
+  Detection: after starting the responder, if the browser has not seen
+  its own service echoed back from at least one router within
+  `MYCELIUM_MDNS_BLOCKED_TIMEOUT_MS`, log a one-line "mDNS appears
+  blocked on this network — bootstrap-list still available" notice in
+  the dashboard. **Default 4 000 ms** — empirically grounded by
+  [`spike-mdns-self-echo-timing.mjs`](../experiments/swarm-discovery/spike-mdns-self-echo-timing.mjs)
+  and [`report-mdns-self-echo-timing.json`](../experiments/swarm-discovery/report-mdns-self-echo-timing.json):
+  K=10 publish-and-self-browse trials on macOS-arm64 (Node 25.9), each
+  with a fresh `Bonjour()` instance and the browser subscribed before
+  publish so t=0 is the publish call. **Distribution: median 898 ms,
+  p95 983 ms, max 983 ms across all 10 trials, zero timeouts.** A
+  control trial (browse only, no publish, 3 s window) saw zero self
+  events as expected — "echoed" vs "not echoed" is unambiguous. The
+  recommended threshold is `4 × p95 = 3 932 ms` (rounded to 4 s),
+  which leaves ~3 s of safety margin over the observed max and is
+  ~7.6× faster than the doc's prior 30 s guess. The implementation
+  may surface this as a configurable env var so an operator on a
+  pathological network can widen it without a rebuild. Note: the
+  earlier self-filter spike's `first_seen_ms=5` (commit 71bd74e) was
+  N=1 and measured browser-after-publish; this spike measures the
+  realistic startup ordering (browser-before-publish) and is the one
+  the implementation budget should anchor on. Cross-platform
+  re-validation on Linux/Avahi and Windows is still open.
 - **VPN with split tunnel.** mDNS often goes over the WiFi side, not the
   VPN side. This is the **expected** behaviour and what we want — Reed at
   home discovers Reed-at-home, not Reed-at-office.
@@ -738,7 +757,7 @@ issues exist yet on GitHub.
 
 | order | proposed issue title | scope | depends on |
 |---|---|---|---|
-| 1 | `feat(discovery): mDNS responder + browser in Tauri sidecar (L1)` | Add `bonjour-service`, advertise `_mycelium._tcp.local`, browse for the same, feed candidate URLs into the existing peer-pending pipeline, **and run a heartbeat-eviction loop on top** because `spike-mdns-churn.mjs` proved bonjour-service emits no `down` events for crashed publishers (zero in 15 s). Concrete liveness contract from `spike-mdns-heartbeat.mjs`: re-fetch every candidate's `/.well-known/mycelium-node` every 5 s with the existing 2 s timeout / 64 KiB body cap; 3 consecutive failures evict (15 s detection, ±3 ms on macOS); index by `node_id` (the spike caught a bug where indexing by spawn-order ≠ mDNS-up-order). **Plus an on-eviction cold-rebrowse path** because `spike-mdns-rejoin.mjs` proved the long-lived browser does NOT auto-resurface a restarted publisher (zero `up` events in 30 s) and `spike-mdns-cold-rebrowse.mjs` proved that instantiating a fresh `Bonjour()` browser, `find()`-ing for 2 s, harvesting, and destroying it surfaces the rejoined peer at ~1.3 s with the new ephemeral port — re-admit landed at 2005 ms from respawn, full kill→re-admitted-with-clean-heartbeat budget ≈ 18–23 s. Cold-rebrowse harvest is full-replacement (all node_ids seen overwrite candidate state, not delta). Long-lived browser is kept for initial discovery + survivor bookkeeping; cold-rebrowse handles rejoin. **Plus a publisher-side wake/network-change hook** that, on Tauri `wake` and `network-change` events, destroys the existing Bonjour instance, tears down the HTTP listener, brings up a fresh listener on whatever port becomes available, and re-publishes via a fresh `Bonjour()` — `spike-mdns-wake.mjs` proved this completes in 260 ms in-process, that the macOS mDNS daemon does NOT serve stale port records to fresh browsers after destroy, and that remote peers' cold-rebrowse-on-eviction path handles the new port identically to a SIGKILL+respawn (no separate "wake" wire message needed). **Default on for the native app.** | Wave 1 (Tauri sidecar landed, #176) |
+| 1 | `feat(discovery): mDNS responder + browser in Tauri sidecar (L1)` | Add `bonjour-service`, advertise `_mycelium._tcp.local`, browse for the same, feed candidate URLs into the existing peer-pending pipeline, **and run a heartbeat-eviction loop on top** because `spike-mdns-churn.mjs` proved bonjour-service emits no `down` events for crashed publishers (zero in 15 s). Concrete liveness contract from `spike-mdns-heartbeat.mjs`: re-fetch every candidate's `/.well-known/mycelium-node` every 5 s with the existing 2 s timeout / 64 KiB body cap; 3 consecutive failures evict (15 s detection, ±3 ms on macOS); index by `node_id` (the spike caught a bug where indexing by spawn-order ≠ mDNS-up-order). **Plus an on-eviction cold-rebrowse path** because `spike-mdns-rejoin.mjs` proved the long-lived browser does NOT auto-resurface a restarted publisher (zero `up` events in 30 s) and `spike-mdns-cold-rebrowse.mjs` proved that instantiating a fresh `Bonjour()` browser, `find()`-ing for 2 s, harvesting, and destroying it surfaces the rejoined peer at ~1.3 s with the new ephemeral port — re-admit landed at 2005 ms from respawn, full kill→re-admitted-with-clean-heartbeat budget ≈ 18–23 s. Cold-rebrowse harvest is full-replacement (all node_ids seen overwrite candidate state, not delta). Long-lived browser is kept for initial discovery + survivor bookkeeping; cold-rebrowse handles rejoin. **Plus a publisher-side wake/network-change hook** that, on Tauri `wake` and `network-change` events, destroys the existing Bonjour instance, tears down the HTTP listener, brings up a fresh listener on whatever port becomes available, and re-publishes via a fresh `Bonjour()` — `spike-mdns-wake.mjs` proved this completes in 260 ms in-process, that the macOS mDNS daemon does NOT serve stale port records to fresh browsers after destroy, and that remote peers' cold-rebrowse-on-eviction path handles the new port identically to a SIGKILL+respawn (no separate "wake" wire message needed). **Plus an mDNS-blocked-network detector** that flags the dashboard if the browser does not see its own publish echoed back within `MYCELIUM_MDNS_BLOCKED_TIMEOUT_MS` (default 4 000 ms) — `spike-mdns-self-echo-timing.mjs` measured K=10 trials at median 898 ms / p95 983 ms / max 983 ms with zero timeouts on macOS-arm64, with the control trial (no publish) confirming silence is unambiguous; the threshold is `4 × p95` with a 500 ms floor, environment-overridable for pathological networks. **Default on for the native app.** | Wave 1 (Tauri sidecar landed, #176) |
 | 2 | `feat(discovery): "candidate peers" dashboard panel + promote action` | Surface mDNS hits to the operator with a "promote to trusted peer" button that flips `TrustEdge.weight` from 0 to `base_weight`. | issue 1 |
 | 3 | `feat(discovery): private libp2p Kademlia DHT client (L2), default-off` | Add `js-libp2p` + `@libp2p/kad-dht` behind `MYCELIUM_ENABLE_DHT=1`. Define the `/mycelium/kad/1.0.0` protocol id. Bootstrap list: Wave-2 nodes only. | Wave 2 (≥ 2 stable public peers) |
 | 4 | `feat(discovery): DHT pointer publish + lookup tool` | Sign and publish the URL pointer record on join; resolve `node_id → URL` on demand from the MCP tool surface. | issue 3 |
