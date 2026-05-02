@@ -1,10 +1,8 @@
 {
   "brand.subtitle": "your AI",
 
-  "nav.cortex": "cortex",
-  "nav.agents": "agents",
   "nav.settings": "settings",
-  "nav.badge.soon": "soon",
+  "nav.system": "system",
 
   "cortex.group.memory": "memory",
   "cortex.group.inner": "inner life",
@@ -34,36 +32,6 @@
   "stub.settings.title": "settings",
   "stub.settings.desc": "The current setup page will move in here.",
   "stub.settings.link": "open current setup page",
-
-  "intro.agents": "<b>Agents</b> are the bodies that use mycelium as their shared brain. Here you see every client currently registered — heartbeat, status, genome, capabilities. Read-only — each agent is steered from its own client (Claude Code, Codex, openClaw, …).<span class=\"sub\">An agent is <b>live</b> when its last heartbeat is under 120 seconds old. \"offline\" doesn't mean gone — its knowledge stays in the brain.</span>",
-
-  "agents.heading": "connected agents",
-  "agents.loading": "loading…",
-  "agents.updated": "as of",
-  "agents.error": "error",
-  "agents.empty": "No agent registered yet. Start an MCP client with a mycelium connection — it will show up here.",
-  "agents.pill.live": "live",
-  "agents.pill.offline": "offline",
-  "agents.host": "host",
-  "agents.heartbeat": "heartbeat",
-  "agents.version": "version",
-  "agents.workspace": "workspace",
-  "agents.fit": "fitness",
-  "agents.fitness.help": "Genome fitness from last measurement — how well this agent's character has evolved.",
-  "agents.kpi.live": "live",
-  "agents.kpi.live.hint": "heartbeat <120s",
-  "agents.kpi.total": "registered",
-  "agents.kpi.total.hint": "all known",
-  "agents.kpi.hosts": "hosts",
-  "agents.kpi.hosts.hint": "physical machines",
-  "agents.kpi.genomes": "genomes",
-  "agents.kpi.genomes.hint": "distinct beings",
-
-  "rel.future": "in the future",
-  "rel.seconds": "{n}s ago",
-  "rel.minutes": "{n} min ago",
-  "rel.hours": "{n} h ago",
-  "rel.days": "{n} days ago",
 
   "header.burger.aria": "menu",
   "header.status.connecting": "connecting…",

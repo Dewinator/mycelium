@@ -203,82 +203,14 @@
     border: 1px solid var(--border);
   }
 
-  /* outer nav-panel switching */
-  .nav-panel { display: none; }
-  .nav-panel.active { display: block; }
-
-  /* cortex two-level inner navigation */
-  .cortex-groups {
-    display: flex; gap: 4px; flex-wrap: wrap;
-    padding-bottom: 8px; margin: 0 0 12px;
-    border-bottom: 1px solid var(--border);
+  /* Sidebar section labels — group the sidebar tabs (erinnerung/innenleben/
+     lernen/schwarm/system) without making them clickable. */
+  .nav-section {
+    font-size: 10px; font-weight: 600; letter-spacing: 0.6px;
+    text-transform: uppercase; color: var(--text-faint);
+    padding: 14px 10px 4px; margin: 0;
   }
-  .cortex-group-btn {
-    background: transparent; border: 1px solid transparent; color: var(--text-dim);
-    padding: 6px 14px; font: inherit; font-size: 13px; cursor: pointer;
-    border-radius: var(--radius-sm);
-    transition: background .12s, color .12s, border-color .12s;
-  }
-  .cortex-group-btn:hover { background: var(--bg-elev-2); color: var(--text); }
-  .cortex-group-btn.active {
-    background: var(--bg-elev-2); color: var(--text); font-weight: 600;
-    border-color: var(--accent, var(--border));
-  }
-  .cortex-subtabs {
-    display: flex; gap: 4px; flex-wrap: wrap;
-    margin: 0 0 18px;
-  }
-  .cortex-subtabs .tab { padding: 6px 12px; font-size: 12.5px; }
-  .cortex-subtabs .tab[hidden] { display: none; }
-
-  /* agent registry */
-  .agents-grid {
-    display: grid; gap: 12px;
-    grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
-  }
-  .agent-card {
-    padding: 14px 16px; background: var(--bg-elev-2);
-    border: 1px solid var(--border); border-radius: var(--radius);
-    display: flex; flex-direction: column; gap: 10px;
-  }
-  .agent-card.live { border-left: 3px solid var(--good); }
-  .agent-card.dead { border-left: 3px solid var(--text-faint); opacity: 0.78; }
-  .agent-card .head {
-    display: flex; align-items: center; justify-content: space-between; gap: 8px;
-  }
-  .agent-card .name { font-weight: 600; font-size: 14px; }
-  .agent-card .gen { font-family: var(--mono); font-size: 11px; color: var(--text-dim); }
-  .agent-card .status-pill {
-    font-size: 10px; padding: 2px 8px; border-radius: 10px; font-weight: 500;
-    text-transform: uppercase; letter-spacing: 0.4px;
-  }
-  .agent-card .status-pill.live { background: var(--good); color: #000; }
-  .agent-card .status-pill.dead { background: var(--bg); color: var(--text-faint); border: 1px solid var(--border); }
-  .agent-card .meta-row {
-    display: grid; grid-template-columns: 80px 1fr; gap: 4px 10px;
-    font-size: 12px; color: var(--text-dim);
-  }
-  .agent-card .meta-row .k { color: var(--text-faint); }
-  .agent-card .meta-row .v { color: var(--text); font-family: var(--mono); font-size: 11.5px; word-break: break-word; }
-  .agent-card .caps { display: flex; flex-wrap: wrap; gap: 4px; }
-  .agent-card .cap-chip {
-    font-size: 10px; padding: 2px 7px; border-radius: 8px;
-    background: var(--bg); color: var(--text-dim);
-    border: 1px solid var(--border); font-family: var(--mono);
-  }
-  .agent-card .fitness {
-    display: flex; align-items: center; gap: 8px; font-size: 11px;
-  }
-  .agent-card .fitness .bar {
-    flex: 1; height: 4px; background: var(--bg); border-radius: 2px; overflow: hidden;
-  }
-  .agent-card .fitness .bar > span {
-    display: block; height: 100%; background: var(--accent); border-radius: 2px;
-  }
-  .agents-empty {
-    padding: 32px 16px; text-align: center; color: var(--text-dim);
-    border: 1px dashed var(--border); border-radius: var(--radius);
-  }
+  .nav-section:first-of-type { padding-top: 4px; }
 
   /* coming-soon stub panel for not-yet-implemented top-level menu items */
   .stub-panel {
@@ -840,29 +772,6 @@
   .stat-row .stat-value { font-family: var(--mono); font-variant-numeric: tabular-nums; color: var(--text); font-size: 14px; font-weight: 500; }
 
   /* ================================================================== */
-  /*   Mobile bottom-nav — primary thumb-zone navigation (≤ 900 px)     */
-  /*   Mirrors sidebar app-nav. Identity-aware: subtle accent line,     */
-  /*   translucent panel like syn-legend — fits the cognitive/bio feel. */
-  /* ================================================================== */
-  .bottom-nav { display: none; }
-  .bottom-nav .nav-item {
-    flex: 1; flex-direction: column; align-items: center; justify-content: center;
-    gap: 2px; padding: 6px 4px; min-height: 56px; border-radius: 10px;
-    color: var(--text-faint); font-size: 11px; line-height: 1.1;
-  }
-  .bottom-nav .nav-item .bn-icon { font-size: 18px; line-height: 1; }
-  .bottom-nav .nav-item .bn-label {
-    font-size: 11px; letter-spacing: 0.02em;
-    max-width: 100%; white-space: nowrap;
-    overflow: hidden; text-overflow: ellipsis;
-  }
-  .bottom-nav .nav-item.active {
-    background: var(--accent-soft); color: var(--accent); font-weight: 600;
-  }
-  .bottom-nav .nav-item:hover { color: var(--text); }
-  .bottom-nav .nav-item.active:hover { color: var(--accent); }
-
-  /* ================================================================== */
   /*   Mobile refinements 2026-04-27 — sticky header, sheets, scroll-   */
   /*   rails, touch-targets ≥ 40 px, safe-area insets, dvh viewports.   */
   /*   Layered AFTER all earlier rules so it cleanly overrides them.    */
@@ -928,54 +837,15 @@
     #refresh::before { content: "↻"; }
     #theme::before   { content: "◐"; }
 
-    /* Content gets a small bottom buffer so the bottom-nav never overlaps
-       the last card (footer included). Calc accounts for safe-area-bottom. */
+    /* Content gets a small bottom buffer for safe-area-bottom (iPhone home
+       indicator clearance). */
     .main {
-      padding-bottom: calc(72px + env(safe-area-inset-bottom));
+      padding-bottom: calc(24px + env(safe-area-inset-bottom));
     }
 
-    /* Cortex two-level nav: groups stay wrapped chips, sub-tabs become a
-       single-row scroll-snap rail — swipe horizontally instead of
-       wall-of-buttons wrap. Edges fade so users see there is more. */
-    .cortex-groups {
-      gap: 6px; padding-bottom: 6px; margin-bottom: 10px;
-      overflow-x: auto; flex-wrap: nowrap; scrollbar-width: none;
-      scroll-snap-type: x proximity;
-    }
-    .cortex-groups::-webkit-scrollbar { display: none; }
-    .cortex-group-btn {
-      flex: 0 0 auto; min-height: 36px; scroll-snap-align: start;
-    }
-    .cortex-subtabs {
-      gap: 4px; margin-bottom: 14px;
-      overflow-x: auto; flex-wrap: nowrap; scrollbar-width: none;
-      scroll-snap-type: x proximity;
-      -webkit-mask-image: linear-gradient(to right, transparent 0, #000 12px, #000 calc(100% - 12px), transparent 100%);
-              mask-image: linear-gradient(to right, transparent 0, #000 12px, #000 calc(100% - 12px), transparent 100%);
-    }
-    .cortex-subtabs::-webkit-scrollbar { display: none; }
-    .cortex-subtabs .tab {
-      flex: 0 0 auto; min-height: 36px; padding: 7px 12px; font-size: 12.5px;
-      scroll-snap-align: start;
-    }
-
-    /* Bottom-nav: only here. Floating panel above the home-indicator. */
-    .bottom-nav {
-      display: flex;
-      position: fixed; left: 8px; right: 8px;
-      bottom: max(8px, env(safe-area-inset-bottom));
-      z-index: 28;
-      gap: 4px; padding: 6px;
-      background: color-mix(in srgb, var(--bg-elev) 92%, transparent);
-      backdrop-filter: saturate(140%) blur(12px);
-      -webkit-backdrop-filter: saturate(140%) blur(12px);
-      border: 1px solid var(--border); border-radius: 16px;
-      box-shadow: var(--shadow);
-    }
-    /* Hide the redundant sidebar app-nav on mobile — bottom-nav owns it.
-       Sidebar drawer remains for settings / brand / future per-cortex
-       deep-links; if drawer is empty we still let the user open it. */
-    .sidebar .app-nav { display: none; }
+    /* Sidebar drawer on mobile carries the full tab list; the burger opens
+       it. No bottom-nav anymore — the flat sidebar replaced the two-level
+       cortex nav, so a separate primary-nav surface would be redundant. */
     .sidebar .brand { margin-bottom: 8px; }
     .sidebar { padding: 14px 12px 12px; }
 
@@ -1032,10 +902,10 @@
     .syn-toolbar .syn-btn-icon { min-height: 36px; }
 
     /* Toast/notification host already lives at right:20px;bottom:20px —
-       lift it above the bottom-nav and the iPhone home-indicator. */
+       lift it above the iPhone home-indicator. */
     body > div[style*="right:20px"][style*="bottom:20px"],
     body > div[style*="right: 20px"][style*="bottom: 20px"] {
-      bottom: calc(80px + env(safe-area-inset-bottom)) !important;
+      bottom: calc(28px + env(safe-area-inset-bottom)) !important;
       right: 12px !important;
     }
   }
@@ -1047,7 +917,6 @@
     .grid-kpi { grid-template-columns: 1fr 1fr; gap: 8px; }
     .kpi .value { font-size: 20px; }
     .card { padding: 12px; }
-    .bottom-nav .nav-item .bn-label { font-size: 10px; }
     .panel-intro { padding: 9px 11px; font-size: 12px; line-height: 1.5; }
     .section-head { margin: 16px 0 6px; }
     /* Synapsen-toolbar: stack vertically so search + stats both breathe. */
@@ -1291,16 +1160,29 @@
       <div class="sub" data-i18n="brand.subtitle">your AI</div>
     </div>
     <nav class="app-nav">
-      <button class="nav-item active" data-nav="cortex">
-        <span data-i18n="nav.cortex">cortex</span>
-      </button>
-      <button class="nav-item" data-nav="agents">
-        <span data-i18n="nav.agents">agenten</span>
-        <span class="badge" data-i18n="nav.badge.soon">bald</span>
-      </button>
-      <button class="nav-item" data-nav="settings">
-        <span data-i18n="nav.settings">einstellungen</span>
-      </button>
+      <div class="nav-section" data-i18n="cortex.group.memory">erinnerung</div>
+      <button class="nav-item tab active" data-tab="memory" data-i18n="nav.memory">gedächtnis</button>
+      <button class="nav-item tab" data-tab="synapses" data-i18n="nav.synapses">synapsen</button>
+      <button class="nav-item tab" data-tab="projects" data-i18n="nav.projects">projekte</button>
+      <button class="nav-item tab" data-tab="regulator" data-i18n="nav.regulator">regulator</button>
+
+      <div class="nav-section" data-i18n="cortex.group.inner">innenleben</div>
+      <button class="nav-item tab" data-tab="soul" data-i18n="nav.soul">seele</button>
+      <button class="nav-item tab" data-tab="neurochemistry" data-i18n="nav.neurochemistry">neurochemie</button>
+      <button class="nav-item tab" data-tab="motivation" data-i18n="nav.motivation">motivation</button>
+      <button class="nav-item tab" data-tab="identity" data-i18n="nav.identity">identität</button>
+
+      <div class="nav-section" data-i18n="cortex.group.learning">lernen</div>
+      <button class="nav-item tab" data-tab="learning" data-i18n="nav.learning">lernen</button>
+      <button class="nav-item tab" data-tab="sleep" data-i18n="nav.sleep">schlaf</button>
+      <button class="nav-item tab" data-tab="emergence" data-i18n="nav.emergence">emergenz</button>
+
+      <div class="nav-section" data-i18n="cortex.group.swarm">schwarm</div>
+      <button class="nav-item tab" data-tab="guard" data-i18n="nav.guard">guard</button>
+      <button class="nav-item tab" data-tab="swarm" data-i18n="nav.swarm">schwarm</button>
+
+      <div class="nav-section" data-i18n="nav.system">system</div>
+      <button class="nav-item tab" data-tab="settings" data-i18n="nav.settings">einstellungen</button>
     </nav>
   </aside>
   <div class="backdrop" id="sidebar-backdrop"></div>
@@ -1319,40 +1201,6 @@
 
   <div id="error-box"></div>
 
-  <div class="nav-panel active" id="nav-panel-cortex">
-  <nav class="cortex-groups" aria-label="cortex group">
-    <button class="cortex-group-btn active" data-group="erinnerung" data-i18n="cortex.group.memory">erinnerung</button>
-    <button class="cortex-group-btn" data-group="innenleben" data-i18n="cortex.group.inner">innenleben</button>
-    <button class="cortex-group-btn" data-group="lernen" data-i18n="cortex.group.learning">lernen</button>
-    <button class="cortex-group-btn" data-group="schwarm" data-i18n="cortex.group.swarm">schwarm</button>
-  </nav>
-  <nav class="cortex-subtabs" aria-label="cortex sub-tab">
-    <!-- Erinnerung -->
-    <button class="tab active" data-tab="memory" data-group="erinnerung" data-i18n="nav.memory">gedächtnis</button>
-    <button class="tab" data-tab="synapses" data-group="erinnerung" data-i18n="nav.synapses">synapsen</button>
-    <button class="tab" data-tab="projects" data-group="erinnerung" data-i18n="nav.projects">projekte</button>
-    <button class="tab" data-tab="regulator" data-group="erinnerung" data-i18n="nav.regulator">regulator</button>
-    <!-- Innenleben -->
-    <button class="tab" data-tab="soul" data-group="innenleben" data-i18n="nav.soul">seele</button>
-    <button class="tab" data-tab="neurochemistry" data-group="innenleben" data-i18n="nav.neurochemistry">neurochemie</button>
-    <button class="tab" data-tab="motivation" data-group="innenleben" data-i18n="nav.motivation">motivation</button>
-    <button class="tab" data-tab="identity" data-group="innenleben" data-i18n="nav.identity">identität</button>
-    <!-- Lernen -->
-    <button class="tab" data-tab="learning" data-group="lernen" data-i18n="nav.learning">lernen</button>
-    <button class="tab" data-tab="sleep" data-group="lernen" data-i18n="nav.sleep">schlaf</button>
-    <button class="tab" data-tab="emergence" data-group="lernen" data-i18n="nav.emergence">emergenz</button>
-    <!-- DEFERRED 2026-04-26 — re-enable with feature flag
-    <button class="tab" data-tab="teacher" data-group="lernen" data-i18n="nav.teacher">teacher</button>
-    -->
-    <!-- Schwarm -->
-    <button class="tab" data-tab="guard" data-group="schwarm" data-i18n="nav.guard">guard</button>
-    <button class="tab" data-tab="swarm" data-group="schwarm" data-i18n="nav.swarm">schwarm</button>
-    <!-- DEFERRED 2026-04-26 — re-enable with feature flag
-    <button class="tab" data-tab="population" data-group="schwarm" data-i18n="nav.population">population</button>
-    <button class="tab" data-tab="tinder" data-group="schwarm" data-i18n="nav.tinder">tinder</button>
-    <button class="tab" data-tab="federation" data-group="schwarm" data-i18n="nav.federation">föderation</button>
-    -->
-  </nav>
 
   <div class="tab-panel active" id="panel-memory">
   <div class="panel-intro" data-i18n-html="intro.memory"></div>
@@ -2162,23 +2010,7 @@
     </section>
   </div><!-- /panel-teacher -->
   </template>
-  </div><!-- /nav-panel-cortex -->
-
-  <div class="nav-panel" id="nav-panel-agents">
-    <div class="panel-intro" data-i18n-html="intro.agents"><b>Agenten</b> sind die Körper, die mycelium als gemeinsames Gehirn nutzen. Hier siehst du alle Clients, die sich gerade registriert haben — Heartbeat, Status, Genome, Fähigkeiten. Read-Only — die Steuerung jedes Agenten passiert im jeweiligen Client (Claude Code, Codex, openClaw, …).<span class="sub">Ein Agent gilt als <b>live</b>, wenn der letzte Heartbeat weniger als 120 Sekunden her ist. „offline" heißt nicht weg, sondern ungebunden — sein Wissen bleibt im Gehirn.</span></div>
-
-    <section class="grid grid-kpi" id="agents-kpis"></section>
-
-    <section class="card" style="margin-top:16px">
-      <div style="display:flex;align-items:center;justify-content:space-between;gap:8px;margin-bottom:8px">
-        <h2 style="margin:0" data-i18n="agents.heading">verbundene agenten</h2>
-        <div class="sub" id="agents-status" data-i18n="agents.loading">lade…</div>
-      </div>
-      <div id="agents-grid" class="agents-grid"></div>
-    </section>
-  </div>
-
-  <div class="nav-panel" id="nav-panel-settings">
+  <div class="tab-panel" id="panel-settings">
     <div class="stub-panel">
       <div class="stub-tag" data-i18n="stub.phase.alpha">alpha</div>
       <h2 data-i18n="stub.settings.title">einstellungen</h2>
@@ -2237,25 +2069,6 @@
     quelle: <code>POST /api/rpc/dashboard_stats</code> &middot; proxy: <code>scripts/dashboard-server.mjs</code>
   </footer>
   </main>
-
-  <!-- Mobile bottom-nav: thumb-zone primary navigation. Mirrors the sidebar
-       app-nav (cortex / agents / settings); active-state is kept in sync via
-       the shared .nav-item click handler that toggles every button matching
-       data-nav. Visible only ≤ 900 px (display rule in mobile media query). -->
-  <nav class="bottom-nav" id="bottom-nav" aria-label="primary">
-    <button class="nav-item active" data-nav="cortex">
-      <span class="bn-icon" aria-hidden="true">◉</span>
-      <span class="bn-label" data-i18n="nav.cortex">cortex</span>
-    </button>
-    <button class="nav-item" data-nav="agents">
-      <span class="bn-icon" aria-hidden="true">◐</span>
-      <span class="bn-label" data-i18n="nav.agents">agenten</span>
-    </button>
-    <button class="nav-item" data-nav="settings">
-      <span class="bn-icon" aria-hidden="true">◇</span>
-      <span class="bn-label" data-i18n="nav.settings">einstellungen</span>
-    </button>
-  </nav>
 
 <script type="module">
   // Bootstrap i18n before the main dashboard script runs.
@@ -5066,139 +4879,6 @@ document.querySelectorAll(".tab").forEach(btn => {
     window.scrollTo({ top: 0, behavior: "instant" });
   });
 });
-
-// outer app-nav switching (cortex / agents / settings).
-// Mirrors active state across all .nav-item buttons that share the same
-// data-nav — sidebar (desktop) and bottom-nav (mobile) stay in sync.
-document.querySelectorAll(".nav-item").forEach(btn => {
-  btn.addEventListener("click", () => {
-    const name = btn.dataset.nav;
-    document.querySelectorAll(".nav-item").forEach(b => b.classList.toggle("active", b.dataset.nav === name));
-    document.querySelectorAll(".nav-panel").forEach(p => p.classList.toggle("active", p.id === "nav-panel-" + name));
-    if (name === "agents") loadAgentRegistry();
-    else stopAgentRegistryPolling();
-    closeSidebar();
-    window.scrollTo({ top: 0, behavior: "instant" });
-  });
-});
-
-// --- agents registry (live mirror of connected mycelium clients) -------------
-// NOTE: the deferred pairing/tinder code already defines `renderAgents(agentsData, matchesData)`.
-// We use a distinct name (`renderAgentRegistry`) to avoid hoisting collisions.
-let _agentsPoll = null;
-function stopAgentRegistryPolling() {
-  if (_agentsPoll) { clearInterval(_agentsPoll); _agentsPoll = null; }
-}
-async function loadAgentRegistry() {
-  await refreshAgentRegistry();
-  stopAgentRegistryPolling();
-  _agentsPoll = setInterval(refreshAgentRegistry, 15000);
-}
-async function refreshAgentRegistry() {
-  const status = document.getElementById("agents-status");
-  try {
-    const r = await fetch(`${ENDPOINT}/rpc/agents_live`, {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: "{}",
-    });
-    if (!r.ok) throw new Error("HTTP " + r.status);
-    const rows = await r.json();
-    renderAgentRegistry(Array.isArray(rows) ? rows : []);
-    if (status) status.textContent = `${tt("agents.updated")} ${new Date().toLocaleTimeString("de-DE")}`;
-  } catch (e) {
-    if (status) status.textContent = `${tt("agents.error")}: ${e.message}`;
-  }
-}
-function relativeTime(iso) {
-  if (!iso) return "—";
-  const ms = Date.now() - new Date(iso).getTime();
-  if (ms < 0) return tt("rel.future");
-  const s = Math.round(ms / 1000);
-  if (s < 60) return tt("rel.seconds", { n: s });
-  const m = Math.round(s / 60);
-  if (m < 60) return tt("rel.minutes", { n: m });
-  const h = Math.round(m / 60);
-  if (h < 48) return tt("rel.hours", { n: h });
-  const d = Math.round(h / 24);
-  return tt("rel.days", { n: d });
-}
-function renderAgentRegistry(rows) {
-  const grid = document.getElementById("agents-grid");
-  const kpis = document.getElementById("agents-kpis");
-  if (!grid) return;
-  if (!Array.isArray(rows)) rows = [];
-  const live = rows.filter(a => a.live).length;
-  const total = rows.length;
-  const hosts = new Set(rows.map(a => a.host).filter(Boolean)).size;
-  const genomes = new Set(rows.map(a => a.genome_label).filter(Boolean)).size;
-  if (kpis) {
-    kpis.innerHTML = [
-      kpiCard(tt("agents.kpi.live"),    fmt.format(live),    tt("agents.kpi.live.hint")),
-      kpiCard(tt("agents.kpi.total"),   fmt.format(total),   tt("agents.kpi.total.hint")),
-      kpiCard(tt("agents.kpi.hosts"),   fmt.format(hosts),   tt("agents.kpi.hosts.hint")),
-      kpiCard(tt("agents.kpi.genomes"), fmt.format(genomes), tt("agents.kpi.genomes.hint")),
-    ].join("");
-  }
-  if (!rows.length) {
-    grid.innerHTML = `<div class="agents-empty">${tt("agents.empty")}</div>`;
-    return;
-  }
-  grid.innerHTML = rows.map(renderAgentCard).join("");
-}
-function renderAgentCard(a) {
-  const liveCls = a.live ? "live" : "dead";
-  const pillTxt = a.live ? tt("agents.pill.live") : tt("agents.pill.offline");
-  const caps = (a.capabilities || []).map(c => `<span class="cap-chip">${escapeHtml(c)}</span>`).join("");
-  const fitness = a.latest_fitness != null ? Math.max(0, Math.min(1, Number(a.latest_fitness))) : null;
-  const fitnessRow = fitness != null ? `
-    <div class="fitness" title="${tt("agents.fitness.help")}">
-      <span class="k">${tt("agents.fit")}</span>
-      <div class="bar"><span style="width:${(fitness * 100).toFixed(0)}%"></span></div>
-      <span class="v">${fmt2.format(fitness)}</span>
-    </div>` : "";
-  return `
-    <div class="agent-card ${liveCls}" data-label="${escapeHtml(a.label)}">
-      <div class="head">
-        <div>
-          <div class="name">${escapeHtml(a.label)}</div>
-          <div class="gen">${escapeHtml(a.genome_label || "?")} · gen ${escapeHtml(String(a.generation ?? "?"))}</div>
-        </div>
-        <span class="status-pill ${liveCls}">${pillTxt}</span>
-      </div>
-      <div class="meta-row">
-        <span class="k">${tt("agents.host")}</span><span class="v">${escapeHtml(a.host || "—")}</span>
-        <span class="k">${tt("agents.heartbeat")}</span><span class="v">${escapeHtml(relativeTime(a.last_heartbeat))}</span>
-        <span class="k">${tt("agents.version")}</span><span class="v">${escapeHtml(a.version || "—")}</span>
-        <span class="k">${tt("agents.workspace")}</span><span class="v">${escapeHtml(a.workspace_path || "—")}</span>
-      </div>
-      ${caps ? `<div class="caps">${caps}</div>` : ""}
-      ${fitnessRow}
-    </div>`;
-}
-
-// cortex group switcher (innenleben / erinnerung / lernen / schwarm) — shows only matching sub-tabs
-function setCortexGroup(group) {
-  document.querySelectorAll(".cortex-group-btn").forEach(b =>
-    b.classList.toggle("active", b.dataset.group === group)
-  );
-  const subtabs = document.querySelectorAll(".cortex-subtabs .tab");
-  subtabs.forEach(t => { t.hidden = t.dataset.group !== group; });
-  // if currently active sub-tab is in another group, switch to first visible sub-tab of new group
-  const activeSub = document.querySelector(".cortex-subtabs .tab.active");
-  if (!activeSub || activeSub.dataset.group !== group) {
-    const firstVisible = Array.from(subtabs).find(t => t.dataset.group === group && !t.hidden);
-    firstVisible?.click();
-  }
-}
-document.querySelectorAll(".cortex-group-btn").forEach(btn => {
-  btn.addEventListener("click", () => setCortexGroup(btn.dataset.group));
-});
-// initial group activation: pick the group of the currently active sub-tab
-{
-  const _initActive = document.querySelector(".cortex-subtabs .tab.active");
-  if (_initActive) setCortexGroup(_initActive.dataset.group);
-}
 
 // --- teacher (claude-code-sessions Plugin) -------------------------------------
 let TCH_POLL_HANDLE = null;
