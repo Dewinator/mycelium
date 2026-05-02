@@ -6,6 +6,12 @@
 <title>mycelium — dashboard</title>
 <link rel="icon" type="image/png" href="/assets/logo.png" />
 <link rel="apple-touch-icon" href="/assets/logo.png" />
+<!-- Vision-UI typography per docs/dashboard-design-spec.md §3. preconnect
+     hints keep first-paint fast; system-ui acts as fallback if Google
+     Fonts is unreachable (offline / sovereign-mode). -->
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
 <script>
   // i18n synchronisation handle. Resolved by the i18n module after dictionaries
   // have loaded; legacy non-module script awaits this before its first render
@@ -14,55 +20,87 @@
 </script>
 <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
 <style>
+  /* Design tokens — Vision UI Pro inspired (deep-space dark only).
+     Spec: docs/dashboard-design-spec.md. Token names stay backwards-
+     compatible (--bg, --accent, --good, …) so existing rules pick up
+     the new palette without hand-editing every selector. */
   :root {
-    --bg:            #0b0d10;
-    --bg-elev:       #14181d;
-    --bg-elev-2:     #1b2027;
-    --border:        #232a33;
-    --text:          #e6e9ef;
-    --text-dim:      #8a94a6;
-    --text-faint:    #5a6473;
-    --accent:        #7aa2f7;
-    --accent-2:      #bb9af7;
-    --accent-3:      #7dcfff;
-    --accent-soft:   #2a3a5a;
-    --good:          #9ece6a;
-    --warn:          #e0af68;
-    --bad:           #f7768e;
-    --shadow:        0 1px 0 rgba(255,255,255,0.03), 0 8px 24px rgba(0,0,0,0.35);
-    --radius:        12px;
-    --radius-sm:     8px;
-    --mono:          ui-monospace, "SF Mono", Menlo, Consolas, monospace;
-    --sans:          -apple-system, BlinkMacSystemFont, "Inter", "Segoe UI", system-ui, sans-serif;
-  }
-  :root[data-theme="light"] {
-    --bg:            #f6f7f9;
-    --bg-elev:       #ffffff;
-    --bg-elev-2:     #f0f2f5;
-    --border:        #e3e6eb;
-    --text:          #181c22;
-    --text-dim:      #5b6573;
-    --text-faint:    #98a1ad;
-    --accent:        #3b6cd9;
-    --accent-2:      #8a4dd9;
-    --accent-3:      #2c8fb8;
-    --accent-soft:   #dde6fa;
-    --good:          #3b8a3b;
-    --warn:          #b07b1a;
-    --bad:           #c0364b;
-    --shadow:        0 1px 0 rgba(0,0,0,0.02), 0 4px 16px rgba(20,30,50,0.06);
+    /* Surfaces */
+    --bg-base:           #030418;
+    --bg-deep:           #060B28;
+    --bg:                #060B28;
+    --bg-elev:           #0F1535;
+    --bg-elev-2:         #1A1F37;
+    --surface-card:      linear-gradient(127deg, rgba(15,21,53,0.90) 0%, rgba(6,11,40,0.95) 100%);
+    --surface-glass:     rgba(255,255,255,0.04);
+
+    /* Lines */
+    --border:            rgba(255,255,255,0.08);
+    --border-strong:     rgba(255,255,255,0.16);
+
+    /* Text */
+    --text:              #FFFFFF;
+    --text-dim:          #A0AEC0;
+    --text-faint:        #718096;
+
+    /* Accents (one Blue→Cyan axis; pink reserved for anomalies) */
+    --accent:            #0075FF;   /* primary blue */
+    --accent-2:          #21D4FD;   /* cyan       */
+    --accent-3:          #7551FF;   /* violet     */
+    --accent-pink:       #FF0080;
+    --accent-gradient:   linear-gradient(135deg, #0075FF 0%, #21D4FD 100%);
+    --accent-soft:       rgba(0,117,255,0.16);
+
+    /* Status */
+    --good:              #01B574;
+    --warn:              #FFB547;
+    --bad:               #E31A1A;
+
+    /* Effects */
+    --shadow:            0 20px 27px 0 rgba(0,0,0,0.05),
+                         inset 0 1px 0 0 rgba(255,255,255,0.06);
+    --glow-cyan:         0 0 0 1px rgba(33,212,253,0.40),
+                         0 0 32px 0 rgba(33,212,253,0.25),
+                         0 8px 24px rgba(0,117,255,0.18);
+    --radius:            20px;
+    --radius-sm:         12px;
+    --radius-pill:       999px;
+
+    /* Type */
+    --mono:              "JetBrains Mono", ui-monospace, "SF Mono", Menlo, Consolas, monospace;
+    --sans:              "Plus Jakarta Display", "Plus Jakarta Sans", -apple-system,
+                         BlinkMacSystemFont, "Inter", "Segoe UI", system-ui, sans-serif;
   }
   *,*::before,*::after { box-sizing: border-box; }
-  html, body { margin: 0; padding: 0; background: var(--bg); color: var(--text); font-family: var(--sans); -webkit-font-smoothing: antialiased; }
-  body { min-height: 100vh; min-height: 100dvh; display: grid; grid-template-columns: 200px 1fr; }
-  a { color: var(--accent); text-decoration: none; }
+  html, body {
+    margin: 0; padding: 0; color: var(--text); font-family: var(--sans);
+    -webkit-font-smoothing: antialiased;
+  }
+  html { background: var(--bg-deep); }
+  body {
+    min-height: 100vh; min-height: 100dvh;
+    display: grid; grid-template-columns: 264px 1fr;
+    /* Deep-space gradient — anchored to viewport so cards layer on top
+       of a continuous backdrop, not a per-section repaint. */
+    background:
+      radial-gradient(ellipse 90% 60% at 80% -10%, rgba(33,212,253,0.10), transparent 60%),
+      radial-gradient(ellipse 80% 50% at 0% 110%, rgba(117,81,255,0.10), transparent 60%),
+      linear-gradient(180deg, var(--bg-base) 0%, var(--bg-deep) 100%);
+    background-attachment: fixed;
+  }
+  a { color: var(--accent-2); text-decoration: none; }
 
   .sidebar {
-    background: var(--bg-elev); border-right: 1px solid var(--border);
-    padding: 18px 12px 16px; display: flex; flex-direction: column; gap: 12px;
+    /* Slightly darker than the main bg so the sidebar reads as a recessed
+       rail rather than another card. 1 px hairline on the right. */
+    background: linear-gradient(180deg, rgba(3,4,24,0.78) 0%, rgba(6,11,40,0.85) 100%);
+    border-right: 1px solid var(--border);
+    padding: 22px 14px 16px; display: flex; flex-direction: column; gap: 12px;
     position: sticky; top: 0; align-self: start;
     height: 100vh; height: 100dvh;
     overflow-y: auto; z-index: 30;
+    backdrop-filter: blur(8px);
+    -webkit-backdrop-filter: blur(8px);
   }
   .main { padding: 20px 28px 48px; min-width: 0; }
   .backdrop { display: none; position: fixed; inset: 0; background: rgba(0,0,0,0.5); z-index: 20; }
@@ -74,23 +112,50 @@
   }
 
   header.top {
+    /* Floating glass pill, sticky to the top of the viewport. Spec §6.2 —
+       the rounded surface with translucent fill + backdrop-blur sits
+       above the page content rather than sharing the page background. */
+    position: sticky; top: 12px; z-index: 25;
     display: flex; align-items: center; justify-content: space-between;
-    margin-bottom: 24px; gap: 16px; flex-wrap: wrap;
+    margin-bottom: 24px; padding: 10px 16px; gap: 16px; flex-wrap: wrap;
+    background: var(--surface-glass);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    backdrop-filter: saturate(140%) blur(14px);
+    -webkit-backdrop-filter: saturate(140%) blur(14px);
+    box-shadow: 0 8px 24px rgba(0,0,0,0.18);
+    min-height: 56px;
   }
-  .brand { display: flex; flex-direction: column; align-items: flex-start; gap: 2px; min-width: 0; margin: 0 0 14px; }
-  .brand .logo { width: auto; max-width: 96px; height: auto; display: block; }
+  .brand { display: flex; flex-direction: column; align-items: center; gap: 2px; min-width: 0; margin: 0 0 14px; text-align: center; }
+  .brand a { text-align: center; }
+  .brand .logo { width: auto; max-width: 96px; height: auto; display: inline-block; margin: 0 auto; }
   .brand h1 { margin: 0; font-size: 18px; font-weight: 600; letter-spacing: -0.01em; color: var(--text); }
   .brand .sub { display: none; }  /* logo image already carries the "your AI" wordmark */
   .brand .visually-hidden { position: absolute; width: 1px; height: 1px; margin: -1px; padding: 0; overflow: hidden; clip: rect(0,0,0,0); white-space: nowrap; border: 0; }
   .status-line { color: var(--text-dim); font-size: 13px; flex: 1; min-width: 0; }
   .controls { display: flex; align-items: center; gap: 8px; }
   button.btn {
-    background: var(--bg-elev); color: var(--text); border: 1px solid var(--border);
-    padding: 8px 14px; border-radius: var(--radius-sm); font: inherit; font-size: 13px;
-    cursor: pointer; transition: background .15s, border-color .15s;
+    background: var(--bg-elev-2); color: var(--text);
+    border: 1px solid var(--border-strong);
+    padding: 9px 16px; border-radius: var(--radius-sm);
+    font: inherit; font-size: 13px; font-weight: 500; min-height: 40px;
+    cursor: pointer;
+    transition: background .15s, border-color .15s, transform .15s, box-shadow .15s;
   }
-  button.btn:hover { background: var(--bg-elev-2); border-color: var(--text-faint); }
-  button.btn.active { background: var(--accent-soft); border-color: var(--accent); color: var(--accent); }
+  button.btn:hover {
+    background: var(--bg-elev-2); border-color: var(--accent);
+    box-shadow: 0 0 0 1px rgba(33,212,253,0.30);
+  }
+  button.btn:active { transform: translateY(1px); }
+  button.btn.primary {
+    background: var(--accent-gradient); color: #fff; border-color: transparent;
+    box-shadow: 0 4px 12px rgba(0,117,255,0.32);
+  }
+  button.btn.primary:hover { box-shadow: 0 6px 18px rgba(0,117,255,0.42); }
+  button.btn.active {
+    background: var(--accent-soft); border-color: var(--accent-2);
+    color: var(--accent-2); font-weight: 600;
+  }
   .status-dot { width: 8px; height: 8px; border-radius: 50%; background: var(--text-faint); display: inline-block; }
   .status-dot.ok { background: var(--good); }
   .status-dot.bad { background: var(--bad); }
@@ -103,16 +168,28 @@
   @media (max-width: 1280px) { .grid-charts, .grid-charts-2, .grid-tables { grid-template-columns: 1fr; } }
 
   .card {
-    background: var(--bg-elev); border: 1px solid var(--border);
-    border-radius: var(--radius); padding: 18px 20px; box-shadow: var(--shadow);
+    /* Glassmorphism per spec §5: gradient surface, soft border, ambient
+       drop-shadow + 1 px inner top-highlight, 20 px radius. backdrop-blur
+       only kicks in for translucent layers; the gradient already gives
+       the card a sense of depth on its own. */
+    background: var(--surface-card);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    padding: 24px; box-shadow: var(--shadow);
     min-width: 0;
   }
   .card h2 {
-    margin: 0 0 14px; font-size: 12px; font-weight: 600;
-    text-transform: uppercase; letter-spacing: 0.08em; color: var(--text-dim);
+    margin: 0 0 14px; font-size: 12px; font-weight: 700;
+    text-transform: uppercase; letter-spacing: 0.12em; color: var(--text-dim);
   }
-  .kpi .label { font-size: 11px; text-transform: uppercase; letter-spacing: 0.08em; color: var(--text-dim); margin-bottom: 8px; }
-  .kpi .value { font-size: 30px; font-weight: 600; letter-spacing: -0.02em; line-height: 1; }
+  .kpi .label {
+    font-size: 10px; font-weight: 700; letter-spacing: 0.12em;
+    text-transform: uppercase; color: var(--text-dim); margin-bottom: 10px;
+  }
+  .kpi .value {
+    font-size: 34px; font-weight: 700; letter-spacing: -0.02em;
+    line-height: 1.15; color: var(--text);
+  }
   .kpi .hint { margin-top: 8px; font-size: 12px; color: var(--text-faint); }
 
   .chart-wrap { position: relative; height: 220px; }
@@ -123,12 +200,14 @@
   .bar-row { display: grid; grid-template-columns: 140px 1fr 56px; align-items: center; gap: 12px; font-size: 13px; }
   .bar-row .name { color: var(--text); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
   .bar-row .count { color: var(--text-dim); text-align: right; font-variant-numeric: tabular-nums; font-family: var(--mono); font-size: 12px; }
-  .bar-track { height: 8px; background: var(--bg-elev-2); border-radius: 4px; overflow: hidden; }
-  .bar-fill { height: 100%; background: var(--accent); border-radius: 4px; }
+  .bar-track { height: 8px; background: var(--bg-elev-2); border-radius: var(--radius-pill); overflow: hidden; }
+  .bar-fill { height: 100%; background: var(--accent-gradient); border-radius: var(--radius-pill); }
 
-  table.mem { width: 100%; border-collapse: collapse; font-size: 13px; }
-  table.mem th, table.mem td { text-align: left; padding: 10px 8px; border-bottom: 1px solid var(--border); vertical-align: top; }
-  table.mem th { font-size: 11px; text-transform: uppercase; letter-spacing: 0.06em; color: var(--text-dim); font-weight: 600; }
+  table.mem { width: 100%; border-collapse: collapse; font-size: 13px; font-variant-numeric: tabular-nums; }
+  table.mem th, table.mem td { text-align: left; padding: 12px 10px; border-bottom: 1px solid var(--border); vertical-align: top; }
+  table.mem th { font-size: 10px; text-transform: uppercase; letter-spacing: 0.12em; color: var(--text-faint); font-weight: 700; }
+  table.mem tbody tr { transition: background .12s; }
+  table.mem tbody tr:hover { background: rgba(255,255,255,0.03); }
   table.mem td.content { color: var(--text); max-width: 480px; white-space: pre-wrap; word-break: break-word; }
   table.mem td.content .more {
     color: var(--accent); cursor: pointer; font-size: 11px;
@@ -142,14 +221,15 @@
   table.mem td.meta { color: var(--text-dim); white-space: nowrap; font-family: var(--mono); font-size: 12px; }
   table.mem tr:last-child td { border-bottom: 0; }
   .tag {
-    display: inline-block; padding: 2px 8px; margin-right: 4px; font-size: 11px;
-    background: var(--accent-soft); color: var(--accent); border-radius: 999px;
+    display: inline-block; padding: 3px 10px; margin-right: 4px; font-size: 11px;
+    background: var(--accent-soft); color: var(--accent-2);
+    border-radius: var(--radius-pill);
   }
   .stage-tag { font-size: 10px; padding: 2px 6px; border-radius: 4px; background: var(--bg-elev-2); color: var(--text-dim); text-transform: uppercase; letter-spacing: 0.06em; }
   .pinned { color: var(--warn); font-size: 11px; margin-left: 6px; }
 
   .empty { color: var(--text-faint); font-size: 13px; padding: 24px 0; text-align: center; }
-  .err { color: var(--bad); font-size: 13px; padding: 12px 14px; border: 1px solid var(--bad); border-radius: var(--radius-sm); background: rgba(247,118,142,0.06); margin-bottom: 16px; }
+  .err { color: var(--bad); font-size: 13px; padding: 12px 14px; border: 1px solid var(--bad); border-radius: var(--radius-sm); background: rgba(227,26,26,0.10); margin-bottom: 16px; }
 
   .health-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 10px 16px; font-size: 12px; }
   .health-grid .k { color: var(--text-dim); }
@@ -161,9 +241,9 @@
   .bar-row .bar-val { color: var(--text-dim); text-align: right; font-variant-numeric: tabular-nums; font-family: var(--mono); font-size: 12px; }
   .mono { font-family: var(--mono); font-size: 12px; color: var(--text); }
 
-  .badge { display: inline-block; padding: 1px 8px; border-radius: 10px; font-size: 11px; font-weight: 500; margin-right: 6px; vertical-align: middle; }
-  .badge.good { background: rgba(158,206,106,0.16); color: var(--good); }
-  .badge.bad  { background: rgba(247,118,142,0.16); color: var(--bad); }
+  .badge { display: inline-block; padding: 2px 10px; border-radius: var(--radius-pill); font-size: 11px; font-weight: 500; margin-right: 6px; vertical-align: middle; }
+  .badge.good { background: rgba(1,181,116,0.16); color: var(--good); }
+  .badge.bad  { background: rgba(227,26,26,0.16); color: var(--bad); }
   .badge.dim  { background: var(--bg-elev-2); color: var(--text-dim); }
   .causal-edge { padding: 10px 12px; margin: 8px 0; background: var(--bg-elev); border-radius: var(--radius-sm); border-left: 2px solid var(--accent); }
   .causal-head { margin: 2px 0; font-size: 12px; }
@@ -172,41 +252,58 @@
   footer { margin-top: 32px; color: var(--text-faint); font-size: 12px; text-align: center; }
   footer code { font-family: var(--mono); }
 
-  /* sidebar nav */
-  .tabs { display: flex; flex-direction: column; gap: 0; }
-  .tab {
-    background: transparent; border: 0; color: var(--text-dim);
-    padding: 6px 10px; font: inherit; font-size: 13px; line-height: 1.3; cursor: pointer;
-    text-align: left; border-radius: var(--radius-sm);
-    transition: background .12s, color .12s;
-  }
-  .tab:hover { background: var(--bg-elev-2); color: var(--text); }
-  .tab.active { background: var(--bg-elev-2); color: var(--text); font-weight: 500; }
+  /* Tab panels — content area only. Sidebar buttons that double as tabs
+     (class="nav-item tab") inherit the .nav-item visual rules below. */
   .tab-panel { display: none; }
   .tab-panel.active { display: block; }
 
-  /* sidebar app-nav (top-level: cortex / chat / agents / tasks / providers / settings) */
-  .app-nav { display: flex; flex-direction: column; gap: 2px; }
+  /* Sidebar nav rail. Section eyebrow + 44 px items + 3 px gradient
+     accent-strip on the active item (placeholder for the spec's icon-tile
+     until per-tab icons are picked). */
+  .app-nav { display: flex; flex-direction: column; gap: 4px; }
   .nav-item {
-    display: flex; align-items: center; gap: 8px;
+    position: relative;
+    display: flex; align-items: center; gap: 10px;
     background: transparent; border: 0; color: var(--text-dim);
-    padding: 9px 10px; font: inherit; font-size: 13px; line-height: 1.3; cursor: pointer;
-    text-align: left; border-radius: var(--radius-sm);
-    transition: background .12s, color .12s;
+    padding: 11px 14px 11px 18px; min-height: 44px;
+    font: inherit; font-size: 14px; font-weight: 500; line-height: 1.3;
+    cursor: pointer; text-align: left;
+    border-radius: var(--radius-sm);
+    transition: background .15s cubic-bezier(.4,0,.2,1),
+                color .15s cubic-bezier(.4,0,.2,1);
   }
-  .nav-item:hover { background: var(--bg-elev-2); color: var(--text); }
-  .nav-item.active { background: var(--bg-elev-2); color: var(--text); font-weight: 600; }
-  .nav-item .badge {
-    margin-left: auto; font-size: 10px; padding: 2px 7px;
-    border-radius: 8px; background: var(--bg, var(--bg-elev-2));
-    color: var(--text-faint); text-transform: uppercase; letter-spacing: 0.5px;
-    border: 1px solid var(--border);
+  .nav-item::before {
+    /* The 3 px gradient accent-strip — invisible at rest, lights up when
+       the item becomes the active tab. Sits at the left edge of the row. */
+    content: ""; position: absolute; left: 6px; top: 50%;
+    transform: translateY(-50%);
+    width: 3px; height: 0; border-radius: 2px;
+    background: var(--accent-gradient);
+    transition: height .2s cubic-bezier(.4,0,.2,1);
   }
+  .nav-item:hover { background: rgba(255,255,255,0.04); color: var(--text); }
+  .nav-item.active {
+    background: var(--bg-elev-2); color: var(--text); font-weight: 600;
+    box-shadow: inset 0 1px 0 rgba(255,255,255,0.04);
+  }
+  .nav-item.active::before { height: 22px; }
+  .nav-item:focus-visible {
+    outline: 2px solid var(--accent-2); outline-offset: 2px;
+  }
+
+  /* Tab-panel-only .tab buttons (none in tree right now — the sidebar
+     items above carry both classes — kept for back-compat if anyone adds
+     a horizontal tab strip back later). */
+  .tabs { display: flex; flex-direction: column; gap: 0; }
+
+  /* Spec §14 says no light-mode parallel — hide the legacy theme toggle
+     until we revisit a daylight palette. */
+  #theme { display: none; }
 
   /* Sidebar section labels — group the sidebar tabs (erinnerung/innenleben/
      lernen/schwarm/system) without making them clickable. */
   .nav-section {
-    font-size: 10px; font-weight: 600; letter-spacing: 0.6px;
+    font-size: 10px; font-weight: 700; letter-spacing: 0.12em;
     text-transform: uppercase; color: var(--text-faint);
     padding: 14px 10px 4px; margin: 0;
   }
@@ -5010,8 +5107,9 @@ function applyTheme(t) {
   if (lastData) load();  // re-render so chart colors follow the theme
 }
 function initTheme() {
-  const saved = localStorage.getItem("vm-theme");
-  document.documentElement.dataset.theme = saved || (matchMedia("(prefers-color-scheme: light)").matches ? "light" : "dark");
+  // Spec §14: dark-only MVP. Force dark regardless of prior localStorage or
+  // OS preference so Chart.js (isDark()) and CSS pick the right palette.
+  document.documentElement.dataset.theme = "dark";
 }
 
 // breed modal wiring
