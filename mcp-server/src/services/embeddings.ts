@@ -1,4 +1,7 @@
 import { Ollama } from "ollama";
+import { mkdir } from "node:fs/promises";
+import os from "node:os";
+import path from "node:path";
 
 export interface EmbeddingProvider {
   embed(text: string): Promise<number[]>;
@@ -62,13 +65,178 @@ export class OllamaEmbeddingProvider implements EmbeddingProvider {
   }
 }
 
+/**
+ * In-process embedding provider backed by node-llama-cpp + a GGUF model.
+ *
+ * Spike #178 (PR #182, docs/native-llm-spike.md) validated this as a
+ * drop-in replacement for the external Ollama daemon. Same `embed()`
+ * contract, same 768d output for `nomic-embed-text-v1.5`, ~1.27× slower
+ * but no second daemon required — the centerpiece of the native
+ * standalone-app track (#176, Welle 1).
+ *
+ * Selected by setting `MYCELIUM_LLM_PROVIDER=llama-cpp`. Ollama remains
+ * the default until cross-path embedding parity is verified end-to-end
+ * (see "Tokenizer warning" in the spike doc — switching the default on
+ * an existing install would invalidate stored vectors).
+ *
+ * `node-llama-cpp` is dynamically imported on first `embed()` call so
+ * the native binding is not loaded for installs that stay on Ollama.
+ *
+ * Concurrency: PGlite-style serializer. The embedding context processes
+ * one request at a time; queueing avoids contention and keeps a failed
+ * embed from poisoning subsequent calls.
+ */
+export interface LlamaCppEmbeddingProviderOptions {
+  modelsDir?: string;
+  modelUri?: string;
+  dimensions?: number;
+  charBudget?: number;
+}
+
+const DEFAULT_LLAMA_EMBEDDING_MODEL_URI =
+  "hf:nomic-ai/nomic-embed-text-v1.5-GGUF/nomic-embed-text-v1.5.Q5_K_M.gguf";
+
+export function defaultLlamaModelsDir(): string {
+  if (process.platform === "darwin") {
+    return path.join(
+      os.homedir(),
+      "Library",
+      "Application Support",
+      "mycelium",
+      "models"
+    );
+  }
+  if (process.platform === "win32") {
+    const appData =
+      process.env.APPDATA ?? path.join(os.homedir(), "AppData", "Roaming");
+    return path.join(appData, "mycelium", "models");
+  }
+  const xdg =
+    process.env.XDG_DATA_HOME ?? path.join(os.homedir(), ".local", "share");
+  return path.join(xdg, "mycelium", "models");
+}
+
+export class LlamaCppEmbeddingProvider implements EmbeddingProvider {
+  readonly dimensions: number;
+  private readonly modelsDir: string;
+  private readonly modelUri: string;
+  private readonly charBudget: number;
+  private ready: Promise<{
+    ctx: { getEmbeddingFor: (text: string) => Promise<{ vector: number[] }> };
+    dispose: () => Promise<void>;
+  }> | null = null;
+  private queue: Promise<unknown> = Promise.resolve();
+
+  constructor(opts: LlamaCppEmbeddingProviderOptions = {}) {
+    this.modelsDir = opts.modelsDir ?? defaultLlamaModelsDir();
+    this.modelUri = opts.modelUri ?? DEFAULT_LLAMA_EMBEDDING_MODEL_URI;
+    this.dimensions = opts.dimensions ?? 768;
+    this.charBudget = opts.charBudget ?? 6000;
+  }
+
+  private async init() {
+    if (this.ready) return this.ready;
+    this.ready = (async () => {
+      // Dynamic import keeps the native binding off the cold-start path
+      // for installs that stay on Ollama. Use a runtime-computed specifier
+      // so TypeScript does not require node-llama-cpp's type defs to be
+      // resolvable in every consumer build.
+      const specifier = "node-llama-cpp";
+      let llamaCpp: any;
+      try {
+        llamaCpp = await import(specifier);
+      } catch (err) {
+        throw new Error(
+          `LlamaCppEmbeddingProvider: failed to load 'node-llama-cpp'. ` +
+            `Install it (npm i node-llama-cpp) or switch back to ` +
+            `MYCELIUM_LLM_PROVIDER=ollama. Underlying: ${
+              (err as Error).message ?? err
+            }`
+        );
+      }
+      const { getLlama, LlamaLogLevel, resolveModelFile } = llamaCpp;
+
+      await mkdir(this.modelsDir, { recursive: true });
+      const llama = await getLlama({ logLevel: LlamaLogLevel.warn });
+      const modelPath = await resolveModelFile(this.modelUri, this.modelsDir);
+      const model = await llama.loadModel({ modelPath });
+      if (model.embeddingVectorSize !== this.dimensions) {
+        await model.dispose();
+        await llama.dispose();
+        throw new Error(
+          `LlamaCppEmbeddingProvider: model embedding dim ` +
+            `${model.embeddingVectorSize} != configured ${this.dimensions}. ` +
+            `Adjust EMBEDDING_DIMENSIONS or pick a different GGUF.`
+        );
+      }
+      const ctx = await model.createEmbeddingContext();
+      return {
+        ctx,
+        dispose: async () => {
+          await ctx.dispose();
+          await model.dispose();
+          await llama.dispose();
+        },
+      };
+    })();
+    return this.ready;
+  }
+
+  private enqueue<T>(fn: () => Promise<T>): Promise<T> {
+    const next = this.queue.then(fn, fn);
+    this.queue = next.catch(() => undefined);
+    return next;
+  }
+
+  async embed(text: string): Promise<number[]> {
+    const sampled = sampleForEmbedding(text, this.charBudget);
+    if (sampled.length < text.length) {
+      console.error(
+        `Embedding input sampled: ${text.length} → ${sampled.length} chars (head+middle+tail)`
+      );
+    }
+    const { ctx } = await this.init();
+    return this.enqueue(async () => {
+      const result = await ctx.getEmbeddingFor(sampled);
+      return Array.from(result.vector);
+    });
+  }
+
+  async dispose(): Promise<void> {
+    if (!this.ready) return;
+    const handle = await this.ready.catch(() => null);
+    this.ready = null;
+    if (handle) await handle.dispose();
+  }
+}
+
 export function createEmbeddingProvider(): EmbeddingProvider {
-  const url = process.env.OLLAMA_URL ?? "http://localhost:11434";
-  const model = process.env.EMBEDDING_MODEL ?? "nomic-embed-text";
+  const provider = (process.env.MYCELIUM_LLM_PROVIDER ?? "ollama")
+    .toLowerCase()
+    .trim();
   const dimensions = parseInt(
     process.env.EMBEDDING_DIMENSIONS ?? "768",
     10
   );
   const charBudget = parseInt(process.env.EMBEDDING_CHAR_BUDGET ?? "6000", 10);
+
+  if (provider === "llama-cpp" || provider === "llamacpp") {
+    return new LlamaCppEmbeddingProvider({
+      modelsDir: process.env.MYCELIUM_LLAMA_MODELS_DIR,
+      modelUri: process.env.MYCELIUM_LLAMA_EMBEDDING_MODEL_URI,
+      dimensions,
+      charBudget,
+    });
+  }
+
+  if (provider !== "ollama") {
+    throw new Error(
+      `Unknown MYCELIUM_LLM_PROVIDER='${provider}'. ` +
+        `Expected 'ollama' or 'llama-cpp'.`
+    );
+  }
+
+  const url = process.env.OLLAMA_URL ?? "http://localhost:11434";
+  const model = process.env.EMBEDDING_MODEL ?? "nomic-embed-text";
   return new OllamaEmbeddingProvider(url, model, dimensions, charBudget);
 }

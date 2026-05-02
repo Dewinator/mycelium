@@ -138,3 +138,26 @@ gpu=metal · build=prebuilt · MTL EMBED_LIBRARY · NEON · ACCELERATE · LLAMAF
 
 - **Pillar 1 (decentralised AI)** — strengthened. Removing the daemon dependency moves the entire LLM stack into the user's own process; no separate service to misconfigure or compromise.
 - **Pillar 6 (cyber security)** — neutral with required follow-up. Model files come from Hugging Face; we must add SHA-256 verification before flipping the default. The `node-llama-cpp` package itself is npm-distributed and audit-trackable like any other dep.
+
+---
+
+## Implementation 1 — `LlamaCppEmbeddingProvider` shipped
+
+Follow-up issue #178 part 1 (PR pending). Lands the embedding side of the spike's recommendation as a real provider in `mcp-server/src/services/embeddings.ts`. Chat provider + REM-digest re-route stays a separate sub-task.
+
+**Selection.** Set `MYCELIUM_LLM_PROVIDER=llama-cpp` (or alias `llamacpp`). Default remains `ollama` so no existing install changes behaviour. Unknown values throw at startup rather than silently falling back.
+
+**Knobs.**
+- `MYCELIUM_LLAMA_MODELS_DIR` — absolute path; defaults to OS app-data (`~/Library/Application Support/mycelium/models` on macOS, `%APPDATA%\mycelium\models` on Windows, `$XDG_DATA_HOME/mycelium/models` on Linux). Same convention as the PGlite data dir from #185 — both consumed by the future Tauri shell.
+- `MYCELIUM_LLAMA_EMBEDDING_MODEL_URI` — Hugging Face URI for the GGUF; defaults to `hf:nomic-ai/nomic-embed-text-v1.5-GGUF/nomic-embed-text-v1.5.Q5_K_M.gguf` (the dim-768 variant the schema expects).
+- `EMBEDDING_DIMENSIONS` — checked against the loaded model's `embeddingVectorSize`; mismatch throws with a clear message instead of silently producing the wrong-shaped vector.
+
+**Lifecycle.** Lazy init: the first `embed()` call triggers model download (cached) and embedding-context creation. Subsequent calls reuse the same context. `dispose()` releases the runtime — long-lived MCP processes simply let the process exit drop it.
+
+**Concurrency.** PGlite-style Promise-chain serializer (matches PR #185's adapter). The embedding context handles one call at a time; the queue keeps a failed embed from poisoning subsequent ops, so a single malformed input does not take down the provider.
+
+**Packaging.** `node-llama-cpp` is added as an `optionalDependencies` entry, not a hard dep. Reasoning: it pulls per-platform native binaries on `npm install`, so `optionalDependencies` lets niche or unsupported platforms (e.g., a future linux-musl runner) still install the rest of mycelium. The dynamic import inside the provider throws a clear "install node-llama-cpp or switch to ollama" error if the runtime tries to use llama-cpp without the binding present.
+
+**Default not flipped.** Per the tokenizer-divergence warning above, switching the default would invalidate stored vectors on existing installs. The default stays `ollama`; native installs (#176 sub-task 4, Tauri shell) will set the env explicitly when they ship a fresh data dir.
+
+**Out of this PR.** Cosine-similarity cross-validation against Ollama (deferred to a CI gate before any default flip), automatic model SHA-256 verification (Pillar 6 follow-up #4 above), chat provider, and the REM-digest re-route.
