@@ -96,6 +96,42 @@ This spike answers four concrete questions:
   Linux (Avahi) and Windows are still open — re-run all three spikes on
   each platform before locking the pick. Cross-host (two machines on the
   same LAN) is also still open and is the next item.
+
+  **Negative-path validation (2026-05-03 — `experiments/swarm-discovery/spike-fetch-hostile.mjs`,
+  `report-fetch-hostile.json`):** the happy-path spike answers "does the
+  fetch + shape pipeline work when the publisher behaves." This spike
+  answers the harder question — what happens when it doesn't. Five
+  scenarios on the receiver side: 404 status, malformed JSON, JSON with
+  the wrong shape, response held past the 2 s budget, and a body that
+  streams without bound. Empirical results — five for five handled
+  gracefully on macOS-arm64 (Node 25.9):
+  - `not_found_404` — fetch reports `status=404, ok=false` in 21 ms; the
+    shape check is a no-op because the body isn't JSON. No retry, no
+    crash.
+  - `malformed_json` — fetch returns 200 in 2 ms, shape rejects with
+    `JSON parse: …` reason. Receiver moves on.
+  - `wrong_shape` — fetch returns 200 in 1 ms, shape rejects with
+    `missing: node_id,pubkey,endpoint_url,signed_at`. The shape check
+    enumerates exactly which fields are missing, which is what the
+    operator UI needs to show "this peer advertised a malformed record."
+  - `slow_response` — server holds the body 3 s; fetch aborts at exactly
+    2005 ms with `timed_out=true`. The 2 s budget is honoured to within
+    5 ms on loopback. No hang.
+  - `huge_body` — server streams 12 MiB; the spike's own body cap fires
+    at 5.29 MiB in 33 ms. **Hardening gap:** the production fetch path
+    in `spike-mdns-fetch.mjs:fetchUrl` has no body cap — only this
+    hostile spike does. The first implementation PR for issue 1 in the
+    "Concrete next steps" table MUST add a `selfCapBytes` parameter to
+    the fetch call (recommended cap: 64 KiB — a NodeAdvertisement is
+    typically <1 KiB; anything past 64 KiB is hostile or buggy).
+
+  Two of these (slow + huge) are bytes-on-the-wire DoS vectors. With the
+  cap and the timeout in place, a hostile peer on the LAN cannot wedge a
+  discoverer past ~2 s × 1 connection. Without them, it can. The fact
+  that the spike-mdns-fetch happy-path code lacks both is fine for the
+  spike (its job is to validate the wire, not to be production-grade) —
+  but the implementation issue ("Concrete next steps" #1) MUST inherit
+  these as acceptance criteria.
 - **WAN discovery: `js-libp2p` with a Kademlia DHT** (`@libp2p/kad-dht`),
   using only **public bootstrap nodes operated by mycelium users
   themselves** — never IPFS-network bootstrap. The DHT key is the

@@ -1,0 +1,100 @@
+{
+  "spike": "wave-3-fetch-hostile",
+  "started_at": "2026-05-02T22:18:55.461Z",
+  "platform": "darwin-arm64",
+  "node": "v25.9.0",
+  "budget": {
+    "fetch_ms": 2000,
+    "huge_self_cap_bytes": 5242880
+  },
+  "scenarios": {
+    "not_found_404": {
+      "expected": "publisher returns 404 on /.well-known/mycelium-node",
+      "fetch": {
+        "ok": false,
+        "status": 404,
+        "ms": 21,
+        "bytes": 10,
+        "capped": false,
+        "body_preview": "not found\n"
+      },
+      "shape": {
+        "ok": false,
+        "reason": "JSON parse: Unexpected token 'o', \"not found\n\" is not valid JSON"
+      },
+      "handled_gracefully": true,
+      "note": "fetch reports status=404 + ok=false; shape skipped because body is not JSON"
+    },
+    "malformed_json": {
+      "expected": "publisher returns 200 with broken JSON body",
+      "fetch": {
+        "ok": true,
+        "status": 200,
+        "ms": 2,
+        "bytes": 15,
+        "capped": false,
+        "body_preview": "{not valid json"
+      },
+      "shape": {
+        "ok": false,
+        "reason": "JSON parse: Expected property name or '}' in JSON at position 1 (line 1 column 2)"
+      },
+      "handled_gracefully": true,
+      "note": "shape-check rejects with 'JSON parse: …' reason"
+    },
+    "wrong_shape": {
+      "expected": "publisher returns 200 with JSON missing required fields",
+      "fetch": {
+        "ok": true,
+        "status": 200,
+        "ms": 1,
+        "bytes": 38,
+        "capped": false,
+        "body_preview": "{\"hello\":\"world\",\"spec_version\":\"1.1\"}"
+      },
+      "shape": {
+        "ok": false,
+        "reason": "missing: node_id,pubkey,endpoint_url,signed_at"
+      },
+      "handled_gracefully": true,
+      "note": "shape-check rejects with 'missing: …' reason"
+    },
+    "slow_response": {
+      "expected": "publisher delays body by 3000 ms (> 2000 ms budget)",
+      "fetch": {
+        "ok": false,
+        "status": 0,
+        "ms": 2005,
+        "bytes": 0,
+        "capped": false,
+        "timed_out": true,
+        "error": "Error: fetch timeout after 2000 ms"
+      },
+      "handled_gracefully": true,
+      "note": "fetch aborts within ~2000 ms — no hang past budget"
+    },
+    "huge_body": {
+      "expected": "publisher streams unbounded body (no Content-Length cap on receiver)",
+      "fetch": {
+        "ok": false,
+        "status": 0,
+        "ms": 33,
+        "bytes": 5291257,
+        "capped": true,
+        "timed_out": false,
+        "error": "Error: self-cap reached at 5291257 bytes"
+      },
+      "handled_gracefully": true,
+      "note": "self-cap halted the read — production receiver MUST enforce a body cap (HARDENING GAP)"
+    }
+  },
+  "endpoint_root": "http://127.0.0.1:49674",
+  "summary": {
+    "scenarios": 5,
+    "handled_gracefully": 5,
+    "hardening_gaps": [
+      "huge_body"
+    ]
+  },
+  "finished_at": "2026-05-02T22:18:57.552Z"
+}
