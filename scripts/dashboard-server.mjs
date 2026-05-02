@@ -66,6 +66,13 @@ const { buildNodeAdvertisementResponse } = await import(
 const { buildLessonProofResponse } = await import(
   path.join(SWARM_ENDPOINTS_DIST, "lesson-proof.js")
 );
+// Swarm sub-phase 4j (issue #138): POST /swarm/lessons admission pipeline.
+// Mirrors the #128 → #152 substrate-then-wiring split — PR #154 shipped the
+// pure handler with 19 contract tests; this wiring mounts it on the HTTP
+// host so a peer can actually post a Lesson envelope.
+const { admitSwarmLesson } = await import(
+  path.join(SWARM_ENDPOINTS_DIST, "lesson-admission.js")
+);
 
 // --- load JWT_SECRET from docker/.env so we can mint a service_role JWT ---
 async function loadEnv() {
@@ -1837,6 +1844,183 @@ async function pgSelect(query) {
   return r.json();
 }
 
+// --- Swarm sub-phase 4j: POST /swarm/lessons -----------------------------
+// Receiver-side admission for incoming v1.1 Lesson envelopes (SWARM_SPEC §10.6
+// firebreak). The handler module `lesson-admission.ts` is pure — every side
+// effect (DB writes, signature lookups) goes through injected callbacks so
+// the contract tests can exercise every branch without HTTP / Postgres. This
+// adapter wires those callbacks against PostgREST + the existing swarm RPCs.
+//
+// Three deps are deliberately NOT supplied:
+//
+//   1. `getExpectedPrevLessonHash` — receiver-side rule-19 (broken
+//      commitment chain) requires per-origin chain tracking on the receiver
+//      side, which the substrate doesn't yet provide. swarm_lessons stores
+//      neither `prev_lesson_hash` nor `lesson_hash`; only the producer-side
+//      `lesson_chain` table (migration 074) carries those, and that table
+//      is keyed by self-published lessons. Wiring rule 19 here means a new
+//      `received_lesson_chain` table per-origin, which is its own follow-up.
+//
+//   2. `runContradictionGate` — the gate (migration 080 + PR #121) lives
+//      in the MCP server services tree, not in the dashboard host. Mounting
+//      it in this listener would cross the MCP/dashboard process boundary;
+//      §10.5 REM self-audit catches the same contradicts asynchronously, so
+//      the inline gate is a latency optimization, not a correctness one.
+//
+//   3. `setQuarantine` uses a direct PATCH on `nodes.quarantined_until`
+//      rather than the `quarantine_origin` RPC because the §10.2 single-
+//      strike interval is one hour and the RPC enforces `p_days > 0` (it
+//      can't represent sub-day windows without a schema change). Same
+//      pattern the operator-override restore path uses (#157 / lines 1731+).
+async function pgPostJson(path, body) {
+  const r = await fetch(new URL(`/${path}`, UPSTREAM), {
+    method: "POST",
+    headers: {
+      "Content-Type":  "application/json",
+      "Accept":        "application/json",
+      "Prefer":        "return=representation",
+      "Authorization": `Bearer ${SERVICE_JWT}`,
+      "apikey":        SERVICE_JWT,
+    },
+    body: JSON.stringify(body),
+  });
+  if (!r.ok) {
+    const text = await r.text().catch(() => "");
+    throw new Error(`postgrest POST /${path} failed: HTTP ${r.status} ${text}`);
+  }
+  return r.json();
+}
+
+async function pgPatchJson(path, body) {
+  const r = await fetch(new URL(`/${path}`, UPSTREAM), {
+    method: "PATCH",
+    headers: {
+      "Content-Type":  "application/json",
+      "Accept":        "application/json",
+      "Authorization": `Bearer ${SERVICE_JWT}`,
+      "apikey":        SERVICE_JWT,
+    },
+    body: JSON.stringify(body),
+  });
+  if (!r.ok) {
+    const text = await r.text().catch(() => "");
+    throw new Error(`postgrest PATCH /${path} failed: HTTP ${r.status} ${text}`);
+  }
+}
+
+function decodeB64Url(s) {
+  // Accept both URL-safe and standard base64; restore padding.
+  const std = String(s).replace(/-/g, "+").replace(/_/g, "/");
+  const pad = std.length % 4 === 0 ? std : std + "=".repeat(4 - (std.length % 4));
+  return new Uint8Array(Buffer.from(pad, "base64"));
+}
+
+async function handleAdmitLesson(req, res) {
+  if (req.method !== "POST") {
+    res.writeHead(405, { "Content-Type": "application/json" });
+    res.end(JSON.stringify({ error: "POST only" }));
+    return;
+  }
+  // Parse body upstream of admitSwarmLesson — the handler expects an
+  // already-parsed object so the HTTP host owns JSON.parse failures.
+  const chunks = [];
+  for await (const c of req) chunks.push(c);
+  const raw = Buffer.concat(chunks).toString("utf8");
+  let body;
+  try {
+    body = raw.length === 0 ? null : JSON.parse(raw);
+  } catch {
+    res.writeHead(400, { "Content-Type": "application/json; charset=utf-8" });
+    res.end(JSON.stringify({ error: "invalid JSON body" }));
+    return;
+  }
+
+  try {
+    const result = await admitSwarmLesson({
+      body,
+      ourSpecMajor: 1,
+      now: new Date(),
+      loadSelf: async () => {
+        const self = await nodeIdentityService.getSelf();
+        if (!self) return null;
+        return { node_id: self.node_id, pubkey_b64: self.pubkey_b64 };
+      },
+      getPubkeyForNode: async (nodeId) => {
+        const rows = await pgSelect(
+          `nodes?select=pubkey_b64url&node_id=eq.${encodeURIComponent(nodeId)}&limit=1`,
+        );
+        if (!Array.isArray(rows) || rows.length === 0) return null;
+        const b64 = rows[0]?.pubkey_b64url;
+        if (typeof b64 !== "string" || b64.length === 0) return null;
+        return decodeB64Url(b64);
+      },
+      getQuarantinedUntil: async (nodeId) => {
+        const rows = await pgSelect(
+          `nodes?select=quarantined_until&node_id=eq.${encodeURIComponent(nodeId)}&limit=1`,
+        );
+        if (!Array.isArray(rows) || rows.length === 0) return null;
+        return rows[0]?.quarantined_until ?? null;
+      },
+      insertSwarmLesson: async (lesson) => {
+        const inserted = await pgPostJson("swarm_lessons", {
+          id:                            lesson.id,
+          content:                       lesson.content,
+          embedding:                     lesson.embedding,
+          synthesized_from_cluster_size: lesson.synthesized_from_cluster_size,
+          origin_node_id:                lesson.origin_node_id,
+          signed_at:                     lesson.signed_at,
+          created_at:                    lesson.created_at,
+          signature:                     lesson.signature,
+          tags:                          lesson.tags ?? null,
+          spec_version:                  lesson.spec_version,
+          lesson_tier:                   "B",
+        });
+        const row = Array.isArray(inserted) ? inserted[0] : inserted;
+        return { lesson_id: row?.id ?? lesson.id };
+      },
+      setQuarantine: async (nodeId, untilMs, reason) => {
+        // Direct PATCH — the quarantine_origin RPC enforces p_days > 0,
+        // which can't represent the §10.2 1-hour single-strike window.
+        await pgPatchJson(
+          `nodes?node_id=eq.${encodeURIComponent(nodeId)}`,
+          {
+            quarantined_until: new Date(untilMs).toISOString(),
+            decay_reason:      reason,
+          },
+        );
+      },
+      recordTrustEdgeChange: async (nodeId, delta, reason) => {
+        // The handler hands us a delta (§10.1 +0.05 admitted); record_trust_edge_change
+        // sets an absolute new_weight. Read-modify-write so the audit row carries the
+        // before→after pair the §10.1 audit semantics expect.
+        const rows = await pgSelect(
+          `nodes?select=trust_weight&node_id=eq.${encodeURIComponent(nodeId)}&limit=1`,
+        );
+        const before = Array.isArray(rows) && rows.length > 0
+          ? Number(rows[0]?.trust_weight ?? 0.5)
+          : 0.5;
+        const next = Math.max(0, Math.min(1, before + delta));
+        await callRpc("record_trust_edge_change", {
+          p_node_id:    nodeId,
+          p_new_weight: next,
+          p_reason:     reason,
+        });
+      },
+      // Intentionally undefined — see header comment.
+      // getExpectedPrevLessonHash: undefined,
+      // runContradictionGate:      undefined,
+    });
+    res.writeHead(result.status, result.headers);
+    res.end(result.body);
+  } catch (e) {
+    res.writeHead(503, { "Content-Type": "application/json; charset=utf-8" });
+    res.end(JSON.stringify({
+      error:  "lesson-admission handler failed",
+      detail: String(e?.message || e),
+    }));
+  }
+}
+
 async function handleLessonProof(_req, res, lessonId) {
   try {
     const result = await buildLessonProofResponse({
@@ -1897,6 +2081,9 @@ const server = http.createServer((req, res) => {
   if (req.url === "/swarm/contradict-resolve")  return handleSwarmContradictResolve(req, res);
   if (req.url === "/swarm/peer-trust-override") return handleSwarmPeerTrustOverride(req, res);
   if (req.url === "/swarm/lesson-pin")          return handleSwarmLessonPin(req, res);
+  // Swarm sub-phase 4j (issue #138): receiver-side admission. Distinct from
+  // the GET /swarm/lessons feed (PR #155 substrate) — methods route this.
+  if (req.method === "POST" && req.url === "/swarm/lessons") return handleAdmitLesson(req, res);
   // Swarm sub-phase 4e (issue #105): inclusion-proof endpoint.
   if (req.method === "GET" && req.url) {
     const proofMatch = req.url.match(PROOF_PATH_RE);
