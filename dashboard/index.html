@@ -6231,6 +6231,11 @@ const SYN = (() => {
     const q = new URLSearchParams({ limit: lim, min_weight: minW, hebbian: String(hebb) });
     if (cat) q.set("category", cat);
     if (br)  q.set("bridges", "1");
+    // Forward the search term so the server can pull in matching memories
+    // (and their relations) even when the recency-ordered top-N missed
+    // them. The frontend matcher then highlights the result in the
+    // expanded subgraph.
+    if (state.searchTerm) q.set("q", state.searchTerm);
     try {
       const r = await fetch(`/relations-graph?${q}`);
       if (!r.ok) throw new Error(`HTTP ${r.status}`);
@@ -6558,7 +6563,20 @@ const SYN = (() => {
       });
     }
     refreshViewBadges();
-    $("syn-search").addEventListener("input", (e) => { state.searchTerm = e.target.value.trim(); });
+    // Search input — the frontend matcher highlights matching nodes already
+    // in the loaded subgraph (computeSearchHits, render-time). To make the
+    // search useful for memories that the recency-ordered top-N didn't load
+    // (typical for topic-class memories when project / decision relations
+    // dominate), we also debounce-trigger a server reload via load(): the
+    // backend's `q` expansion fetches matching memories + their relations
+    // and merges them into the next ingest. The 350 ms debounce keeps the
+    // graph from re-flying every keystroke.
+    let _synSearchTimer = null;
+    $("syn-search").addEventListener("input", (e) => {
+      state.searchTerm = e.target.value.trim();
+      if (_synSearchTimer) clearTimeout(_synSearchTimer);
+      _synSearchTimer = setTimeout(() => { load(); }, 350);
+    });
     $("syn-details-close").addEventListener("click", () => {
       state.selected = null;
       state.selDepth = null;
