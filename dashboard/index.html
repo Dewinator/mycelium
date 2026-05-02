@@ -1089,6 +1089,27 @@
     background: color-mix(in srgb, var(--text-faint) 60%, transparent);
   }
 
+  /* Operator actions on the peer-trust table — small button row in the      */
+  /* last column. Mirrors .contradicts-actions discipline (compact, confirm  */
+  /* before destructive op, disabled while POST is in flight).               */
+  .peer-actions { display: flex; flex-wrap: wrap; gap: 6px; }
+  .peer-actions button {
+    font-size: 11px; line-height: 1.2; padding: 4px 8px;
+    border-radius: var(--radius-sm); cursor: pointer;
+    border: 1px solid var(--border); background: var(--bg-elev-2);
+    color: var(--text); font-family: inherit;
+  }
+  .peer-actions button:hover { border-color: var(--accent); }
+  .peer-actions button.distrust {
+    border-color: color-mix(in srgb, var(--bad) 35%, transparent);
+    color: var(--bad);
+  }
+  .peer-actions button.restore {
+    border-color: color-mix(in srgb, var(--good) 35%, transparent);
+    color: var(--good);
+  }
+  .peer-actions button:disabled { opacity: 0.5; cursor: wait; }
+
   /* Mini-timeline for promotion / trust log entries.                         */
   .swarm-timeline { display: flex; flex-direction: column; gap: 0; }
   .swarm-timeline .row {
@@ -3302,14 +3323,14 @@ async function loadSwarm() {
       trustTbl.innerHTML = `<thead><tr><th></th></tr></thead><tbody><tr><td class="empty">keine peers bekannt — der schwarm hat noch genau einen knoten (dich).</td></tr></tbody>`;
     } else {
       trustTbl.innerHTML = `
-        <thead><tr><th>peer</th><th>vertrauen</th><th>letzter kontakt</th><th>grund</th></tr></thead>
+        <thead><tr><th>peer</th><th>vertrauen</th><th>letzter kontakt</th><th>grund</th><th>${tt("swarm.peer.action_col")}</th></tr></thead>
         <tbody>${peersList.map(p => {
           const tw = clamp(Number(p.trust_weight ?? 0), -1, 1);
           const left = ((tw + 1) / 2) * 100;
           const cls = tw > 0.05 ? "pos" : tw < -0.05 ? "neg" : "";
           const quarantined = p.quarantined_until && new Date(p.quarantined_until) > new Date();
           const label = quarantined ? `<span class="tier-badge tier-quarantined">quarantäne</span>` : `<span class="meta">${tw.toFixed(2)}</span>`;
-          return `<tr>
+          return `<tr data-node-id="${escapeHtml(p.node_id || "")}">
             <td class="meta" title="${escapeHtml(p.node_id || "")}">${escapeHtml(p.display_name || shortNode(p.node_id))}</td>
             <td>
               <div class="trust-meter">
@@ -3320,8 +3341,21 @@ async function loadSwarm() {
             </td>
             <td class="meta">${formatDate(p.last_seen_at)}</td>
             <td class="meta">${escapeHtml(p.trust_reason || "—")}</td>
+            <td>
+              <div class="peer-actions">
+                <button class="distrust" data-action="distrust">${tt("swarm.peer.distrust")}</button>
+                <button class="restore" data-action="restore">${tt("swarm.peer.restore")}</button>
+              </div>
+            </td>
           </tr>`;
         }).join("")}</tbody>`;
+      trustTbl.querySelectorAll(".peer-actions button").forEach(btn => {
+        btn.addEventListener("click", () => {
+          const row = btn.closest("tr");
+          if (!row) return;
+          overrideTrust(row.dataset.nodeId, btn.dataset.action, row);
+        });
+      });
     }
 
     // ── Contradicts list ─────────────────────────────────────────────────
@@ -3421,6 +3455,33 @@ async function loadSwarm() {
     if (kpis) {
       kpis.innerHTML = `<div class="card"><div class="kpi"><div class="label">fehler</div><div class="value tone-bad">—</div><div class="hint">${escapeHtml(e.message || String(e))}</div></div></div>`;
     }
+  }
+}
+
+async function overrideTrust(nodeId, action, rowEl) {
+  if (!nodeId || !["distrust", "restore"].includes(action)) return;
+  const promptKey = action === "distrust"
+    ? "swarm.peer.distrust.confirm"
+    : "swarm.peer.restore.confirm";
+  if (!window.confirm(tt(promptKey))) return;
+  const buttons = rowEl ? rowEl.querySelectorAll("button") : [];
+  buttons.forEach(b => { b.disabled = true; });
+  try {
+    const r = await fetch("/swarm/peer-trust-override", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ node_id: nodeId, action }),
+    });
+    if (!r.ok) {
+      const err = await r.json().catch(() => ({}));
+      alert(tt("swarm.peer.error", { detail: err.detail || err.error || `HTTP ${r.status}` }));
+      buttons.forEach(b => { b.disabled = false; });
+      return;
+    }
+    await loadSwarm();
+  } catch (e) {
+    alert(tt("swarm.peer.error", { detail: String(e?.message || e) }));
+    buttons.forEach(b => { b.disabled = false; });
   }
 }
 
