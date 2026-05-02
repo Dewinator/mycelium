@@ -1,0 +1,37 @@
+{
+  "spike": "issue-178-chat",
+  "started_at": "2026-05-02T12:26:08.919Z",
+  "platform": "darwin-arm64",
+  "node": "v25.9.0",
+  "model_uri": "hf:Qwen/Qwen2.5-0.5B-Instruct-GGUF/qwen2.5-0.5b-instruct-q5_k_m.gguf",
+  "max_tokens": 96,
+  "steps": {
+    "runtime": {
+      "gpu": "metal",
+      "ms_init": 140.86804200000006
+    },
+    "model_load": {
+      "ok": true,
+      "ms": 24749.176333,
+      "size_mb": 492,
+      "train_ctx": 32768,
+      "arch": "qwen2"
+    },
+    "context_ready": {
+      "ok": true,
+      "ms": 330.72141700000066
+    },
+    "generation": {
+      "ok": true,
+      "ms": 1272.6774159999986,
+      "approx_tokens": 21,
+      "approx_tokens_per_sec": 16.50064638217798,
+      "response_chars": 55,
+      "response_preview": "1. PR-Queue mit zwei agent/* PRs, beide neue Migration.",
+      "rss_delta_mb": 11,
+      "rss_after_mb": 882
+    }
+  },
+  "finished_at": "2026-05-02T12:26:35.579Z",
+  "verdict": "chat OK · ~21 tok in 1273 ms · ~16.5 tok/s · rss 882 MB"
+}

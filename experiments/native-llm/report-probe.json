@@ -1,0 +1,28 @@
+{
+  "spike": "issue-178-probe",
+  "started_at": "2026-05-02T12:23:32.431Z",
+  "platform": "darwin-arm64",
+  "node": "v25.9.0",
+  "steps": {
+    "init": {
+      "ok": true,
+      "ms": 145.56475
+    },
+    "runtime": {
+      "gpu": "metal",
+      "build": "prebuilt",
+      "vram": {
+        "total": 12713115648,
+        "used": 475136,
+        "free": 12712640512,
+        "unifiedSize": 0
+      },
+      "sys_info": "MTL : EMBED_LIBRARY = 1 | CPU : NEON = 1 | ARM_FMA = 1 | FP16_VA = 1 | DOTPROD = 1 | LLAMAFILE = 1 | ACCELERATE = 1 | REPACK = 1 | "
+    },
+    "memory": {
+      "error": "TypeError: llama.getMemoryState is not a function"
+    }
+  },
+  "finished_at": "2026-05-02T12:23:32.578Z",
+  "verdict": "node-llama-cpp ready · gpu=metal · build=prebuilt"
+}
