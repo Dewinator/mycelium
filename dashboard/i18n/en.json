@@ -239,5 +239,18 @@
   "setup.client.verify": "How to verify it works",
   "setup.client.docs": "Official docs",
 
-  "header.setup": "setup"
+  "header.setup": "setup",
+
+  "update.title": "Update available",
+  "update.sub_prefix": "Your local copy is",
+  "update.commits": "commits",
+  "update.sub_suffix": "behind",
+  "update.latest": "Latest change:",
+  "update.howto": "How to update:",
+  "update.step.easy": "easiest",
+  "update.step.dblclick": "<strong>Double-click</strong> <code>update.command</code> in the mycelium folder.",
+  "update.step.terminal": "Terminal",
+  "update.step.cmd_intro": "Run this in a terminal:",
+  "update.copy": "copy",
+  "update.dismiss.aria": "Dismiss banner"
 }
