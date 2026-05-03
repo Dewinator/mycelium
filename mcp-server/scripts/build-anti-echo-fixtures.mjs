@@ -46,6 +46,10 @@ const PLAGIARISM_KEYS_FILE = path.join(
   FIXTURES_DIR,
   "cohort-keys-plagiarism.json"
 );
+const SYBIL_KEYS_FILE = path.join(
+  FIXTURES_DIR,
+  "cohort-keys-sybil-flood.json"
+);
 
 // ---------------------------------------------------------------------------
 // Step 1 — fixture-key.json (Ed25519, write-once).
@@ -146,6 +150,63 @@ function ensurePlagiarismCohortKeys() {
 const plagiarismCohortKeys = ensurePlagiarismCohortKeys();
 for (const k of plagiarismCohortKeys.keys) {
   // Same sanity check as the single fixture key above.
+  createPrivateKey(k.private_key_pem);
+}
+
+// ---------------------------------------------------------------------------
+// Step 1c — cohort-keys-sybil-flood.json (10× Ed25519, write-once).
+//
+// Sybil-flood per docs/wave-4-anti-echo.md §"Corpus categories" requires
+// M ≥ 10 sock-puppet keys all signing the same lesson within 7 days.
+// Distinct file from plagiarism keys — sybil cohorts are a strictly larger
+// scale and re-using the 3-key plagiarism file would silently weaken the
+// "M ≥ 10" claim if a future refactor changes plagiarism's cohort size.
+//
+// Same write-once discipline as the other cohort key files: regenerating
+// the keys would invalidate every committed sybil envelope's signature.
+// ---------------------------------------------------------------------------
+
+function ensureSybilCohortKeys() {
+  if (fs.existsSync(SYBIL_KEYS_FILE)) {
+    return JSON.parse(fs.readFileSync(SYBIL_KEYS_FILE, "utf8"));
+  }
+  const COHORT_SIZE = 10;
+  const keys = [];
+  for (let i = 0; i < COHORT_SIZE; i++) {
+    const { publicKey, privateKey } = generateKeyPairSync("ed25519");
+    const spki = publicKey.export({ type: "spki", format: "der" });
+    const pubkeyRaw = Buffer.from(spki.subarray(spki.length - 32));
+    const pem = privateKey.export({ type: "pkcs8", format: "pem" });
+    const nodeId = computeNodeId(pubkeyRaw);
+    keys.push({
+      node_id: nodeId,
+      pubkey_raw_b64: pubkeyRaw.toString("base64"),
+      pubkey_b64url_unpadded: pubkeyRaw
+        .toString("base64")
+        .replace(/\+/g, "-")
+        .replace(/\//g, "_")
+        .replace(/=+$/, ""),
+      private_key_pem: pem,
+    });
+  }
+  const file = {
+    comment:
+      "Ed25519 fixture keys for the sybil-flood cohort (W4.1, §10.2 + §10.4). " +
+      "FIXTURE-ONLY; never any production node identity. Each key represents " +
+      "one sock-puppet peer in a synthetic M=10 cohort that the receiver would " +
+      "treat as M distinct origins. Checked in so the regression suite is fully " +
+      "deterministic. See ./README.md and docs/wave-4-anti-echo.md.",
+    keys,
+  };
+  fs.writeFileSync(SYBIL_KEYS_FILE, JSON.stringify(file, null, 2) + "\n");
+  console.log(
+    `wrote ${path.relative(process.cwd(), SYBIL_KEYS_FILE)} (${COHORT_SIZE} keys)`
+  );
+  return file;
+}
+
+const sybilCohortKeys = ensureSybilCohortKeys();
+for (const k of sybilCohortKeys.keys) {
   createPrivateKey(k.private_key_pem);
 }
 
@@ -391,3 +452,120 @@ function buildPlagiarismCohort() {
 }
 
 buildPlagiarismCohort();
+
+// ---------------------------------------------------------------------------
+// Step 5 — sybil-flood cohort fixture.
+//
+// Per docs/wave-4-anti-echo.md §"Corpus categories":
+//
+//   "M≥10 fixture-keys all signing the same lesson within 7 days; cohort
+//    threshold should trip."
+//
+// Ten signature-valid envelopes from ten distinct sock-puppet fixture-key
+// node IDs. Same content text + a deterministic embedding ramp with a
+// per-envelope perturbation, so pairwise cosine_similarity stays well above
+// the §10.4 `p_duplicate_cosine` threshold (0.95) without being exactly 1.0.
+//
+// Differences from the plagiarism cohort row:
+//   - Cohort size 10× larger (M=10 vs N=3) — proves §10.4 scoring scales
+//     with cohort_size and does not have an M-dependent escape hatch that
+//     would let a larger sybil set slip past the firebreak.
+//   - The §10.2 quarantine arm (the spec lists "§10.2 quarantine + §10.4")
+//     is operator-driven multi-strike escalation: §10.2 quarantines after
+//     N=5 consecutive *rejections* under §5 rules 1-20. A signature-valid
+//     well-formed sybil envelope passes those rules, so admission-time
+//     §10.2 does not fire on the cohort. The §10.2 arm of sybil-flood
+//     therefore lives in W4.2/W4.3 (multi-node integration where the
+//     operator escalates a flagged §10.4 finding into an M-way quarantine).
+//     This is captured as a comment on the corresponding test, per the
+//     issue #196 acceptance criterion that a deferred mechanism MUST be
+//     flagged, never silently weakened.
+//
+// All M envelopes share `evidence_count` and a `signed_at` window of a
+// few minutes — well within the §10.4 default `p_signed_at_window_d=7`.
+//
+// The harness builds a synthetic `RemDiversityFinding` from this cohort
+// and asserts `scoreFinding` clamps `local_weight` below the broadcast
+// threshold (0.3). The §10.4 mechanism is REM-cycle, not admission-time;
+// every envelope individually passes `validateWireRecord`. The defense is
+// the cross-peer concentration check that fires AFTER admission.
+// ---------------------------------------------------------------------------
+
+function buildSybilFloodCohort() {
+  const COHORT_SIZE = 10;
+  const SHARED_CONTENT =
+    "Wave-4 sybil-flood cohort: ten sock-puppet peers re-broadcast the same lesson within minutes. §10.4 should clamp local_weight below the broadcast firebreak even at M=10 cohort size; the §10.2 quarantine arm is operator-driven multi-node escalation, deferred to W4.2/W4.3. See docs/wave-4-anti-echo.md.";
+
+  // Same well-formed multihash discipline as the plagiarism cohort: derive
+  // the shared evidence_root through `hashExperienceId` so the value is a
+  // byte-valid base58btc sha2-256 multihash, indistinguishable on the wire
+  // from a real Merkle root. The fact that all M envelopes commit to the
+  // same root is exactly the "coordinated re-broadcast" signal §10.4 owns.
+  const SHARED_EVIDENCE_ROOT = hashExperienceId(
+    "sybil-flood-cohort-shared-evidence-root"
+  );
+
+  const SHARED_EVIDENCE_COUNT = 4;
+
+  // Tight signed_at window — ten envelopes ~30s apart, well inside the
+  // §10.4 default 7-day window.
+  const BASE_SIGNED_AT_MS = Date.parse("2026-05-01T00:20:00.000Z");
+
+  const envelopes = [];
+  for (let i = 0; i < COHORT_SIZE; i++) {
+    const key = sybilCohortKeys.keys[i];
+    const envelope = {
+      spec_version: "1.1",
+      // UUID v4-shaped, deterministic per cohort index.
+      id: `33333333-4444-4555-8666-dddddddddd${i.toString().padStart(2, "0")}`,
+      content: SHARED_CONTENT,
+      // Re-use the plagiarism perturbation function — same shape, distinct
+      // seed range (offset by the plagiarism size) so embeddings differ
+      // byte-wise from any plagiarism envelope. Pairwise cosine within the
+      // sybil cohort still stays > 0.95 by construction (the perturbation
+      // is 5 orders of magnitude smaller than the ramp values).
+      embedding: rampPerturbed(i + 100),
+      synthesized_from_cluster_size: 2,
+      origin_node_id: key.node_id,
+      created_at: new Date(BASE_SIGNED_AT_MS - 1000).toISOString(),
+      signed_at: new Date(BASE_SIGNED_AT_MS + i * 30 * 1000).toISOString(),
+      evidence_root: SHARED_EVIDENCE_ROOT,
+      evidence_count: SHARED_EVIDENCE_COUNT,
+      prev_lesson_hash: null,
+      maturity_age_days: 1,
+      useful_count: 0,
+    };
+    const signature = sign(envelope, key.private_key_pem);
+    envelopes.push({ ...envelope, signature });
+  }
+
+  const fixture = {
+    metadata: {
+      category: "sybil-flood",
+      // §10.4 admits each envelope individually but clamps the cohort's
+      // local_weight below MIN_LOCAL_WEIGHT_FOR_BROADCAST (0.3) so none
+      // of them re-broadcast. The §10.2 quarantine arm is operator-driven
+      // multi-node escalation and deferred to W4.2/W4.3; only `broadcast_suppressed`
+      // is the unit-testable §10 outcome at admission time.
+      expected_outcome: "broadcast_suppressed",
+      // Same convention as plagiarism: §10.4 itself does not directly
+      // mutate trust edges. The negative scalar reflects the eventual
+      // operator-driven reputation cost; harness asserts only sign +
+      // order-of-magnitude band.
+      expected_trust_delta: -0.02,
+      owns_mechanism: "§10.2 quarantine + §10.4 diversity filter",
+      comment:
+        "Ten signature-valid envelopes from ten distinct sock-puppet fixture-key node IDs, near-identical embeddings (cosine > 0.95), identical content + evidence_root, signed within a 5-minute window. Each envelope individually passes the wire validator (§10.2 quarantine fires only on rejected lessons under §5 rules 1-20). §10.4 cross-peer concentration check should clamp local_weight to a value below MIN_LOCAL_WEIGHT_FOR_BROADCAST (0.3) so the cohort cannot re-broadcast. The §10.2 quarantine arm of this row is operator-driven multi-node escalation — deferred to W4.2/W4.3 per the issue #196 deferral rule.",
+    },
+    cohort_size: COHORT_SIZE,
+    envelopes,
+  };
+
+  const outDir = path.join(FIXTURES_DIR, "sybil-flood");
+  fs.mkdirSync(outDir, { recursive: true });
+  const outFile = path.join(outDir, "coordinated-broadcast-cohort.json");
+  fs.writeFileSync(outFile, JSON.stringify(fixture, null, 2) + "\n");
+  console.log(`wrote ${path.relative(process.cwd(), outFile)}`);
+}
+
+buildSybilFloodCohort();

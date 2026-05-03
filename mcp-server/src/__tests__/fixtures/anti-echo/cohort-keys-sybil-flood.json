@@ -1,0 +1,65 @@
+{
+  "comment": "Ed25519 fixture keys for the sybil-flood cohort (W4.1, §10.2 + §10.4). FIXTURE-ONLY; never any production node identity. Each key represents one sock-puppet peer in a synthetic M=10 cohort that the receiver would treat as M distinct origins. Checked in so the regression suite is fully deterministic. See ./README.md and docs/wave-4-anti-echo.md.",
+  "keys": [
+    {
+      "node_id": "QmNY8yEDmteh18wCrfimNgFkam5eHkgTAfiCUC8oEKBpLp",
+      "pubkey_raw_b64": "Fhm8Fy4s+RU+z5HVwkuPkDtB/zyGXdm75zX0lFH2Ihc=",
+      "pubkey_b64url_unpadded": "Fhm8Fy4s-RU-z5HVwkuPkDtB_zyGXdm75zX0lFH2Ihc",
+      "private_key_pem": "-----BEGIN PRIVATE KEY-----\nMC4CAQAwBQYDK2VwBCIEICBy1WdaUAI6ttxhbfZtGhTfg7xK6EdLmCcZIcBgj5iA\n-----END PRIVATE KEY-----\n"
+    },
+    {
+      "node_id": "Qmb1T8D77aEoiRKxb4fzTDvGUp8Cx8SSZ9faPRekJUoGWT",
+      "pubkey_raw_b64": "VAs76o3WUjT64qCWXY1IXG6cMH8StoRrEynWWm83Al0=",
+      "pubkey_b64url_unpadded": "VAs76o3WUjT64qCWXY1IXG6cMH8StoRrEynWWm83Al0",
+      "private_key_pem": "-----BEGIN PRIVATE KEY-----\nMC4CAQAwBQYDK2VwBCIEIEREyicSnk/WnjuYJGtYPU6n64tl4LTuzxzwxw8dC+bi\n-----END PRIVATE KEY-----\n"
+    },
+    {
+      "node_id": "QmP7pVzfx5dVpQ18sRApkwswZGeprF3RsJhzzv9D8BvWJB",
+      "pubkey_raw_b64": "mijPQI3JlfgYez477M8MmRSwihykjzSVXEdPmMcDFx4=",
+      "pubkey_b64url_unpadded": "mijPQI3JlfgYez477M8MmRSwihykjzSVXEdPmMcDFx4",
+      "private_key_pem": "-----BEGIN PRIVATE KEY-----\nMC4CAQAwBQYDK2VwBCIEIKwwY5eFYGEDWj6g1z2N59nwGSFSyGNjLQWMQqRN5LBp\n-----END PRIVATE KEY-----\n"
+    },
+    {
+      "node_id": "QmTLhkUaZ54jfLid9z4Gawb5ZB3AZqVRNwr3hk6tcrgTRA",
+      "pubkey_raw_b64": "RICiPcVIHStvh6BtVAn+Wwv4VepQr13/XQNiov8Rjw0=",
+      "pubkey_b64url_unpadded": "RICiPcVIHStvh6BtVAn-Wwv4VepQr13_XQNiov8Rjw0",
+      "private_key_pem": "-----BEGIN PRIVATE KEY-----\nMC4CAQAwBQYDK2VwBCIEIETAG5mOg5iAWnR8evkacrU/Zu8jLAdOi3k3cV9KbmyQ\n-----END PRIVATE KEY-----\n"
+    },
+    {
+      "node_id": "QmVMKAnLZfvWMdjvrRF71LKjUqTH3pRzDeDkkcLqnurp8d",
+      "pubkey_raw_b64": "BNkcS4czgHdZiEcwdmjvHSawhZA5zdw9L12z4ghERZY=",
+      "pubkey_b64url_unpadded": "BNkcS4czgHdZiEcwdmjvHSawhZA5zdw9L12z4ghERZY",
+      "private_key_pem": "-----BEGIN PRIVATE KEY-----\nMC4CAQAwBQYDK2VwBCIEIMlmZf0WtmmK2ljd5W6Kv7lMJ32GvCe+J1sKQp1VA4P6\n-----END PRIVATE KEY-----\n"
+    },
+    {
+      "node_id": "QmV6nGHZfeBfEnYfQUeQowFspwcvSJ5h8kePo7V8psjPis",
+      "pubkey_raw_b64": "52PFuKZknQmhIc4Px2/XZFtDbsJqD8kslnK3+wWga7U=",
+      "pubkey_b64url_unpadded": "52PFuKZknQmhIc4Px2_XZFtDbsJqD8kslnK3-wWga7U",
+      "private_key_pem": "-----BEGIN PRIVATE KEY-----\nMC4CAQAwBQYDK2VwBCIEIGzGDP4inQvqycPgQTEru6JHkxmNlt53cfSeT41ekm8Z\n-----END PRIVATE KEY-----\n"
+    },
+    {
+      "node_id": "QmSKGsmdvoVECikoZ88eyjBY6H5S4PjJjbA7cCJxSWVdAz",
+      "pubkey_raw_b64": "Eh8PSrBTIkpMLXecpR8raMTQbofckdZEXe9p95zAAys=",
+      "pubkey_b64url_unpadded": "Eh8PSrBTIkpMLXecpR8raMTQbofckdZEXe9p95zAAys",
+      "private_key_pem": "-----BEGIN PRIVATE KEY-----\nMC4CAQAwBQYDK2VwBCIEIDPpcSR6E0uqpgzv+jCGCQUc7fJgzYiKq5dw4TQTHgep\n-----END PRIVATE KEY-----\n"
+    },
+    {
+      "node_id": "QmVwMEJ6FCW4FanxrZrAu5srysTd86YVBeYgnXeZrYrDH6",
+      "pubkey_raw_b64": "LdbcgbDGZy9oI4P08e2ReXJd3OP03LNCG7hUwJPO1X4=",
+      "pubkey_b64url_unpadded": "LdbcgbDGZy9oI4P08e2ReXJd3OP03LNCG7hUwJPO1X4",
+      "private_key_pem": "-----BEGIN PRIVATE KEY-----\nMC4CAQAwBQYDK2VwBCIEILco0Svmf7DRuoHH2v4XHI/srcmGhF1aikwRKnIbMJuR\n-----END PRIVATE KEY-----\n"
+    },
+    {
+      "node_id": "QmSPQ1U3twdrehTXgYDnr35p3jE673vNv7mNAguCSYQqn7",
+      "pubkey_raw_b64": "bTrWZX6WHY2MQi/JRS7JMe3zuys/ADOQSwoKHjnTd7A=",
+      "pubkey_b64url_unpadded": "bTrWZX6WHY2MQi_JRS7JMe3zuys_ADOQSwoKHjnTd7A",
+      "private_key_pem": "-----BEGIN PRIVATE KEY-----\nMC4CAQAwBQYDK2VwBCIEIP06p9DeJUyPmLt595nj7oxLEEdzanhn35IZzJrAxpSz\n-----END PRIVATE KEY-----\n"
+    },
+    {
+      "node_id": "QmR83AjC5LbStf73JeewTusWrhFubTrvLVZ8pcDY2XGGP5",
+      "pubkey_raw_b64": "kE06yBHFrmkA6KRnUqNmoxQcLJvQSktIsThnQne5xG8=",
+      "pubkey_b64url_unpadded": "kE06yBHFrmkA6KRnUqNmoxQcLJvQSktIsThnQne5xG8",
+      "private_key_pem": "-----BEGIN PRIVATE KEY-----\nMC4CAQAwBQYDK2VwBCIEIIfdg+BWQ6H7i+oPPvxzfu3FjhkHsQzwOnryaH23Jswn\n-----END PRIVATE KEY-----\n"
+    }
+  ]
+}
