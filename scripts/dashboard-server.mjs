@@ -50,7 +50,7 @@ if (process.env.MYCELIUM_FEATURE_FEDERATION === "1") {
     ({ GuardService: FedGuardService } = await import(path.join(FED_DIST, "guard.js")));
   } catch (err) {
     console.error("federation imports failed — feature flag set but dist missing:", err.message);
-    console.error("  → re-include src/deferred/** in mcp-server/tsconfig.json + rebuild, or unset MYCELIUM_FEATURE_FEDERATION.");
+    console.error("  → re-include 'src/deferred' in mcp-server/tsconfig.json + rebuild, or unset MYCELIUM_FEATURE_FEDERATION.");
     console.error("  → continuing in HTTP-swarm-only mode; mTLS federation listener will NOT start.");
     FederationService = null;
     FedGuardService = null;
