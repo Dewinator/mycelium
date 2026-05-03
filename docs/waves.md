@@ -16,7 +16,7 @@ A wave does not start until the previous wave's end-state is real — not
 |---|---|---|---|
 | **1 — Native standalone app** | Doppelklick-Installer pro Plattform; no Docker; no Ollama install. | Spike phase complete (10/10), implementation in flight (9-PR queue). 30%. | [`native-app-track.md`](native-app-track.md) |
 | **2 — Second peer + public seed** | Reed's rented server runs a second mycelium node (Profil A); first `TrustEdge` to local Mac live; inbound + outbound lessons verified end-to-end. | Setup-skript-ready, blocked on Reed's "Server steht"-signal. 90%. | [`wave-2-second-peer.md`](wave-2-second-peer.md) |
-| **3 — Tracker-free P2P discovery** | Two mycelium instances on the same WiFi find each other automatically; mTLS-trust + lesson exchange without any external server. | Design spike merged, no code yet. 10%. | [`swarm-discovery-spike.md`](swarm-discovery-spike.md) |
+| **3 — Tracker-free P2P discovery** | Two mycelium instances on the same WiFi find each other automatically; mTLS-trust + lesson exchange without any external server. | Design spike merged, no code yet. 10%. | [`wave-3-discovery.md`](wave-3-discovery.md) |
 | **4 — Anti-echo-chamber empirical defense** | Synthetic adversarial lessons (manipulative inputs, one-sided sources, consensus echoes) are demonstrably rejected by §10.4 + REM-self-audit on a real multi-node test swarm; results published as Constitution-Defense-Report. | Theory exists in `SWARM_SPEC.md` §10; production validation deferred until a real multi-node swarm exists post-Wave-2. 10%. | [`wave-4-anti-echo.md`](wave-4-anti-echo.md) |
 
 ## Why this order, not parallel
@@ -83,7 +83,14 @@ script and migration the second peer needs already exists in this repo.
 
 ## Wave 3 — tracker-free P2P discovery
 
-**Owner doc:** [`swarm-discovery-spike.md`](swarm-discovery-spike.md).
+**Owner doc:** [`wave-3-discovery.md`](wave-3-discovery.md) (covers
+end-state, the L1-then-L2 sub-task sequencing W3.1 → W3.6, the dual
+upstream gate on Wave 1's Tauri shell + Wave 2's public peers, what is
+empirically settled by the 11-spike chain vs. what implementation still
+owns, and what can land before Waves 1+2 ship).
+**Design substrate:** [`swarm-discovery-spike.md`](swarm-discovery-spike.md)
+remains the *what / why* — three discovery layers, library picks,
+threat model, Constitution check.
 
 **Current state (2026-05-02):** design spike on `main`, no code yet. The
 spike answers four questions: smallest v1-wire-protocol extension, library
