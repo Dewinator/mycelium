@@ -248,24 +248,29 @@ Spike auf `main`:
 **Aktiver Code-Bestand**: `mcp-server/src/native/` (PGlite Adapter — PR #185),
 `services/embeddings.ts` mit `LlamaCppEmbeddingProvider` hinter
 `MYCELIUM_LLM_PROVIDER` (PR-Stack #187 → #188 → #189),
-`middleware/proxy.ts` mit `EmbeddingProvider`-Injection (PR #190),
-`services/chat.ts` mit `ChatProvider`-Abstraction (PR #192). Alle 9
-Native-App PRs sind green und MERGEABLE.
+`middleware/proxy.ts` mit `EmbeddingProvider`-Injection (PR #190 — **MERGED**),
+`services/chat.ts` mit `ChatProvider`-Abstraction (PR #192 — **MERGED**).
+Native-App PR-Stand siehe Queue-Block direkt darunter.
 
-**Queue-Stand 2026-05-03**: 14 PRs offen insgesamt — 9 Native-App (#185,
-#187–#194) + 3 W4.1 anti-echo (#197 forgery, #198 plagiarism, #201
-sybil-flood) + 2 W2 federation (#199 mTLS-listener null-guard, #200
-move-deferred-federation-e2e). Keinerlei File-Overlap zwischen den drei
-Cohorts (143rd-tick audit). Empirisch validiert (143rd + 148th tick) dass
-die 13-PR-Queue in 3 verschiedenen Reihenfolgen — ascending, descending,
-newest-first — konfliktfrei mergeable ist (1012/1013 Tests grün, 1
-pre-existing Skip); PR #201 ist additiv (eigene neue Test-Datei +
-Fixture-JSON, kein Overlap mit den 13).
+**Queue-Stand 2026-05-03 (post-massendrain)**: nur noch **4 PRs offen** — alle
+Native-App, alle aus dem #178-Stack: #185 (PGlite Adapter), #187
+(LlamaCppEmbeddingProvider), #188 (GGUF SHA-256-Verify), #189
+(`MYCELIUM_LLAMA_REQUIRE_CHECKSUM=1` fail-closed). Reed hat heute
+**10 PRs gemerged**: alle 3 W4.1-anti-echo (#197/#198/#201), beide W2-
+federation (#199/#200) sowie 5 weitere Native-App PRs (#190 middleware,
+#191 cosine-spike, #192 chat-provider, #193 regen-spec, #194 PG-
+revalidate). Damit sind die drei früheren Cohorts (Native-App / W4.1 /
+W2) auf einen einzigen Cohort kollabiert. Die 143rd/148th-Tick Order-
+Independence-Proofs sind jetzt obsolet — der verbleibende 4-PR-Stack ist
+linear (#185 unabhängig, #187 → #188 → #189 streng gestackt) und braucht
+kein neues Audit.
 
 **Was noch fehlt**: Implementierung von Sub-Tasks 3 (Tauri Shell), 6
 (Update Channels), 7 (Migration Wizard), 8 (CI Matrix), 9 (Banner Refit),
 10 (Docs Flip). Spikes liegen, Implementierung wartet auf Drain der
-aktuellen 14-PR-Queue (Reed mergt manuell, kein Auto-Merge konfiguriert).
+verbleibenden 4-PR-Queue (Reed mergt manuell, kein Auto-Merge
+konfiguriert) — deutlich näher am Greenlight als der 14-PR-Stand
+gestern.
 
 ### Deferred (geparkter Code)
 
