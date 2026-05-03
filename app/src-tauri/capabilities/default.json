@@ -1,0 +1,18 @@
+{
+  "$schema": "../gen/schemas/desktop-schema.json",
+  "identifier": "default",
+  "description": "Default capability set for the main window. Allows shell-sidecar lifecycle for the bundled mycelium-mcp Node binary; UDP multicast (mDNS, 224.0.0.251:5353) is reserved for Wave-3 P2P discovery and intentionally listed here so the entitlement is part of the signed bundle from the start.",
+  "windows": ["main"],
+  "permissions": [
+    "core:default",
+    "core:window:allow-show",
+    "core:window:allow-hide",
+    "core:window:allow-close",
+    "core:window:allow-minimize",
+    "core:app:allow-version",
+    "core:event:allow-emit",
+    "shell:allow-execute",
+    "shell:default",
+    "updater:default"
+  ]
+}

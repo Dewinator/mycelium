@@ -1,0 +1,11 @@
+#!/bin/sh
+# Stub sidecar — the real bundled Node binary is built by a follow-up
+# release-pipeline ticket (#176 sub-task 8 — CI matrix). For development
+# right now, run the mcp-server directly:
+#
+#   cd mcp-server && npm run build && node dist/index.js
+#
+# Tauri's `tauri dev` will spawn this stub instead and the dashboard will
+# fail to load — that is expected until the bundling PR lands.
+echo "[mycelium-mcp] stub sidecar — run mcp-server/dist/index.js manually for development" >&2
+exit 0

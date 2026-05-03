@@ -1,0 +1,7 @@
+# Tauri build artefacts
+src-tauri/target/
+src-tauri/gen/
+src-tauri/Cargo.lock.bak
+
+# OS
+.DS_Store

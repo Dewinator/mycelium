@@ -1,0 +1,64 @@
+{
+  "$schema": "https://schema.tauri.app/config/2",
+  "productName": "mycelium",
+  "version": "0.1.0",
+  "identifier": "io.mycelium.app",
+  "build": {
+    "beforeDevCommand": "",
+    "beforeBuildCommand": "",
+    "devUrl": "http://127.0.0.1:8787",
+    "frontendDist": "../dist"
+  },
+  "app": {
+    "windows": [
+      {
+        "label": "main",
+        "title": "mycelium",
+        "url": "http://127.0.0.1:8787",
+        "width": 1280,
+        "height": 860,
+        "minWidth": 880,
+        "minHeight": 600,
+        "resizable": true,
+        "fullscreen": false,
+        "decorations": true,
+        "visible": true,
+        "center": true
+      }
+    ],
+    "security": {
+      "csp": null
+    },
+    "trayIcon": {
+      "id": "mycelium-tray",
+      "iconPath": "icons/icon.png",
+      "iconAsTemplate": true,
+      "menuOnLeftClick": false,
+      "tooltip": "mycelium"
+    }
+  },
+  "bundle": {
+    "active": true,
+    "targets": "all",
+    "icon": [
+      "icons/32x32.png",
+      "icons/128x128.png",
+      "icons/128x128@2x.png",
+      "icons/icon.png"
+    ],
+    "externalBin": ["binaries/mycelium-mcp"],
+    "category": "Productivity",
+    "shortDescription": "Local-first cognitive memory for any LLM",
+    "longDescription": "mycelium is a sovereign cognitive layer for LLM agents — persistent memory, neurochemistry, evolution, federation. Runs entirely on your machine, no cloud."
+  },
+  "plugins": {
+    "updater": {
+      "active": true,
+      "endpoints": [
+        "https://github.com/Dewinator/mycelium/releases/latest/download/latest.json"
+      ],
+      "dialog": false,
+      "pubkey": "PLACEHOLDER_REPLACE_WITH_TAURI_SIGNER_GENERATE_OUTPUT"
+    }
+  }
+}
