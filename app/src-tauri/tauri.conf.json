@@ -4,8 +4,8 @@
   "version": "0.1.0",
   "identifier": "io.mycelium.app",
   "build": {
-    "beforeDevCommand": "",
-    "beforeBuildCommand": "",
+    "beforeDevCommand": "bash -c 'bash \"$(git rev-parse --show-toplevel)/scripts/bundle-sidecar.sh\"'",
+    "beforeBuildCommand": "bash -c 'bash \"$(git rev-parse --show-toplevel)/scripts/bundle-sidecar.sh\"'",
     "devUrl": "http://127.0.0.1:8787",
     "frontendDist": "../dist"
   },
@@ -47,6 +47,7 @@
       "icons/icon.png"
     ],
     "externalBin": ["binaries/mycelium-mcp"],
+    "resources": ["sidecar-payload"],
     "category": "Productivity",
     "shortDescription": "Local-first cognitive memory for any LLM",
     "longDescription": "mycelium is a sovereign cognitive layer for LLM agents — persistent memory, neurochemistry, evolution, federation. Runs entirely on your machine, no cloud."
