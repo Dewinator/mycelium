@@ -98,9 +98,18 @@ export interface LlamaCppEmbeddingProviderOptions {
   /**
    * Override / supply the expected SHA-256 of the model GGUF.
    * If absent, falls back to the built-in `KNOWN_GGUF_CHECKSUMS` manifest.
-   * If neither resolves a hash, integrity check is skipped with a warning.
+   * If neither resolves a hash, integrity check is skipped with a warning
+   * (or refused entirely when `requireChecksum` is true).
    */
   expectedSha256?: string | null;
+  /**
+   * Fail closed when no SHA-256 can be resolved (no manifest entry AND no
+   * override). Off by default — power users running custom GGUFs are not
+   * locked out. Security-conscious deployments flip this on via
+   * `MYCELIUM_LLAMA_REQUIRE_CHECKSUM=1` so an unknown URI is refused
+   * outright instead of warned-and-skipped.
+   */
+  requireChecksum?: boolean;
 }
 
 const DEFAULT_LLAMA_EMBEDDING_MODEL_URI =
@@ -132,6 +141,7 @@ export class LlamaCppEmbeddingProvider implements EmbeddingProvider {
   private readonly modelUri: string;
   private readonly charBudget: number;
   private readonly expectedSha256: string | null;
+  private readonly requireChecksum: boolean;
   private ready: Promise<{
     ctx: { getEmbeddingFor: (text: string) => Promise<{ vector: number[] }> };
     dispose: () => Promise<void>;
@@ -144,6 +154,7 @@ export class LlamaCppEmbeddingProvider implements EmbeddingProvider {
     this.dimensions = opts.dimensions ?? 768;
     this.charBudget = opts.charBudget ?? 6000;
     this.expectedSha256 = opts.expectedSha256 ?? null;
+    this.requireChecksum = opts.requireChecksum ?? false;
   }
 
   private async init() {
@@ -168,13 +179,25 @@ export class LlamaCppEmbeddingProvider implements EmbeddingProvider {
       }
       const { getLlama, LlamaLogLevel, resolveModelFile } = llamaCpp;
 
+      // Pillar 6 — resolve the manifest BEFORE downloading. Strict mode
+      // refuses unknown URIs outright instead of pulling a 100 MB GGUF
+      // that we'd then reject anyway.
+      const expected = lookupExpectedChecksum(this.modelUri, this.expectedSha256);
+      if (expected === null && this.requireChecksum) {
+        throw new Error(
+          `LlamaCppEmbeddingProvider: MYCELIUM_LLAMA_REQUIRE_CHECKSUM is ` +
+            `set but no SHA-256 is known for '${this.modelUri}'. Add the ` +
+            `URI to KNOWN_GGUF_CHECKSUMS or supply ` +
+            `MYCELIUM_LLAMA_EMBEDDING_MODEL_SHA256 with the expected hash.`
+        );
+      }
+
       await mkdir(this.modelsDir, { recursive: true });
       const llama = await getLlama({ logLevel: LlamaLogLevel.warn });
       const modelPath = await resolveModelFile(this.modelUri, this.modelsDir);
 
-      // Pillar 6 — verify the GGUF matches a known SHA-256 before loading.
+      // Verify the (now-resolved) GGUF before loadModel touches it.
       // Mismatch deletes the file and throws; the next run re-downloads.
-      const expected = lookupExpectedChecksum(this.modelUri, this.expectedSha256);
       if (expected !== null) {
         await verifyGgufChecksum(modelPath, expected);
       } else {
@@ -183,7 +206,8 @@ export class LlamaCppEmbeddingProvider implements EmbeddingProvider {
             `'${this.modelUri}' and no override supplied — skipping ` +
             `integrity check (Pillar 6). Set ` +
             `MYCELIUM_LLAMA_EMBEDDING_MODEL_SHA256 to enable verification ` +
-            `for custom models.`
+            `for custom models, or MYCELIUM_LLAMA_REQUIRE_CHECKSUM=1 to ` +
+            `refuse unverified GGUFs outright.`
         );
       }
 
@@ -238,6 +262,16 @@ export class LlamaCppEmbeddingProvider implements EmbeddingProvider {
   }
 }
 
+/**
+ * Parse a boolean env var. Truthy: 1, true, yes, on (case-insensitive).
+ * Anything else (including undefined / empty) is false.
+ */
+export function parseBoolEnv(raw: string | undefined): boolean {
+  if (!raw) return false;
+  const v = raw.trim().toLowerCase();
+  return v === "1" || v === "true" || v === "yes" || v === "on";
+}
+
 export function createEmbeddingProvider(): EmbeddingProvider {
   const provider = (process.env.MYCELIUM_LLM_PROVIDER ?? "ollama")
     .toLowerCase()
@@ -255,6 +289,9 @@ export function createEmbeddingProvider(): EmbeddingProvider {
       dimensions,
       charBudget,
       expectedSha256: process.env.MYCELIUM_LLAMA_EMBEDDING_MODEL_SHA256,
+      requireChecksum: parseBoolEnv(
+        process.env.MYCELIUM_LLAMA_REQUIRE_CHECKSUM
+      ),
     });
   }
 

@@ -4,6 +4,7 @@ import {
   LlamaCppEmbeddingProvider,
   createEmbeddingProvider,
   defaultLlamaModelsDir,
+  parseBoolEnv,
 } from "../services/embeddings.js";
 
 test("LlamaCppEmbeddingProvider exposes default 768d (matches schema)", () => {
@@ -66,6 +67,47 @@ test("createEmbeddingProvider rejects unknown provider names", () => {
   } finally {
     if (prev === undefined) delete process.env.MYCELIUM_LLM_PROVIDER;
     else process.env.MYCELIUM_LLM_PROVIDER = prev;
+  }
+});
+
+test("parseBoolEnv: recognises canonical truthy spellings, ignores noise", () => {
+  for (const v of ["1", "true", "TRUE", "yes", "YES", "on", "  on  "]) {
+    assert.equal(parseBoolEnv(v), true, `expected truthy for ${JSON.stringify(v)}`);
+  }
+  for (const v of [undefined, "", "0", "false", "no", "off", "anything-else"]) {
+    assert.equal(parseBoolEnv(v), false, `expected falsy for ${JSON.stringify(v)}`);
+  }
+});
+
+test("createEmbeddingProvider: MYCELIUM_LLAMA_REQUIRE_CHECKSUM=1 enables fail-closed mode", async () => {
+  const prevProvider = process.env.MYCELIUM_LLM_PROVIDER;
+  const prevRequire  = process.env.MYCELIUM_LLAMA_REQUIRE_CHECKSUM;
+  const prevUri      = process.env.MYCELIUM_LLAMA_EMBEDDING_MODEL_URI;
+  const prevHash     = process.env.MYCELIUM_LLAMA_EMBEDDING_MODEL_SHA256;
+  process.env.MYCELIUM_LLM_PROVIDER = "llama-cpp";
+  process.env.MYCELIUM_LLAMA_REQUIRE_CHECKSUM = "1";
+  // Point at a URI that is NOT in the manifest, with no override hash, so
+  // init() must refuse rather than warn-and-skip.
+  process.env.MYCELIUM_LLAMA_EMBEDDING_MODEL_URI =
+    "hf:not-real/no-such-repo/no-such-file.gguf";
+  delete process.env.MYCELIUM_LLAMA_EMBEDDING_MODEL_SHA256;
+  try {
+    const p = createEmbeddingProvider();
+    assert.ok(p instanceof LlamaCppEmbeddingProvider);
+    // We never load the model — init() throws before resolveModelFile().
+    // The error must mention REQUIRE_CHECKSUM so the operator can correlate.
+    await assert.rejects(
+      () => p.embed("smoke"),
+      (err: unknown) => /MYCELIUM_LLAMA_REQUIRE_CHECKSUM/.test((err as Error).message)
+    );
+  } finally {
+    if (prevProvider === undefined) delete process.env.MYCELIUM_LLM_PROVIDER;
+    else process.env.MYCELIUM_LLM_PROVIDER = prevProvider;
+    if (prevRequire === undefined) delete process.env.MYCELIUM_LLAMA_REQUIRE_CHECKSUM;
+    else process.env.MYCELIUM_LLAMA_REQUIRE_CHECKSUM = prevRequire;
+    if (prevUri === undefined) delete process.env.MYCELIUM_LLAMA_EMBEDDING_MODEL_URI;
+    else process.env.MYCELIUM_LLAMA_EMBEDDING_MODEL_URI = prevUri;
+    if (prevHash !== undefined) process.env.MYCELIUM_LLAMA_EMBEDDING_MODEL_SHA256 = prevHash;
   }
 });
 
