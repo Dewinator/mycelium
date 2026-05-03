@@ -51,5 +51,14 @@
     "shortDescription": "Local-first cognitive memory for any LLM",
     "longDescription": "mycelium is a sovereign cognitive layer for LLM agents — persistent memory, neurochemistry, evolution, federation. Runs entirely on your machine, no cloud."
   },
-  "plugins": {}
+  "plugins": {
+    "updater": {
+      "active": true,
+      "endpoints": [
+        "https://github.com/Dewinator/mycelium/releases/latest/download/latest.json"
+      ],
+      "dialog": false,
+      "pubkey": "PLACEHOLDER_REPLACE_WITH_TAURI_SIGNER_GENERATE_OUTPUT"
+    }
+  }
 }

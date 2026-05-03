@@ -44,10 +44,36 @@ What does NOT work yet (intentional, follow-up tickets):
 - The sidecar binary in `binaries/mycelium-mcp-aarch64-apple-darwin` is a
   shell stub. Building the real bundled Node binary (Bun/pkg compile) is
   sub-task 8 (CI matrix).
-- Tauri commands `open_data_dir` / `check_for_updates` / `restart_app` —
-  ticket 3 of the spike's "Suggested follow-up issues".
-- Auto-update (`tauri-plugin-updater`) — ticket 4.
 - App icons are solid-purple placeholders.
+- The auto-updater is wired, but the `pubkey` in `tauri.conf.json` is a
+  placeholder — see "Signing-key bootstrap" below.
+
+## Signing-key bootstrap (one-time, before first signed release)
+
+`tauri-plugin-updater` mandates signature verification — there is no
+`disable_signing` opt-out. The shell ships with a placeholder `pubkey`
+that MUST be replaced before the first production build:
+
+```bash
+# 1. Install the Tauri CLI (one-time, ~5 min cold compile).
+cargo install tauri-cli --version "^2"
+
+# 2. Generate the signing keypair. Private key kept off-repo at the
+#    default path (~/.tauri/mycelium.key). CI gets the private key
+#    via TAURI_SIGNING_PRIVATE_KEY env / GitHub Actions secret.
+cargo tauri signer generate -w ~/.tauri/mycelium.key
+
+# 3. Copy the printed PUBLIC key into app/src-tauri/tauri.conf.json,
+#    replacing PLACEHOLDER_REPLACE_WITH_TAURI_SIGNER_GENERATE_OUTPUT.
+
+# 4. Verify cargo check still passes.
+cd app/src-tauri && cargo check
+```
+
+The release pipeline (sub-task 8, CI matrix — separate ticket) signs
+each platform artefact with the private key and ships
+`latest.json` to GitHub Releases at the URL configured in
+`tauri.conf.json` (`plugins.updater.endpoints[0]`).
 
 ## Local development
 
