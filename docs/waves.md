@@ -17,7 +17,7 @@ A wave does not start until the previous wave's end-state is real — not
 | **1 — Native standalone app** | Doppelklick-Installer pro Plattform; no Docker; no Ollama install. | Spike phase complete (10/10), implementation in flight (9-PR queue). 30%. | [`native-app-track.md`](native-app-track.md) |
 | **2 — Second peer + public seed** | Reed's rented server runs a second mycelium node (Profil A); first `TrustEdge` to local Mac live; inbound + outbound lessons verified end-to-end. | Setup-skript-ready, blocked on Reed's "Server steht"-signal. 90%. | [`wave-2-second-peer.md`](wave-2-second-peer.md) |
 | **3 — Tracker-free P2P discovery** | Two mycelium instances on the same WiFi find each other automatically; mTLS-trust + lesson exchange without any external server. | Design spike merged, no code yet. 10%. | [`swarm-discovery-spike.md`](swarm-discovery-spike.md) |
-| **4 — Anti-echo-chamber empirical defense** | Synthetic adversarial lessons (manipulative inputs, one-sided sources, consensus echoes) are demonstrably rejected by §10.4 + REM-self-audit on a real multi-node test swarm; results published as Constitution-Defense-Report. | Theory exists in `SWARM_SPEC.md` §10; production validation deferred until a real multi-node swarm exists post-Wave-2. 10%. | _no canonical doc yet — see "Wave 4" below_ |
+| **4 — Anti-echo-chamber empirical defense** | Synthetic adversarial lessons (manipulative inputs, one-sided sources, consensus echoes) are demonstrably rejected by §10.4 + REM-self-audit on a real multi-node test swarm; results published as Constitution-Defense-Report. | Theory exists in `SWARM_SPEC.md` §10; production validation deferred until a real multi-node swarm exists post-Wave-2. 10%. | [`wave-4-anti-echo.md`](wave-4-anti-echo.md) |
 
 ## Why this order, not parallel
 
@@ -102,26 +102,28 @@ Wave 2 is live, because discovery without a second peer is untestable.
 
 ## Wave 4 — anti-echo-chamber empirical defense
 
-**No anchor doc yet** — the *theory* lives in `SWARM_SPEC.md` §10
-(six self-healing mechanisms: provenance commitment, contradiction gate,
-diversity filter, REM-self-audit, plagiarism detection, Sybil resistance).
-The *empirical defense report* will be `docs/constitution-defense-report.md`
-once the test campaign runs.
+**Owner doc:** [`wave-4-anti-echo.md`](wave-4-anti-echo.md) (covers the
+end-state, the canonical adversarial-lesson corpus design + governance,
+the per-mechanism PASS/PARTIAL/FAIL metrics, the three-step W4.1 → W4.3
+sub-task decomposition, and the post-Wave-4 unblock chain into
+`CONSTITUTION.md` updates).
 
-**Test design (high-level, from intention #5):**
-- Inject synthetic adversarial lessons into a local test swarm:
-  manipulative inputs, one-sided sources, consensus echoes ("truth by
-  repetition" amplification).
-- Observe whether §10.4 (diversity filter) + REM self-audit reject them.
-- Failure mode: if production rejects-rate < spike-rate, the §10
-  guarantees are theoretical. That outcome would invalidate the Pillar 3
-  claim and trigger a re-design before any Wave-4-marketing claim is made.
+**Theory** lives in `SWARM_SPEC.md` §10 (six self-healing mechanisms:
+provenance commitment, contradiction gate, diversity filter,
+REM-self-audit, plagiarism detection, Sybil resistance) — fully
+implemented on `main`. The *empirical defense report* will be
+`docs/constitution-defense-report.md` once the W4.3 multi-node campaign
+runs.
 
-**Blocker:** needs a real multi-node swarm (Wave 2 + at least one
-additional peer beyond Reed's two) so that the test population is
-non-trivial. Until then, the highest-value preparatory work is curating
-the adversarial-lesson corpus — a small set of canonical manipulative
-patterns that can be re-run as a regression suite.
+**What can land before Wave 2 finishes:** W4.1 (corpus fixtures +
+single-node Vitest harness) and W4.2 (HTTP corpus runner) — both
+agent-eligible per the owner doc, both run against the existing single-
+node test stack today and against the live federation admission endpoint
+once Wave 2 lands, without any fixture changes.
+
+**Blocker for W4.3 (the report itself):** a real multi-node swarm
+(Wave 2 + at least one additional peer beyond Reed's two) so that the
+§10.4 cohort-concentration filter operates on a non-trivial peer set.
 
 ## What changes after each wave
 
