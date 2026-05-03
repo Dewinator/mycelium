@@ -22,6 +22,13 @@ export interface PrimeFetcherOptions {
   supabaseKey: string;
   ollamaUrl?:  string;          // for embedding the task_description
   embeddingModel?: string;
+  /**
+   * Optional embedding callback. When provided, takes precedence over the
+   * built-in Ollama fetch — wire `createEmbeddingProvider().embed.bind(p)`
+   * here so the prime fetcher respects `MYCELIUM_LLM_PROVIDER=llama-cpp`
+   * (issue #178, native-app track #176).
+   */
+  embed?:      (text: string) => Promise<number[]>;
   recallLimit?: number;         // experiences + memories per side
   /** Cache configuration (#7, N7). Pass null to disable caching entirely. */
   cache?:      PrimeCacheOptions | null;
@@ -73,6 +80,7 @@ export class PrimeFetcher {
   private db: PostgrestClient;
   private ollamaUrl: string;
   private embeddingModel: string;
+  private embedOverride: ((text: string) => Promise<number[]>) | null;
   private recallLimit: number;
   private cache: TtlLruCache<string> | null;
 
@@ -88,6 +96,7 @@ export class PrimeFetcher {
     });
     this.ollamaUrl      = opts.ollamaUrl ?? "http://127.0.0.1:11434";
     this.embeddingModel = opts.embeddingModel ?? "nomic-embed-text";
+    this.embedOverride  = opts.embed ?? null;
     this.recallLimit    = opts.recallLimit ?? 5;
     this.cache          = opts.cache === null ? null : new TtlLruCache<string>(opts.cache ?? {});
   }
@@ -251,6 +260,7 @@ export class PrimeFetcher {
   }
 
   private async embed(text: string): Promise<number[]> {
+    if (this.embedOverride) return this.embedOverride(text);
     const r = await fetch(new URL("/api/embed", this.ollamaUrl), {
       method: "POST",
       headers: { "Content-Type": "application/json" },
