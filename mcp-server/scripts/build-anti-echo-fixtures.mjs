@@ -42,6 +42,10 @@ const FIXTURES_DIR = path.resolve(
   "anti-echo"
 );
 const KEY_FILE = path.join(FIXTURES_DIR, "fixture-key.json");
+const PLAGIARISM_KEYS_FILE = path.join(
+  FIXTURES_DIR,
+  "cohort-keys-plagiarism.json"
+);
 
 // ---------------------------------------------------------------------------
 // Step 1 — fixture-key.json (Ed25519, write-once).
@@ -84,6 +88,66 @@ const NODE_ID = fixtureKey.node_id;
 
 // Sanity: the PEM still corresponds to an Ed25519 key the runtime can use.
 createPrivateKey(PEM);
+
+// ---------------------------------------------------------------------------
+// Step 1b — cohort-keys-plagiarism.json (3× Ed25519, write-once).
+//
+// §10.4 diversity is a *cross-peer* concentration signal — the receiver
+// only counts a near-duplicate as "another peer" if it carries a distinct
+// origin_node_id. Plagiarism therefore needs N≥3 distinct fixture keys.
+// We keep them in a sibling file (not inline in the cohort fixture) so
+// the JSON corpus stays human-scannable and the keys can be re-used by
+// any future cohort row that wants to mimic an N-peer broadcast.
+//
+// Same write-once discipline as fixture-key.json: regenerating the keys
+// would invalidate every committed cohort envelope's signature.
+// ---------------------------------------------------------------------------
+
+function ensurePlagiarismCohortKeys() {
+  if (fs.existsSync(PLAGIARISM_KEYS_FILE)) {
+    return JSON.parse(fs.readFileSync(PLAGIARISM_KEYS_FILE, "utf8"));
+  }
+  const COHORT_SIZE = 3;
+  const keys = [];
+  for (let i = 0; i < COHORT_SIZE; i++) {
+    const { publicKey, privateKey } = generateKeyPairSync("ed25519");
+    const spki = publicKey.export({ type: "spki", format: "der" });
+    const pubkeyRaw = Buffer.from(spki.subarray(spki.length - 32));
+    const pem = privateKey.export({ type: "pkcs8", format: "pem" });
+    const nodeId = computeNodeId(pubkeyRaw);
+    keys.push({
+      node_id: nodeId,
+      pubkey_raw_b64: pubkeyRaw.toString("base64"),
+      pubkey_b64url_unpadded: pubkeyRaw
+        .toString("base64")
+        .replace(/\+/g, "-")
+        .replace(/\//g, "_")
+        .replace(/=+$/, ""),
+      private_key_pem: pem,
+    });
+  }
+  const file = {
+    comment:
+      "Ed25519 fixture keys for the plagiarism cohort (W4.1, §10.4 diversity " +
+      "filter). FIXTURE-ONLY; never any production node identity. Each key " +
+      "represents one peer in a synthetic N-peer cohort that the receiver " +
+      "would treat as N distinct origins for the purpose of cross-peer " +
+      "near-duplicate concentration. Checked in so the regression suite is " +
+      "fully deterministic. See ./README.md and docs/wave-4-anti-echo.md.",
+    keys,
+  };
+  fs.writeFileSync(PLAGIARISM_KEYS_FILE, JSON.stringify(file, null, 2) + "\n");
+  console.log(
+    `wrote ${path.relative(process.cwd(), PLAGIARISM_KEYS_FILE)} (${COHORT_SIZE} keys)`
+  );
+  return file;
+}
+
+const plagiarismCohortKeys = ensurePlagiarismCohortKeys();
+for (const k of plagiarismCohortKeys.keys) {
+  // Same sanity check as the single fixture key above.
+  createPrivateKey(k.private_key_pem);
+}
 
 // ---------------------------------------------------------------------------
 // Step 2 — embedding fixture (768-d, deterministic).
@@ -199,3 +263,131 @@ function buildForgeryFixture() {
 }
 
 buildForgeryFixture();
+
+// ---------------------------------------------------------------------------
+// Step 4 — plagiarism cohort fixture.
+//
+// Per docs/wave-4-anti-echo.md §"Corpus categories":
+//
+//   "N≥3 fixtures from N different fixture-keys, all carrying
+//    cosine_similarity > 0.95, identical signed_at window, near-identical
+//    text."
+//
+// Three signature-valid envelopes from three distinct fixture-key node IDs.
+// Same content text + a deterministic embedding ramp with a tiny per-envelope
+// perturbation, so the pairwise cosine_similarity stays well above the §10.4
+// `p_duplicate_cosine` threshold (default 0.95) without being exactly 1.0
+// (which would be a more obvious "literally same lesson" signal that the
+// fixture is also testing the *near*-duplicate path, not just the
+// trivially-identical one).
+//
+// All three envelopes share `evidence_count` and a `signed_at` window of a
+// few seconds — both well within the §10.4 defaults
+// (p_evidence_count_band=1, p_signed_at_window_d=7).
+//
+// The harness builds a synthetic `RemDiversityFinding` from this cohort
+// and asserts `scoreFinding` clamps `local_weight` below the broadcast
+// threshold (0.3). The §10.4 mechanism is REM-cycle, not admission-time;
+// every envelope individually passes `validateWireRecord`. The defense is
+// the cross-peer concentration check that fires AFTER admission.
+// ---------------------------------------------------------------------------
+
+function rampPerturbed(seed) {
+  // Same shape as ramp768() but with a small, seed-dependent perturbation
+  // applied to a fixed subset of components. The perturbation is an order
+  // of magnitude smaller than the ramp values themselves, so:
+  //   - cosine_similarity between any two perturbations stays > 0.95
+  //   - the embedding bytes differ per envelope, so JCS canonicalization
+  //     produces three distinct signatures (a real peer would not emit
+  //     byte-identical envelopes — different signed_at alone changes
+  //     signature too, but we want the embedding bytes themselves to
+  //     differ so the test is robust to a future fixture refactor that
+  //     normalises signed_at).
+  const arr = new Array(768);
+  for (let i = 0; i < 768; i++) {
+    const base = (i + 1) / 1000;
+    // Perturb only every 32nd index, by ±0.000005 * seed. Magnitude is
+    // 100× smaller than `base` even for the smallest `base`, so cosine
+    // remains essentially 1 - O(1e-7) per component.
+    const perturb = i % 32 === 0 ? seed * 0.000005 : 0;
+    arr[i] = Number((base + perturb).toFixed(6));
+  }
+  return arr;
+}
+
+function buildPlagiarismCohort() {
+  const COHORT_SIZE = 3;
+  const SHARED_CONTENT =
+    "Wave-4 plagiarism cohort: three peers re-broadcast a near-duplicate lesson with no independent evidence chain. §10.4 should clamp local_weight below the broadcast firebreak. See docs/wave-4-anti-echo.md.";
+
+  // All envelopes commit to the *same* well-formed evidence_root. §10.4
+  // is content-agnostic about the root value (re-hashing evidence is §3.7);
+  // a shared root across the cohort mirrors the "re-broadcast of a
+  // plagiarized lesson" failure mode — independent peers would NOT arrive
+  // at the same evidence_root through different evidence chains. We derive
+  // it through `hashExperienceId` (production multihash code path) so the
+  // value is a byte-valid base58btc sha2-256 multihash, indistinguishable
+  // on the wire from a real Merkle root.
+  const SHARED_EVIDENCE_ROOT = hashExperienceId(
+    "plagiarism-cohort-shared-evidence-root"
+  );
+
+  const SHARED_EVIDENCE_COUNT = 4;
+
+  // Tight signed_at window — three envelopes ~1s apart, well inside the
+  // §10.4 default 7-day window.
+  const BASE_SIGNED_AT_MS = Date.parse("2026-05-01T00:10:00.000Z");
+
+  const envelopes = [];
+  for (let i = 0; i < COHORT_SIZE; i++) {
+    const key = plagiarismCohortKeys.keys[i];
+    const envelope = {
+      spec_version: "1.1",
+      // UUID v4-shaped, deterministic per cohort index.
+      id: `22222222-3333-4444-8555-cccccccccc${i.toString().padStart(2, "0")}`,
+      content: SHARED_CONTENT,
+      embedding: rampPerturbed(i + 1),
+      synthesized_from_cluster_size: 2,
+      origin_node_id: key.node_id,
+      created_at: new Date(BASE_SIGNED_AT_MS - 1000).toISOString(),
+      signed_at: new Date(BASE_SIGNED_AT_MS + i * 1000).toISOString(),
+      evidence_root: SHARED_EVIDENCE_ROOT,
+      evidence_count: SHARED_EVIDENCE_COUNT,
+      prev_lesson_hash: null,
+      maturity_age_days: 1,
+      useful_count: 0,
+    };
+    const signature = sign(envelope, key.private_key_pem);
+    envelopes.push({ ...envelope, signature });
+  }
+
+  const fixture = {
+    metadata: {
+      category: "plagiarism",
+      // §10.4 admits each envelope individually but clamps the cohort's
+      // local_weight below MIN_LOCAL_WEIGHT_FOR_BROADCAST (0.3) so none
+      // of them re-broadcast. That is the `broadcast_suppressed` outcome.
+      expected_outcome: "broadcast_suppressed",
+      // §10.4 itself does not directly mutate trust edges — the trust
+      // delta is incurred only when an operator escalates a flagged
+      // diversity finding. A small negative scalar matches the
+      // anchor-doc convention that defended-against attack classes
+      // accrue some non-zero reputation cost over time; the harness
+      // asserts only sign + order-of-magnitude band.
+      expected_trust_delta: -0.01,
+      owns_mechanism: "§10.4 diversity filter",
+      comment:
+        "Three signature-valid envelopes from three distinct fixture-key node IDs, near-identical embeddings (cosine > 0.95), identical content + evidence_root, signed within a 3-second window. Each envelope individually passes the wire validator. §10.4 cross-peer concentration check should clamp local_weight to a value below MIN_LOCAL_WEIGHT_FOR_BROADCAST (0.3) so the cohort cannot re-broadcast.",
+    },
+    cohort_size: COHORT_SIZE,
+    envelopes,
+  };
+
+  const outDir = path.join(FIXTURES_DIR, "plagiarism");
+  fs.mkdirSync(outDir, { recursive: true });
+  const outFile = path.join(outDir, "identical-broadcast-cohort.json");
+  fs.writeFileSync(outFile, JSON.stringify(fixture, null, 2) + "\n");
+  console.log(`wrote ${path.relative(process.cwd(), outFile)}`);
+}
+
+buildPlagiarismCohort();

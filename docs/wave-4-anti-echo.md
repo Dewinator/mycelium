@@ -88,9 +88,10 @@ quarantine, contradicts edge, tier flip).
 | Chain-rewrite           | §5 rule 19 (single-strike)         | Lesson with a `prev_lesson_hash` pointing to a re-written prior lesson. Should quarantine the origin immediately, regardless of N.|
 
 Each fixture file declares its `category`, the `expected_outcome`
-(`reject` / `quarantine` / `tier_b` / `contradicts_pair` / `falsified`),
-and the `expected_trust_delta` so a single test runner can assert the
-whole row without per-fixture branches.
+(`reject` / `quarantine` / `tier_b` / `broadcast_suppressed` /
+`contradicts_pair` / `falsified`), and the `expected_trust_delta` so a
+single test runner can assert the whole row without per-fixture
+branches.
 
 ### Corpus governance
 

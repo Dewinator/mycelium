@@ -40,23 +40,33 @@ export type AntiEchoCategory =
  * What the receiver is expected to do with the fixture after one
  * admission cycle.
  *
- *   - `reject`            — admission endpoint returns 4xx; no
- *                           `swarm_lessons` row written.
- *   - `quarantine`        — origin node ends up in `nodes.quarantined_until`.
- *   - `tier_b`            — admitted but stays Tier B; MUST NOT appear
- *                           in any Tier-A view without local
- *                           corroboration (firebreak rule, §10.6).
- *   - `contradicts_pair`  — both fixtures of a polarity-inversion pair
- *                           are admitted as `tentative` and a
- *                           `memory_relations.type='contradicts'` edge
- *                           connects them.
- *   - `falsified`         — admitted, then demoted/forgotten by the next
- *                           REM cycle with `reason='local-falsification'`.
+ *   - `reject`               — admission endpoint returns 4xx; no
+ *                              `swarm_lessons` row written.
+ *   - `quarantine`           — origin node ends up in `nodes.quarantined_until`.
+ *   - `tier_b`               — admitted but stays Tier B; MUST NOT appear
+ *                              in any Tier-A view without local
+ *                              corroboration (firebreak rule, §10.6).
+ *   - `broadcast_suppressed` — admitted, but the §10.4 diversity pass
+ *                              clamps `swarm_lessons.local_weight` below
+ *                              `MIN_LOCAL_WEIGHT_FOR_BROADCAST` (0.3) so
+ *                              the lesson cannot re-broadcast through
+ *                              `swarm_lessons_broadcast_eligible` — the
+ *                              second arm of the broadcast firebreak
+ *                              (the first is `tier_b`). Lesson tier may
+ *                              still be `A`; the suppression is purely
+ *                              the weight clamp.
+ *   - `contradicts_pair`     — both fixtures of a polarity-inversion pair
+ *                              are admitted as `tentative` and a
+ *                              `memory_relations.type='contradicts'` edge
+ *                              connects them.
+ *   - `falsified`            — admitted, then demoted/forgotten by the next
+ *                              REM cycle with `reason='local-falsification'`.
  */
 export type ExpectedOutcome =
   | "reject"
   | "quarantine"
   | "tier_b"
+  | "broadcast_suppressed"
   | "contradicts_pair"
   | "falsified";
 
