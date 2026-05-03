@@ -73,6 +73,18 @@ to silently disable federation. Step 8 (`scripts/e2e-mtls.mjs` against
 re-including `src/deferred/**` in `tsconfig.json` and rebuilding, or
 (b) null-guarding lines 2452–2453 so the flag becomes a graceful no-op.
 
+[PR #199](https://github.com/Dewinator/mycelium/pull/199) (queued,
+MERGEABLE) implements option (b): it widens the line-2369 guard from
+`if (hostCert && FEATURE.federation)` to also require
+`FederationService && FedGuardService` non-null, and adds two error-log
+hints on the import-failure path so the operator sees both remediation
+choices and the "HTTP-swarm-only" fallback mode. Once #199 lands, setting
+the feature flag against today's build degrades to a graceful no-op
+instead of a crash; the mTLS-listener path itself still requires (a)
+to actually run. The "currently build-deferred" wording above stays
+accurate against `main`, and flips to "build-deferred but fail-soft" the
+moment #199 merges.
+
 CLAUDE.md roadmap step 5 ("Schwarm + Vererbung + Föderation") parks the
 federation code; this doc previously implied that running federation
 "just works" once the env vars are set. It does not. Wave 2's 90%
