@@ -8,7 +8,6 @@
 //   // for the surface the services in src/services/ use.
 
 import path from "node:path";
-import os from "node:os";
 
 import { PGlite } from "@electric-sql/pglite";
 import { vector } from "@electric-sql/pglite/vector";
@@ -23,6 +22,7 @@ import { tablefunc } from "@electric-sql/pglite/contrib/tablefunc";
 
 import { PGliteAdapter } from "./pglite.js";
 import { applyMigrations, type MigrationReport } from "./migration-runner.js";
+import { getDataDirLayout, ensureDataDirs } from "./data-dir.js";
 
 export interface NativeDbOptions {
   /** Data directory; defaults to OS-conventional app-data path. */
@@ -42,29 +42,19 @@ export interface NativeDb {
 }
 
 /**
- * Default data dir per platform — matches what the Tauri shell will use so
- * the Node-side path and the future GUI path land on the same files.
- *
- *   macOS:   ~/Library/Application Support/mycelium/data
- *   Linux:   $XDG_DATA_HOME/mycelium/data  (fallback ~/.local/share/mycelium/data)
- *   Windows: %APPDATA%/mycelium/data
+ * Default PGlite data dir — delegates to the unified layout in data-dir.ts so
+ * the Node-side path and the Tauri shell land on the same files. Honours
+ * `MYCELIUM_DATA_DIR` (root) and the legacy `MYCELIUM_PGLITE_DATA_DIR`
+ * (subpath override) — see data-dir.ts for precedence.
  */
 export function defaultDataDir(): string {
-  const env = process.env.MYCELIUM_PGLITE_DATA_DIR;
-  if (env) return env;
-  const home = os.homedir();
-  if (process.platform === "darwin") {
-    return path.join(home, "Library", "Application Support", "mycelium", "data");
-  }
-  if (process.platform === "win32") {
-    const appdata = process.env.APPDATA ?? path.join(home, "AppData", "Roaming");
-    return path.join(appdata, "mycelium", "data");
-  }
-  const xdg = process.env.XDG_DATA_HOME ?? path.join(home, ".local", "share");
-  return path.join(xdg, "mycelium", "data");
+  return getDataDirLayout().pgData;
 }
 
 export async function createNativeDb(opts: NativeDbOptions = {}): Promise<NativeDb> {
+  // Materialise pgdata/ + models/ + wire-cert/ before PGlite touches the
+  // filesystem. Wire-cert/ stays empty here — Wave-2/3 populates it.
+  await ensureDataDirs();
   const dataDir = opts.dataDir ?? defaultDataDir();
 
   const pg = await PGlite.create({

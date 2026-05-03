@@ -1,11 +1,10 @@
 import { Ollama } from "ollama";
 import { mkdir } from "node:fs/promises";
-import os from "node:os";
-import path from "node:path";
 import {
   lookupExpectedChecksum,
   verifyGgufChecksum,
 } from "./llama-gguf-checksum.js";
+import { getDataDirLayout } from "../native/data-dir.js";
 
 export interface EmbeddingProvider {
   embed(text: string): Promise<number[]>;
@@ -116,23 +115,7 @@ const DEFAULT_LLAMA_EMBEDDING_MODEL_URI =
   "hf:nomic-ai/nomic-embed-text-v1.5-GGUF/nomic-embed-text-v1.5.Q5_K_M.gguf";
 
 export function defaultLlamaModelsDir(): string {
-  if (process.platform === "darwin") {
-    return path.join(
-      os.homedir(),
-      "Library",
-      "Application Support",
-      "mycelium",
-      "models"
-    );
-  }
-  if (process.platform === "win32") {
-    const appData =
-      process.env.APPDATA ?? path.join(os.homedir(), "AppData", "Roaming");
-    return path.join(appData, "mycelium", "models");
-  }
-  const xdg =
-    process.env.XDG_DATA_HOME ?? path.join(os.homedir(), ".local", "share");
-  return path.join(xdg, "mycelium", "models");
+  return getDataDirLayout().models;
 }
 
 export class LlamaCppEmbeddingProvider implements EmbeddingProvider {
