@@ -153,6 +153,120 @@ What W3.3 still owns:
   manifest format. The spike doc covers the *design*; the
   implementation lands the schema.
 
+## W3.1 pre-implementation handoff
+
+This section exists so the agent that picks W3.1 up after Wave 1 lands
+does not have to spelunk the spike outputs and the existing peer
+pipeline in parallel. The spike chain answered *what to build*; this
+section answers *where it plugs in*.
+
+### Concrete file touchpoints (existing code W3.1 must integrate with)
+
+| concern | file | symbol(s) the wiring depends on |
+|---|---|---|
+| Wire shape for the discovered peer | `mcp-server/src/services/wire-types.ts` | `NodeAdvertisement` (7 fields: `node_id`, `pubkey`, `display_name?`, `endpoint_url`, `spec_version`, `signed_at`, `signature`) |
+| Wire-shape rejection rules (rules 1–10 of §5) | `mcp-server/src/services/wire-validator.ts` | reuse — discovery MUST NOT relax any of them |
+| HTTP fetch of `/.well-known/mycelium/node-advertisement.json` | spike `experiments/swarm-discovery/spike-mdns-fetch.mjs` (37 ms two-process) | port the body-cap (64 KiB) and timeout (2000 ms) defaults verbatim |
+| Self-publish echo filter | spike commit `71bd74e` (TXT `node_id` match) | discovery MUST skip records whose advertised `node_id` equals the local `node_id` from `services/node-identity.ts` |
+| Persistence of an admitted peer | `mcp-server/src/services/swarm-admit.ts` + `nodes` table (migrations 070, 071, 075) | new auto-discovered peers land as a new `nodes` row with `trust_weight = 0`, `is_self = false`, `last_seen_at = now()` — promotion to `base_weight` is the W3.2 operator action, NOT a W3.1 side effect |
+| Operator-visible read of candidate peers | `mcp-server/src/services/swarm-peers.ts` (`PeerSummary`) | extend the existing read shape with `discovery_source: 'mdns' \| 'manual' \| 'dht'` so W3.2's dashboard panel can filter |
+
+### Adapter shape: bonjour-service service record → NodeAdvertisement
+
+The bonjour-service `up` event yields a service record with `name`,
+`host`, `port`, `addresses[]`, `txt`. Discovery is **never** the source
+of truth for an advertisement — the canonical advertisement always
+lives at `https://<host>:<port>/.well-known/mycelium/node-advertisement.json`,
+self-signed by the same key it declares. The TXT record is a *pointer*,
+not a payload. The mapping is therefore strictly two-stage:
+
+1. **TXT → fetch URL** — read `txt.node_id` and `txt.path` (default
+   `/.well-known/mycelium/node-advertisement.json`), construct
+   `https://<host>:<port><path>`. Reject the service if `txt.node_id`
+   equals the local `node_id` (self-publish echo filter).
+2. **Fetched body → `NodeAdvertisement`** — feed the response bytes
+   through the existing Phase-3b validator
+   (`wire-validator.ts:validateNodeAdvertisement`). Discovery does
+   **not** introduce a relaxed validator: a rejected fetched body is
+   a rejected peer, full stop. Body-cap and timeout per spike defaults.
+
+The pseudo-code:
+
+```ts
+// Inside the W3.1 service (e.g. mcp-server/src/services/discovery-mdns.ts)
+on('up', async (svc) => {
+  if (svc.txt?.node_id === localNodeId) return;            // self-echo
+  const url = buildUrl(svc.host, svc.port, svc.txt?.path);
+  const body = await fetchWithCaps(url, { timeoutMs: 2000, maxBytes: 65536 });
+  if (!body) return;                                        // hostile-OK per spike-fetch-hostile.mjs
+  const adv = await validateNodeAdvertisement(body);        // reuses Phase 3b
+  if (!adv.ok) return;
+  await admitDiscoveredPeer(adv.value, { discovery_source: 'mdns' });
+});
+```
+
+`admitDiscoveredPeer` is a *new* helper sibling of the existing
+`swarm-admit.ts` flow — it inserts a `nodes` row with `trust_weight = 0`
+rather than going through the lesson-admission path (which assumes a
+trust edge already exists). This is the smallest delta that keeps the
+v1 admission semantics intact.
+
+### Open design questions the W3.1 PR has to settle
+
+The spike chain deliberately did **not** decide these — they are
+implementation-shape choices that depend on the live code, not on the
+spike substrate:
+
+1. **Service name.** Spike uses `_mycelium._tcp.local`. Confirm against
+   IANA hygiene (lowercase, ≤15 chars) before locking it.
+2. **TXT field set.** Spike publishes `node_id`, `path`, `spec_version`.
+   Decide whether to also publish `display_name` for the dashboard
+   "candidate peers" view, or to wait for the fetched advertisement to
+   provide it (cleaner — TXT is just a pointer).
+3. **Heartbeat budget surface.** Spike measured 15 003 ms ±3 ms
+   detection. Decide whether to expose `MYCELIUM_MDNS_HEARTBEAT_MS` and
+   `MYCELIUM_MDNS_FAIL_THRESHOLD` as env-overridable (yes for ops
+   debuggability) or compile-time (no — operators with broken
+   networks need the dial).
+4. **Dashboard refresh model.** W3.2 owns the panel itself; W3.1 owns
+   the read-side hook. Decide between SSE push (matches the existing
+   dashboard polling pattern) and a simple `GET /swarm/discovery/candidates`
+   that the dashboard polls every N seconds. SSE is cheaper post-W3.2
+   but adds one new HTTP surface for W3.1.
+5. **Quarantine reuse.** A peer that is quarantined via §10 mechanics
+   should NOT re-appear as a candidate when its mDNS record is
+   re-observed. Decide whether `admitDiscoveredPeer` reads
+   `nodes.quarantined_until` before insert (yes — cheaper than the
+   alternative, which is a re-quarantine pass on every `up` event).
+
+These five questions are **not** spike-chain regressions — they are
+the kind of small wiring decisions that should be made in the W3.1 PR
+review with the live code in front of the reviewer, not pre-baked into
+this doc.
+
+### Test surface
+
+The 11 spike `.mjs` files live in `experiments/swarm-discovery/` and
+are *not* part of `node --test` runs (they require sudo for raw
+multicast on some platforms and Reed's two-laptop home WiFi for the
+end-to-end ones). The W3.1 PR adds:
+
+- Single-process unit tests under `mcp-server/src/__tests__/` for the
+  TXT → URL adapter, the self-echo filter, and the
+  `admitDiscoveredPeer` insert path. These run on every `node --test`
+  invocation, with mocked `bonjour-service`.
+- A new `experiments/swarm-discovery/spike-mdns-mcp-server.mjs` that
+  spawns the actual mcp-server process and a fake-peer process, and
+  asserts the new `nodes` row appears with `trust_weight = 0`. This is
+  the integration-shape spike — runs on demand, not in CI, mirrors the
+  existing `spike-mdns-fetch.mjs` two-process pattern.
+
+The W3.1 acceptance criteria are the four end-state checks in §"End-state
+(observable)" above, **plus** the unit tests. Cross-platform re-runs of
+the original 11 spikes on Linux and Windows are out of W3.1 scope —
+that is the §"What can land NOW" item 1 above, runnable independently
+on any platform with mycelium installed.
+
 ## What can land NOW (Wave 3 prep, no dependency)
 
 Honest answer: **almost nothing implementation-side**, by design.
