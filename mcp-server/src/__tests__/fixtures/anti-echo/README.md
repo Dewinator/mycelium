@@ -101,10 +101,14 @@ malformed one.
    cycle. The harness asserts on sign and magnitude.
 5. **Drop the file under `<category>/`**, named for the specific
    sub-attack (e.g. `forgery/evidence-root-mismatch.json`).
-6. **Add a Vitest case** in the W4.1 harness that loads the fixture and
-   asserts the §10 mechanism it owns rejects it. The harness is
-   per-category (one file per attack class), so the new fixture's case
-   slots in alongside its siblings.
+6. **Add a `node:test` case** in the W4.1 harness that loads the fixture
+   and asserts the §10 mechanism it owns rejects it. The harness is
+   per-category (one file per attack class — see the existing
+   `anti-echo-forgery.test.ts` / `anti-echo-plagiarism.test.ts`), so the
+   new fixture's case slots in alongside its siblings. Test runner is
+   the Node.js built-in (`npm test` runs `node --test
+   "dist/__tests__/**/*.test.js"`); Vitest is intentionally not a
+   dependency.
 
 ## What this corpus is *not*
 

@@ -116,7 +116,8 @@ implemented on `main`. The *empirical defense report* will be
 runs.
 
 **What can land before Wave 2 finishes:** W4.1 (corpus fixtures +
-single-node Vitest harness) and W4.2 (HTTP corpus runner) — both
+single-node `node:test` harness — the repo runs `node --test`; Vitest
+is not a dependency) and W4.2 (HTTP corpus runner) — both
 agent-eligible per the owner doc, both run against the existing single-
 node test stack today and against the live federation admission endpoint
 once Wave 2 lands, without any fixture changes.

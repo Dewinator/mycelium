@@ -58,8 +58,10 @@ The single highest-value Wave-4 prep that does **not** wait on Wave 2 is
 curating the **adversarial-lesson corpus**: a small, canonical set of
 manipulative lesson patterns that becomes the regression suite for §10.
 The corpus is data, not code; it lands in the repo as JSON fixtures and
-runs on the existing single-node Vitest harness today, then re-runs
-unmodified on the multi-node swarm once Wave 2 lands.
+runs on the existing single-node `node:test` harness today (the repo
+runs `node --test` over the compiled `dist/__tests__/` tree; Vitest is
+not a dependency), then re-runs unmodified on the multi-node swarm once
+Wave 2 lands.
 
 Corpus fixtures live in `mcp-server/src/__tests__/fixtures/anti-echo/`
 (directory does not exist yet — the first PR of this wave creates it).
@@ -160,9 +162,10 @@ Numbers below these thresholds → PARTIAL; numbers at or near zero → FAIL.
 The wave decomposes into three sub-tasks that can land sequentially —
 the first two before Wave 2 finishes, the third after.
 
-1. **W4.1 — corpus fixtures + single-node Vitest harness.** Lands the
-   directory + 8 categories above against the existing single-node test
-   stack. Asserts §10 mechanisms behave as `SWARM_SPEC` claims they do
+1. **W4.1 — corpus fixtures + single-node `node:test` harness.** Lands
+   the directory + 8 categories above against the existing single-node
+   test stack (`node --test` over `dist/__tests__/`; Vitest is not a
+   dependency). Asserts §10 mechanisms behave as `SWARM_SPEC` claims they do
    *in unit-test conditions*. This is the regression suite that protects
    §10 from drift in subsequent refactors.
 2. **W4.2 — `scripts/run-anti-echo-campaign.mjs` corpus runner.** Same
