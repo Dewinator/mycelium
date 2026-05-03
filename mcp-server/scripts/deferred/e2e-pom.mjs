@@ -8,9 +8,9 @@ import https from "node:https";
 import { readFileSync } from "node:fs";
 import { homedir } from "node:os";
 import { join } from "node:path";
-import { IdentityService } from "../dist/services/identity.js";
-import { FederationService } from "../dist/services/federation.js";
-import { GuardService } from "../dist/services/guard.js";
+import { IdentityService } from "../../dist/services/identity.js";
+import { FederationService } from "../../dist/services/federation.js";
+import { GuardService } from "../../dist/services/guard.js";
 
 const url = process.env.SUPABASE_URL ?? "http://127.0.0.1:54321";
 const key = process.env.SUPABASE_KEY ?? "";

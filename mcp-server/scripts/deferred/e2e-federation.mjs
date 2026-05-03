@@ -22,9 +22,9 @@ function sqlDelete(label) {
   execSync(`docker exec vectormemory-db psql -U postgres -d vectormemory -c "DELETE FROM agent_genomes WHERE label='${label}'"`, { stdio: "ignore" });
 }
 const { PostgrestClient } = pkg;
-import { IdentityService } from "../dist/services/identity.js";
-import { FederationService } from "../dist/services/federation.js";
-import { GuardService } from "../dist/services/guard.js";
+import { IdentityService } from "../../dist/services/identity.js";
+import { FederationService } from "../../dist/services/federation.js";
+import { GuardService } from "../../dist/services/guard.js";
 
 const url = process.env.SUPABASE_URL ?? "http://127.0.0.1:54321";
 const key = process.env.SUPABASE_KEY ?? "";
