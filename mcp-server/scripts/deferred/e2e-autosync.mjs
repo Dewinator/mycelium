@@ -2,9 +2,9 @@
 // Wir testen, dass der Loop einen auto_sync_enabled peer tatsächlich syncht
 // und die peers_list-Felder entsprechend updated werden.
 import { execSync } from "node:child_process";
-import { FederationService } from "../dist/services/federation.js";
-import { GuardService } from "../dist/services/guard.js";
-import { IdentityService } from "../dist/services/identity.js";
+import { FederationService } from "../../dist/services/federation.js";
+import { GuardService } from "../../dist/services/guard.js";
+import { IdentityService } from "../../dist/services/identity.js";
 
 const url = process.env.SUPABASE_URL ?? "http://127.0.0.1:54321";
 const key = process.env.SUPABASE_KEY ?? "";
