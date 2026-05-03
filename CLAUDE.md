@@ -245,32 +245,31 @@ Spike auf `main`:
 - `docs/native-docs-refresh-spike.md` — Docker und Native koexistieren in
   README+setup.md; Flip auf signierte v1.0-Native-Releases gegated.
 
-**Aktiver Code-Bestand**: `mcp-server/src/native/` (PGlite Adapter — PR #185),
-`services/embeddings.ts` mit `LlamaCppEmbeddingProvider` hinter
-`MYCELIUM_LLM_PROVIDER` (PR-Stack #187 → #188 → #189),
-`middleware/proxy.ts` mit `EmbeddingProvider`-Injection (PR #190 — **MERGED**),
-`services/chat.ts` mit `ChatProvider`-Abstraction (PR #192 — **MERGED**).
-Native-App PR-Stand siehe Queue-Block direkt darunter.
+**Aktiver Code-Bestand auf `main`** (Stand 2026-05-03 nach Reed-Massendrain):
+`mcp-server/src/native/` PGlite Adapter (#185), `services/embeddings.ts` mit
+`LlamaCppEmbeddingProvider` hinter `MYCELIUM_LLM_PROVIDER` (#187), GGUF
+SHA-256-Verify (#188), `MYCELIUM_LLAMA_REQUIRE_CHECKSUM=1` fail-closed
+(#189), `middleware/proxy.ts` `EmbeddingProvider`-Injection (#190),
+`services/chat.ts` `ChatProvider`-Abstraction (#192). Cosine-cross-validation
+spike + Regen-Migration-Spec (#191/#193) und PGlite-Revalidate (#194)
+ebenfalls auf `main`. Alle 9 Native-App-Sub-Tasks 1, 2, 4, 5 sind damit
+implementiert (Adapter, Embedding-Provider, Chat-Provider, Update-Banner,
+PG-Validation).
 
-**Queue-Stand 2026-05-03 (post-massendrain)**: nur noch **4 PRs offen** — alle
-Native-App, alle aus dem #178-Stack: #185 (PGlite Adapter), #187
-(LlamaCppEmbeddingProvider), #188 (GGUF SHA-256-Verify), #189
-(`MYCELIUM_LLAMA_REQUIRE_CHECKSUM=1` fail-closed). Reed hat heute
-**10 PRs gemerged**: alle 3 W4.1-anti-echo (#197/#198/#201), beide W2-
-federation (#199/#200) sowie 5 weitere Native-App PRs (#190 middleware,
-#191 cosine-spike, #192 chat-provider, #193 regen-spec, #194 PG-
-revalidate). Damit sind die drei früheren Cohorts (Native-App / W4.1 /
-W2) auf einen einzigen Cohort kollabiert. Die 143rd/148th-Tick Order-
-Independence-Proofs sind jetzt obsolet — der verbleibende 4-PR-Stack ist
-linear (#185 unabhängig, #187 → #188 → #189 streng gestackt) und braucht
-kein neues Audit.
+**Queue-Stand 2026-05-03 (post-totaldrain)**: **0 PRs offen**. Reed hat
+während dieser Tick-Sequenz alle 14 PRs aus dem gestrigen Queue-Stand
+gemerged — komplette Native-App #178-Stack (#185, #187–#194), alle 3
+W4.1 anti-echo (#197/#198/#201), beide W2 federation (#199/#200). Die
+drei Cohorts existieren nicht mehr als Queue-Blocker. Order-Independence-
+Proofs (143rd/148th tick) und 4-PR-Restmenge (vorheriger Doc-Stand)
+beide obsolet.
 
-**Was noch fehlt**: Implementierung von Sub-Tasks 3 (Tauri Shell), 6
-(Update Channels), 7 (Migration Wizard), 8 (CI Matrix), 9 (Banner Refit),
-10 (Docs Flip). Spikes liegen, Implementierung wartet auf Drain der
-verbleibenden 4-PR-Queue (Reed mergt manuell, kein Auto-Merge
-konfiguriert) — deutlich näher am Greenlight als der 14-PR-Stand
-gestern.
+**Was noch fehlt — JETZT IMPLEMENTIERUNGS-FENSTER**: Mit leerer Queue ist
+der "warten auf Drain"-Block weg. Verbleibende Native-App Sub-Tasks 3
+(Tauri Shell), 6 (Update Channels), 7 (Migration Wizard), 8 (CI Matrix),
+9 (Banner Refit), 10 (Docs Flip) können jetzt direkt angegriffen werden.
+Spikes liegen alle in `docs/native-*-spike.md`. Reed mergt nach wie vor
+manuell — Tempo bleibt: kleine, atomare PRs.
 
 ### Deferred (geparkter Code)
 
