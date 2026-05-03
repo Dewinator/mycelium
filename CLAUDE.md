@@ -240,15 +240,23 @@ Spike auf `main`:
 `services/embeddings.ts` mit `LlamaCppEmbeddingProvider` hinter
 `MYCELIUM_LLM_PROVIDER` (PR-Stack #187 → #188 → #189),
 `middleware/proxy.ts` mit `EmbeddingProvider`-Injection (PR #190),
-`services/chat.ts` mit `ChatProvider`-Abstraction (PR #192). Alle 9 PRs sind
-green und MERGEABLE; Empirisch validiert dass die komplette Queue in
-beliebiger Reihenfolge konfliktfrei zusammen-merged (998/999 Tests grün,
-1 pre-existing Skip).
+`services/chat.ts` mit `ChatProvider`-Abstraction (PR #192). Alle 9
+Native-App PRs sind green und MERGEABLE.
+
+**Queue-Stand 2026-05-03**: 14 PRs offen insgesamt — 9 Native-App (#185,
+#187–#194) + 3 W4.1 anti-echo (#197 forgery, #198 plagiarism, #201
+sybil-flood) + 2 W2 federation (#199 mTLS-listener null-guard, #200
+move-deferred-federation-e2e). Keinerlei File-Overlap zwischen den drei
+Cohorts (143rd-tick audit). Empirisch validiert (143rd + 148th tick) dass
+die 13-PR-Queue in 3 verschiedenen Reihenfolgen — ascending, descending,
+newest-first — konfliktfrei mergeable ist (1012/1013 Tests grün, 1
+pre-existing Skip); PR #201 ist additiv (eigene neue Test-Datei +
+Fixture-JSON, kein Overlap mit den 13).
 
 **Was noch fehlt**: Implementierung von Sub-Tasks 3 (Tauri Shell), 6
 (Update Channels), 7 (Migration Wizard), 8 (CI Matrix), 9 (Banner Refit),
 10 (Docs Flip). Spikes liegen, Implementierung wartet auf Drain der
-aktuellen 9-PR-Queue.
+aktuellen 14-PR-Queue (Reed mergt manuell, kein Auto-Merge konfiguriert).
 
 ### Deferred (geparkter Code)
 
