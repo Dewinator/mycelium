@@ -165,14 +165,18 @@ Die folgenden Phasen bauen auf dem produktiven Stand auf (Migrationen 019–030)
 Ziel ist ein sich selbst entwickelndes Multi-Instanz-System nach biologischem
 Vorbild, mit konzentrierter Wissensvererbung und user-kuratierter Paarung.
 
-### In-Flight — Affect aus Observables (Issue #11)
+### Landed — Affect aus Observables (Issue #11, Phasen 1–3 done)
 
-Der aktuelle `agent_affect`-Zustand wird vom LLM per `affect_apply` gefüttert
-und deshalb in der Praxis unterberichtet. Geplanter Umbau: `compute_affect()`
-leitet die vier Dimensionen plus valence/arousal aus schon vorhandenen
-Tabellen ab (`experiences`, `memory_events`, `skill_outcomes`, `stimuli`) und
-läuft per Trigger, nicht per MCP-Call. Formelspezifikation vor Migration:
-[docs/affect-observables.md](docs/affect-observables.md).
+`compute_affect()` leitet die vier Dimensionen plus valence/arousal aus
+schon vorhandenen Tabellen ab (`experiences`, `memory_events`,
+`skill_outcomes`, `stimuli`) und läuft per Trigger, nicht per MCP-Call.
+Migration 062 lieferte SQL-Funktion + Trigger (Phase 2); Phase 3 entfernte
+den Legacy-`affect_apply`-Schreibpfad aus `remember`/`recall`/`absorb`/
+`infer_action`. PRs #28–#40 lieferten den Contract-Test-Layer dazu. Issue
+selbst ist `agent-do-not-touch` markiert (Reed-Triage 2026-04-27) — Phase 10
+(Tuning nach 1–2 Wochen Echtdaten, surface via `affect_history_series` /
+Regulator-Tab in PR #55) bleibt als einziger offener Schritt und wartet auf
+Datensammlung. Formelspezifikation: [docs/affect-observables.md](docs/affect-observables.md).
 
 ## Roadmap (Reed 2026-04-26)
 
