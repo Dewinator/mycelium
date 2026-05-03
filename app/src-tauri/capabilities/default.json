@@ -12,6 +12,7 @@
     "core:app:allow-version",
     "core:event:allow-emit",
     "shell:allow-execute",
-    "shell:default"
+    "shell:default",
+    "updater:default"
   ]
 }

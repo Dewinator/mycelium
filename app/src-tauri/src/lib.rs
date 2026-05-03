@@ -19,6 +19,7 @@ use tauri::tray::{MouseButton, MouseButtonState, TrayIconBuilder, TrayIconEvent}
 use tauri::{AppHandle, Emitter, Manager, RunEvent, State, WindowEvent};
 use tauri_plugin_shell::process::{CommandChild, CommandEvent};
 use tauri_plugin_shell::ShellExt;
+use tauri_plugin_updater::UpdaterExt;
 
 const SIDECAR_NAME: &str = "mycelium-mcp";
 const DASHBOARD_PORT: &str = "8787";
@@ -41,6 +42,7 @@ struct ResolvedDataDir(PathBuf);
 pub fn run() {
     tauri::Builder::default()
         .plugin(tauri_plugin_shell::init())
+        .plugin(tauri_plugin_updater::Builder::new().build())
         .invoke_handler(tauri::generate_handler![
             open_data_dir,
             check_for_updates,
@@ -188,13 +190,36 @@ fn open_data_dir(state: State<'_, ResolvedDataDir>) -> Result<String, String> {
 }
 
 #[tauri::command]
-fn check_for_updates(app: AppHandle) -> Result<String, String> {
-    // Sub-task 4 (`tauri-plugin-updater`) is a follow-up PR. Until then,
-    // surface the request as an event so a future updater integration can
-    // pick it up without changing this command's signature.
-    app.emit("updates:check-requested", ())
-        .map_err(|e| e.to_string())?;
-    Ok("update-check requested — updater plugin not yet wired (#176 sub-task 4)".to_string())
+async fn check_for_updates(app: AppHandle) -> Result<UpdateCheckResult, String> {
+    let _ = app.emit("updates:check-requested", ());
+    let updater = app.updater().map_err(|e| e.to_string())?;
+    match updater.check().await {
+        Ok(Some(update)) => {
+            let version = update.version.clone();
+            let _ = app.emit("updates:available", &version);
+            Ok(UpdateCheckResult {
+                available: true,
+                version: Some(version),
+                notes: update.body.clone(),
+            })
+        }
+        Ok(None) => {
+            let _ = app.emit("updates:none", ());
+            Ok(UpdateCheckResult {
+                available: false,
+                version: None,
+                notes: None,
+            })
+        }
+        Err(err) => Err(err.to_string()),
+    }
+}
+
+#[derive(serde::Serialize)]
+struct UpdateCheckResult {
+    available: bool,
+    version: Option<String>,
+    notes: Option<String>,
 }
 
 #[tauri::command]
