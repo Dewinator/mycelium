@@ -189,14 +189,23 @@ Klare Reihenfolge — keine Vermischung:
 2. **Installation so einfach wie möglich.** `install.sh` mit allen
    Abhängigkeiten — Docker-Stack, Ollama-Modell, MCP-Server fertig gebaut.
 3. **Dashboard verbessern.** Lesbar, vollständig, Anfänger-tauglich.
-4. **Paarung.** (deferred — siehe `src/deferred/`, `migrations.deferred/`,
-   Branch `archive/swarm-deferred`).
-5. **Schwarm + Vererbung + Föderation.** (deferred — gleiche Stellen).
+4. **Paarung / Vererbung.** (deferred — siehe `src/deferred/`,
+   `migrations.deferred/` (033–036), Branch `archive/swarm-deferred`).
+5. **Cross-Host-Föderation (mTLS-Listener, Autosync).** (deferred —
+   `migrations.deferred/038, 041`, gleiche Branches).
+
+Davon unberührt: die **§10-Schwarm-Mechanik** (Provenance-Commitment,
+Contradicts-Gate, Diversity-Filter §10.4, REM-Self-Audit, Plagiarism-/
+Sybil-Resistenz — `SWARM_SPEC.md` §10) ist auf `main` aktiv, inkl.
+inbound `POST /swarm/lessons`-Admission und outbound Lesson-Feed; sie
+geht mit Welle 2 (zweiter Peer) in echten Multi-Knoten-Betrieb. Die
+Cross-Wave-Übersicht steht in [`docs/waves.md`](docs/waves.md).
 
 Mehrere Gehirne entstehen durch mehrere mycelium-Instanzen — jeder Anwender
 provisioniert pro Rolle (privat / coden / kochen / …) eine Instanz und
-verbindet seinen MCP-Client damit. Das Gehirn weiß nichts von anderen
-Gehirnen. Schwarm/Föderation kommt später als zusätzlicher Layer obendrauf.
+verbindet seinen MCP-Client damit. Das einzelne Gehirn weiß nichts von
+anderen Gehirnen — die Cross-Host-Trust-Schicht (mTLS-Transport, autosync)
+ist die deferred Lage; die §10-Self-Healing-Mechanik darunter ist es nicht.
 
 ### Vier Wellen (Reed 2026-05-02) — Bird's-eye view
 
