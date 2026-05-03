@@ -43,6 +43,42 @@ Choosing native for the second peer would couple Wave 2 to Wave 1's
 queue-drain timeline, and Wave 2 has the higher unblock ratio (it gates
 Waves 3 + 4). Reference: [`docs/waves.md`](waves.md) §"Wave 2".
 
+## Build constraint — HTTP path vs. mTLS path (validated 2026-05-03)
+
+The bring-up sequence has two halves with different readiness:
+
+**HTTP swarm path — works in the active build (active code in
+`mcp-server/src/swarm/endpoints/`).** Step 4 (`/.well-known/mycelium-node`),
+step 5 (`swarm_admit_lesson` MCP tool), step 6 (outbound polling via
+`FED_SYNC_INTERVAL_MS`), step 7 (`POST /swarm/lessons` admission). These
+ride on `lesson-admission.ts` + `node-advertisement.ts` + `lesson-proof.ts`,
+all built by `tsc` and imported by `scripts/dashboard-server.mjs` at
+runtime.
+
+**mTLS federation listener — currently build-deferred.** The
+`FederationService` lives in `mcp-server/src/deferred/services/federation.ts`,
+which is excluded from `mcp-server/tsconfig.json`'s `include`
+(`"exclude": ["…", "src/deferred/**"]`). `federation.js` is therefore not
+emitted into `dist/services/`. The lazy import at
+`scripts/dashboard-server.mjs:49` fails silently (caught, sets
+`FederationService = null` and logs `federation imports failed — feature
+flag set but dist missing`), but the same flag also gates the listener
+mount at line 2369 — and the unconditional `new FederationService(...)`
+at line 2453 will throw a TypeError when the feature flag is set.
+
+In other words: setting `MYCELIUM_FEATURE_FEDERATION=1` against the
+active build today causes the dashboard process to crash at startup, not
+to silently disable federation. Step 8 (`scripts/e2e-mtls.mjs` against
+`/federation/whoami`) cannot be exercised without first either (a)
+re-including `src/deferred/**` in `tsconfig.json` and rebuilding, or
+(b) null-guarding lines 2452–2453 so the flag becomes a graceful no-op.
+
+CLAUDE.md roadmap step 5 ("Schwarm + Vererbung + Föderation") parks the
+federation code; this doc previously implied that running federation
+"just works" once the env vars are set. It does not. Wave 2's 90%
+progress claim covers the HTTP path only — the mTLS path is gated on
+unparking the deferred build.
+
 ## Pre-flight (Reed-side, before bring-up)
 
 - [ ] Server reachable at a stable hostname `${PEER_HOST}` (FQDN).
@@ -203,7 +239,7 @@ mismatch, or chain-tip violation does NOT just reject — it sets the
 offender's `nodes.quarantined_until = now() + 1h`. Verify by deliberately
 sending one bad envelope and confirming the row appears.
 
-### 8) Optional: end-to-end mTLS smoke
+### 8) Optional: end-to-end mTLS smoke — gated on deferred-build unpark
 
 ```bash
 FED_HOST=${PEER_HOST} FED_PORT=8788 node scripts/e2e-mtls.mjs
@@ -215,19 +251,31 @@ have admitted the Mac's host pubkey to its `trust_roots` table). Status
 200 + a JSON body confirms the federation listener and trust-roots
 allowlist agree.
 
+**Currently blocked** by the build constraint above (§"Build constraint
+— HTTP path vs. mTLS path"): the federation listener is in
+`mcp-server/src/deferred/`, excluded from `tsc`, so `federation.js`
+isn't in dist and `MYCELIUM_FEATURE_FEDERATION=1` will crash the
+dashboard before the listener ever starts. Steps 4–7 (HTTP path) work
+without this step.
+
 ## Environment contract (peer side, summarised)
 
 | Var                              | Required | Default     | Purpose                                               |
 |----------------------------------|----------|-------------|-------------------------------------------------------|
 | `MYCELIUM_PUBLIC_URL`            | yes      | —           | Absolute https URL exposed in `NodeAdvertisement`.    |
 | `MYCELIUM_DISPLAY_NAME`          | no       | —           | ≤ 64 chars; cap enforced before publish (§3.3).       |
-| `MYCELIUM_FEATURE_FEDERATION`    | yes      | `0`         | Set `1` to enable `:8788` mTLS listener.              |
-| `FEDERATION_PORT`                | no       | `8788`      | mTLS server-to-server port.                           |
-| `MYCELIUM_HOST_ID`               | no       | `self`      | CN label on auto-generated host cert.                 |
-| `OPENSSL_BIN`                    | no       | Homebrew    | OpenSSL ≥ 3 binary; LibreSSL is rejected.             |
-| `OPENCLAW_KEYS_DIR`              | no       | `~/.openclaw/keys` | Override host-cert directory.                  |
-| `FED_SYNC_INTERVAL_MS`           | no       | `300000`    | Outbound poll cadence; `0` disables auto-sync.        |
-| `FED_AUDIT_RETENTION_DAYS`       | no       | `90`        | Audit-log retention for federation events.            |
+| `MYCELIUM_FEATURE_FEDERATION`    | no¹     | `0`         | mTLS listener flag. **Today's build will crash on `1`** — federation source is build-deferred (see §"Build constraint"). HTTP path (steps 4–7) does NOT need this flag. |
+| `FEDERATION_PORT`                | no¹     | `8788`      | mTLS server-to-server port. Inert until federation build is unparked. |
+| `MYCELIUM_HOST_ID`               | no¹     | `self`      | CN label on auto-generated host cert. Used by `scripts/deferred/lib/tls-host.mjs`. |
+| `OPENSSL_BIN`                    | no¹     | Homebrew    | OpenSSL ≥ 3 binary; LibreSSL rejected. Used by deferred TLS helper. |
+| `OPENCLAW_KEYS_DIR`              | no¹     | `~/.openclaw/keys` | Override host-cert directory. Honored by deferred code only — `mcp-server/src/services/` does not read this. |
+| `FED_SYNC_INTERVAL_MS`           | no       | `300000`    | Outbound poll cadence; `0` disables auto-sync. Active. |
+| `FED_AUDIT_RETENTION_DAYS`       | no       | `90`        | Audit-log retention for federation events. Active.    |
+
+¹ Required only after the federation build is unparked. Until then,
+setting `MYCELIUM_FEATURE_FEDERATION=1` crashes the dashboard at line
+2452 of `scripts/dashboard-server.mjs` (`new FederationService(...)`
+on a `null` import).
 
 ## Failure modes & recovery
 
