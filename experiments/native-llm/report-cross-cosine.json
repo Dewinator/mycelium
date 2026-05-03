@@ -1,0 +1,202 @@
+{
+  "spike": "issue-178-cross-cosine",
+  "started_at": "2026-05-02T17:05:04.463Z",
+  "platform": "darwin-arm64",
+  "node": "v25.9.0",
+  "quant": "Q5_K_M",
+  "sample_count": 20,
+  "accept_threshold": 0.95,
+  "steps": {
+    "runtime": {
+      "gpu": "metal"
+    },
+    "model_load": {
+      "ok": true,
+      "ms": 223.7684999999983,
+      "uri": "hf:nomic-ai/nomic-embed-text-v1.5-GGUF/nomic-embed-text-v1.5.Q5_K_M.gguf",
+      "embedding_vector_size": 768
+    },
+    "cross_cosine": {
+      "dim_llama": 768,
+      "dim_ollama": 768,
+      "dim_match": true,
+      "diagonal": {
+        "min": 0.7273857032192723,
+        "avg": 0.8875090255600208,
+        "median": 0.9095007333547184,
+        "p05": 0.7558068276987447,
+        "max": 0.9585269438239092
+      },
+      "off_diagonal": {
+        "min": 0.3036005990369242,
+        "avg": 0.47475722677237286,
+        "median": 0.4681591927992074,
+        "max": 0.7469818894953382
+      },
+      "per_sample": [
+        {
+          "idx": 0,
+          "chars": 57,
+          "llama_norm": 20.411014054374647,
+          "ollama_norm": 0.9999998007457381,
+          "cosine": 0.8147768921700829,
+          "sample": "Reed bevorzugt deutsche Antworten im technischen Kontext."
+        },
+        {
+          "idx": 1,
+          "chars": 167,
+          "llama_norm": 19.539470282533156,
+          "ollama_norm": 1.000000076492689,
+          "cosine": 0.7273857032192723,
+          "sample": "Wenn die PR-Queue mehrere agent/* PRs enthält, prüfe vor jeder neuen Migration d"
+        },
+        {
+          "idx": 2,
+          "chars": 172,
+          "llama_norm": 18.915541089248386,
+          "ollama_norm": 0.9999999221628791,
+          "cosine": 0.9155616207359596,
+          "sample": "Spike 1 (issue #177): embedded-postgres bundle ships vanilla Postgres 18.3 only."
+        },
+        {
+          "idx": 3,
+          "chars": 174,
+          "llama_norm": 19.439673444345893,
+          "ollama_norm": 1.000000136643342,
+          "cosine": 0.9566769553592539,
+          "sample": "agent_affect tracks four dimensions: frustration, satisfaction, curiosity, fatig"
+        },
+        {
+          "idx": 4,
+          "chars": 75,
+          "llama_norm": 19.830532188221834,
+          "ollama_norm": 1.0000001120929642,
+          "cosine": 0.8767223352441247,
+          "sample": "Pillar 1 — decentralised, networked AI. mycelium belongs to no single host."
+        },
+        {
+          "idx": 5,
+          "chars": 102,
+          "llama_norm": 18.5068571507017,
+          "ollama_norm": 0.999999688148446,
+          "cosine": 0.8452873760416464,
+          "sample": "Memory IDs are UUIDs. Embedding dimension is 768. HNSW index on memories(embeddi"
+        },
+        {
+          "idx": 6,
+          "chars": 156,
+          "llama_norm": 18.208887739771704,
+          "ollama_norm": 1.0000000495659918,
+          "cosine": 0.8996594042455898,
+          "sample": "REM digest synthesizes lessons from clustered experiences using qwen3:8b. Gate: "
+        },
+        {
+          "idx": 7,
+          "chars": 133,
+          "llama_norm": 19.620718351912767,
+          "ollama_norm": 0.9999998989486372,
+          "cosine": 0.8704843494840656,
+          "sample": "Tier-A lesson: signed by producer, admitted by consumer's swarm_admit_lesson, pi"
+        },
+        {
+          "idx": 8,
+          "chars": 154,
+          "llama_norm": 18.7946796104651,
+          "ollama_norm": 0.9999998735833053,
+          "cosine": 0.8813904978461748,
+          "sample": "Trust edge between two peer nodes is established via mTLS cert pinning + initial"
+        },
+        {
+          "idx": 9,
+          "chars": 150,
+          "llama_norm": 18.29110354317924,
+          "ollama_norm": 1.0000000489367358,
+          "cosine": 0.8422289168433172,
+          "sample": "Reed wants the standalone-app initiative (issue #176) prioritised: embedded Post"
+        },
+        {
+          "idx": 10,
+          "chars": 143,
+          "llama_norm": 19.479943638309212,
+          "ollama_norm": 0.9999999198911687,
+          "cosine": 0.9585269438239092,
+          "sample": "Lesson reinforcement: when an experience is recalled and marked useful, evidence"
+        },
+        {
+          "idx": 11,
+          "chars": 153,
+          "llama_norm": 19.356866952391908,
+          "ollama_norm": 1.000000012753666,
+          "cosine": 0.9095007333547184,
+          "sample": "Spreading activation: when a memory is recalled, neighbours within 2 hops get a "
+        },
+        {
+          "idx": 12,
+          "chars": 161,
+          "llama_norm": 19.413262415042787,
+          "ollama_norm": 1.0000004107767257,
+          "cosine": 0.9405672872524441,
+          "sample": "Conflict synthesis: when two memories disagree on the same topic, mark both, inc"
+        },
+        {
+          "idx": 13,
+          "chars": 162,
+          "llama_norm": 19.17816372265742,
+          "ollama_norm": 1.0000000008294476,
+          "cosine": 0.9406445938519489,
+          "sample": "Affect-from-observables (issue #11): compute_affect() runs as a trigger over exp"
+        },
+        {
+          "idx": 14,
+          "chars": 147,
+          "llama_norm": 18.901355200446847,
+          "ollama_norm": 0.9999998715338682,
+          "cosine": 0.866347948927252,
+          "sample": "Genome keys are ed25519. Public key fingerprint = node id. Federation handshake:"
+        },
+        {
+          "idx": 15,
+          "chars": 164,
+          "llama_norm": 18.647456991878972,
+          "ollama_norm": 1.0000002792413347,
+          "cosine": 0.9355861454330294,
+          "sample": "Soul-state digest collapses last 24 h of episodes into mood (valence + arousal a"
+        },
+        {
+          "idx": 16,
+          "chars": 160,
+          "llama_norm": 19.080684974668067,
+          "ollama_norm": 0.9999999812908313,
+          "cosine": 0.9323320297742509,
+          "sample": "Active inference loop: predict next state, observe, compute prediction error, ad"
+        },
+        {
+          "idx": 17,
+          "chars": 144,
+          "llama_norm": 19.041185566499387,
+          "ollama_norm": 0.9999999969404465,
+          "cosine": 0.9222950092849591,
+          "sample": "Long-text embedding sampling: head 50% + middle 25% + tail 25% under a 6000-char"
+        },
+        {
+          "idx": 18,
+          "chars": 166,
+          "llama_norm": 18.601217250221268,
+          "ollama_norm": 0.9999999768951885,
+          "cosine": 0.9583989406096711,
+          "sample": "Pre-existing migration bug (#180): 040_signed_revocations.sql references revoked"
+        },
+        {
+          "idx": 19,
+          "chars": 133,
+          "llama_norm": 19.27957644015616,
+          "ollama_norm": 0.9999998889723786,
+          "cosine": 0.7558068276987447,
+          "sample": "Ein Schwarm lokaler Agents trainiert eine Population auf die spezifische gelebte"
+        }
+      ]
+    }
+  },
+  "verdict": "NOT MIXABLE — diagonal avg 0.8875 < 0.95; switching providers requires embedding regeneration",
+  "finished_at": "2026-05-02T17:05:20.696Z"
+}
