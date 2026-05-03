@@ -6,23 +6,25 @@
  *
  * Laufzeit-Verhalten:
  *   - keep_alive: das Modell bleibt zwischen Clustern warm (REM_KEEP_ALIVE)
- *   - unloadQwen() am Ende: POST keep_alive=0 → Ollama entlädt das Modell
- *     sofort, RAM wird wieder frei.
+ *   - provider.unload() am Ende: Ollama-Backend entlädt das Modell sofort,
+ *     RAM wird wieder frei. No-op für stateless Provider.
  *
  * Konfiguration via Umgebungsvariablen:
+ *   MYCELIUM_LLM_PROVIDER — Backend ("ollama" default, "llama-cpp" geplant)
  *   REM_MODEL       — Ollama-Modell-Tag (default: qwen3:8b)
  *   OLLAMA_URL      — Ollama-Endpoint (default: http://localhost:11434)
  *   REM_KEEP_ALIVE  — wie lange das Modell warm bleibt (default: 2m)
  *   REM_NUM_CTX     — Context-Window in Tokens (default: 16384)
  *
- * Prompt-Shape: strict JSON via Ollama `format: "json"`, erwartete Shape:
+ * Prompt-Shape: strict JSON, erwartete Shape:
  *   { "lesson": string, "pattern_name": string, "confidence": 0..1, "reinforce": boolean }
+ *
+ * Der ChatProvider (`mcp-server/src/services/chat.ts`) entkoppelt diesen
+ * Synthesizer von Ollama-spezifischer HTTP-Logik — die Naht für Spike-2's
+ * `LlamaCppChatProvider` (issue #178, native-app track #176).
  */
 
-const MODEL       = process.env.REM_MODEL || "qwen3:8b";
-const OLLAMA_URL  = process.env.OLLAMA_URL || "http://localhost:11434";
-const KEEP_ALIVE  = process.env.REM_KEEP_ALIVE || "2m";
-const NUM_CTX     = Number(process.env.REM_NUM_CTX || 16384);
+const NUM_CTX = Number(process.env.REM_NUM_CTX || 16384);
 
 // /think aktiviert den Reasoning-Pfad in Qwen3 (und in allen R1-Distills).
 // Das Modell schreibt erst <think>…</think> mit interner Schlussfolgerung,
@@ -94,84 +96,78 @@ function buildUserPrompt(cluster, members) {
   return lines.join("\n");
 }
 
-/**
- * Strip Qwen3 / R1-Distill <think>…</think> reasoning blocks from a response,
- * then locate the JSON object that follows. Robust to:
- *   - multiple <think> blocks
- *   - prose before/after the JSON
- *   - models that occasionally emit ``` json fences
- */
-function extractJSON(raw) {
-  if (!raw) throw new Error("empty model response");
-  // 1) Drop think blocks (greedy multi-line).
-  let s = raw.replace(/<think>[\s\S]*?<\/think>/g, "").trim();
-  // 2) Strip code fences if present.
-  s = s.replace(/```(?:json)?\s*/g, "").replace(/```/g, "").trim();
-  // 3) Locate the outermost {…}: first { to last }.
-  const i = s.indexOf("{");
-  const j = s.lastIndexOf("}");
-  if (i < 0 || j < 0 || j <= i) throw new Error(`no JSON object found in: ${raw.slice(0, 200)}`);
-  const body = s.slice(i, j + 1);
-  return JSON.parse(body);
+// Lazy-loaded chat module. We import the compiled TS module (mirrors how
+// this script imports embeddings.js below) so a single env switch
+// (MYCELIUM_LLM_PROVIDER) can route both halves of the LLM stack.
+let _chatModule = null;
+let _chatProvider = null;
+async function loadChatModule() {
+  if (_chatModule) return _chatModule;
+  const path = await import("node:path");
+  const { fileURLToPath } = await import("node:url");
+  const here = path.dirname(fileURLToPath(import.meta.url));
+  const repoRoot = path.resolve(here, "..");
+  _chatModule = await import(
+    path.join(repoRoot, "mcp-server/dist/services/chat.js")
+  );
+  return _chatModule;
 }
 
-async function callQwen({ systemPrompt, userPrompt, keepAlive = KEEP_ALIVE }) {
-  const r = await fetch(`${OLLAMA_URL}/api/chat`, {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({
-      model:       MODEL,
-      messages: [
-        { role: "system", content: systemPrompt },
-        { role: "user",   content: userPrompt   },
-      ],
-      stream:      false,
-      keep_alive:  keepAlive,
-      // Ollama 0.20+ separates reasoning into `message.thinking` and the
-      // final answer into `message.content`. Setting think:true activates
-      // Qwen3's reasoning pathway cleanly — no <think> tag parsing
-      // needed (extractJSON below stays as a defensive fallback for
-      // older Ollama versions or models that embed think blocks
-      // anyway). Bewusst KEIN format:"json" — würde mit Reasoning
-      // kollidieren.
-      think:       true,
-      options:     { temperature: 0.3, num_ctx: NUM_CTX },
-    }),
+async function getChatProvider() {
+  if (_chatProvider) return _chatProvider;
+  const mod = await loadChatModule();
+  _chatProvider = mod.createChatProvider();
+  return _chatProvider;
+}
+
+async function synthCallChat({ systemPrompt, userPrompt }) {
+  const provider = await getChatProvider();
+  const { extractJSON } = await loadChatModule();
+  const result = await provider.chat({
+    messages: [
+      { role: "system", content: systemPrompt },
+      { role: "user", content: userPrompt },
+    ],
+    think: true,
+    options: { temperature: 0.3, num_ctx: NUM_CTX },
   });
-  if (!r.ok) throw new Error(`Ollama HTTP ${r.status}: ${(await r.text()).slice(0, 300)}`);
-  const j = await r.json();
-  const raw = j?.message?.content ?? "";
-  const thinking = j?.message?.thinking ?? "";
+  let parsed;
   try {
-    const parsed = extractJSON(raw);
-    // Surface a thinking-length signal so nightly-sleep can log whether the
-    // reasoning pathway actually fired. Empty thinking ≠ failure (older
-    // Ollama / non-reasoning models simply don't return the field).
-    if (thinking && parsed && typeof parsed === "object") {
-      parsed._thinking_chars = thinking.length;
-    }
-    return parsed;
+    parsed = extractJSON(result.content);
+  } catch (e) {
+    throw new Error(
+      `${provider.name} response parse failed: ${e?.message ?? e}\nraw: ${result.content.slice(0, 300)}`,
+    );
   }
-  catch (e) { throw new Error(`Qwen response parse failed: ${e.message ?? e}\nraw: ${raw.slice(0, 300)}`); }
+  // Surface a thinking-length signal so nightly-sleep can log whether the
+  // reasoning pathway actually fired. Empty thinking ≠ failure (older
+  // Ollama / non-reasoning models simply don't return the field).
+  if (result.thinking && parsed && typeof parsed === "object") {
+    parsed._thinking_chars = result.thinking.length;
+  }
+  return parsed;
 }
 
-/** Explicitly unload the model from Ollama (free RAM for other workloads). */
-export async function unloadQwen() {
-  try {
-    await fetch(`${OLLAMA_URL}/api/generate`, {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ model: MODEL, keep_alive: 0 }),
-    });
-  } catch { /* best-effort; nightly must not fail on unload */ }
+/**
+ * Explicitly unload the model from the active provider (free RAM for other
+ * workloads). Best-effort; no-op for stateless providers. Renamed from
+ * `unloadQwen` to reflect that the provider chooses how to dispose.
+ */
+export async function unloadModel() {
+  const provider = await getChatProvider();
+  if (typeof provider.unload === "function") {
+    await provider.unload();
+  }
 }
+// Back-compat re-export for callers still using the Qwen-specific name.
+export { unloadModel as unloadQwen };
 
 /** Synthesize ONE cluster into a lesson payload. No DB writes here — caller decides record vs. reinforce. */
 export async function synthesizeCluster(cluster, { supabaseUrl, supabaseKey }) {
   const members = await loadMembers(cluster.member_ids, { supabaseUrl, supabaseKey });
   if (members.length === 0) return { skipped: "no_members_found", confidence: 0 };
   const userPrompt = buildUserPrompt(cluster, members);
-  const out = await callQwen({ systemPrompt: SYSTEM_PROMPT, userPrompt });
+  const out = await synthCallChat({ systemPrompt: SYSTEM_PROMPT, userPrompt });
   const lesson       = typeof out?.lesson === "string" ? out.lesson.trim() : "";
   const pattern_name = typeof out?.pattern_name === "string" ? out.pattern_name.trim() : "";
   const confidence   = Math.max(0, Math.min(1, Number(out?.confidence) || 0));
@@ -221,6 +217,6 @@ if (import.meta.url === `file://${process.argv[1]}`) {
       console.error(`[dry] seed=${c.seed_id} ERROR ${e?.message ?? e}`);
     }
   }
-  await unloadQwen();
+  await unloadModel();
   console.error("[dry] model unloaded.");
 }
