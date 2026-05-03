@@ -1,6 +1,6 @@
-# Wave 4 · W4.1 row triage — all 6 remaining rows are unit-testable on `main`
+# Wave 4 · W4.1 row triage — row 3 shipped, 5 remaining rows still unit-testable on `main`
 
-> Last refreshed: 2026-05-03
+> Last refreshed: 2026-05-03 (post 151st-tick PR #201 / 152nd-tick checkpoint).
 > Pre-work for [issue #196](https://github.com/Dewinator/mycelium/issues/196) (W4.1).
 > Closes the implicit per-row triage cost the W4.1 issue body opens with:
 > *"If a §10 mechanism cannot be made to fire from a unit test (because it
@@ -12,15 +12,17 @@
 
 ## TL;DR
 
-**All 6 remaining W4.1 rows ship as single-node unit tests against the
-existing `node:test` harness. None defer to W4.2.** The §10 mechanisms
-each row owns are already covered by an in-process dep-stub test on
-`main`, and synthesising the adversarial input (cohort, fake-key-signed
-envelope, paired local experience) requires no federation listener.
+**Row 3 shipped (PR [#201](https://github.com/Dewinator/mycelium/pull/201),
+sybil-flood / coordinated-broadcast cohort). All 5 remaining W4.1 rows
+ship as single-node unit tests against the existing `node:test` harness.
+None defer to W4.2.** The §10 mechanisms each row owns are already
+covered by an in-process dep-stub test on `main`, and synthesising the
+adversarial input (cohort, fake-key-signed envelope, paired local
+experience) requires no federation listener.
 
 | Row | Category | §10 mechanism | Existing unit-test path on `main` | Verdict |
 |---|---|---|---|---|
-| 3 | `sybil-flood` | §10.2 quarantine + §10.4 | `swarm-admit.test.ts` + `rem-diversity.test.ts` | unit-testable |
+| 3 | `sybil-flood` | §10.2 quarantine + §10.4 | `swarm-admit.test.ts` + `rem-diversity.test.ts` | ✅ shipped — PR [#201](https://github.com/Dewinator/mycelium/pull/201) |
 | 4 | `echo-chamber` | §10.4 diversity filter | `rem-diversity.test.ts` (already covers the canonical "4 of 5 peers" case) | unit-testable |
 | 5 | `slow-poisoning` | §10.5 REM self-audit | `rem-audit.test.ts` (orchestrator dep-stub seeds local evidence) | unit-testable |
 | 6 | `truth-by-repetition` | §10.4 + §10.6 firebreak | `rem-promotion.test.ts` (promotion threshold on synthetic cluster) | unit-testable |
@@ -79,10 +81,10 @@ tests:
 
 ## What this means for the per-row PRs
 
-When the queue-drain trigger fires (per the [W4.1 progress
-checkpoint](https://github.com/Dewinator/mycelium/issues/196#issuecomment-pending),
-*"Pick this issue back up for rows 3–8 once any of the 9 native-app-track
-PRs lands"*), each remaining row is one focused PR matching the
+When the queue-drain trigger fires (per the [152nd-tick W4.1 checkpoint
+on issue #196](https://github.com/Dewinator/mycelium/issues/196):
+*"Pick row 4 (`echo-chamber`) up once any of the queue's 14 PRs
+merges"*), each remaining row is one focused PR matching the
 established pattern:
 
 ```
@@ -117,10 +119,11 @@ signing key.
 
 Per the W4.1 issue body row 1 already shipped a deterministic Ed25519
 fixture-key under `mcp-server/src/__tests__/fixtures/anti-echo/` (PR
-[#197](https://github.com/Dewinator/mycelium/pull/197)). Rows 3–8 reuse
-that key; no PR after row 1 needs to add another one. Sybil-flood is
-the only row that needs *additional* keys on top of the fixture key —
-those are minted in the test file itself via `generateKeyPairSync`
+[#197](https://github.com/Dewinator/mycelium/pull/197)). Rows 4–8 reuse
+that key; no PR after row 1 needs to add another one. Sybil-flood (row
+3, PR [#201](https://github.com/Dewinator/mycelium/pull/201)) was the
+only row that needs *additional* keys on top of the fixture key — those
+are minted in the test file itself via `generateKeyPairSync`
 (deterministic seed not required because the cohort identity is
 ephemeral per test run; the assertion is on aggregate cohort behaviour,
 not on a stable cohort `node_id`).
@@ -128,7 +131,7 @@ not on a stable cohort `node_id`).
 ## Why ship this triage now (form-break, not queue growth)
 
 Per the [Wave-4 anchor](wave-4-anti-echo.md) and the W4.1 progress
-comment, fixture-row PRs are paused at 2/8 until the 11-deep PR queue
+comment, fixture-row PRs are paused at 3/8 until the 14-deep PR queue
 drains. The last several agent ticks have been validation /
 docs-drift / pause-confirmation — top-lesson #3 (form-saturation) says
 break form. This doc is genuinely new value (no prior tick has mapped
