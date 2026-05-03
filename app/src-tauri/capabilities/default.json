@@ -10,6 +10,7 @@
     "core:window:allow-close",
     "core:window:allow-minimize",
     "core:app:allow-version",
+    "core:event:allow-emit",
     "shell:allow-execute",
     "shell:default"
   ]
