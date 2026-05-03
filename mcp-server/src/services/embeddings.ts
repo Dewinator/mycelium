@@ -1,4 +1,11 @@
 import { Ollama } from "ollama";
+import { mkdir } from "node:fs/promises";
+import os from "node:os";
+import path from "node:path";
+import {
+  lookupExpectedChecksum,
+  verifyGgufChecksum,
+} from "./llama-gguf-checksum.js";
 
 export interface EmbeddingProvider {
   embed(text: string): Promise<number[]>;
@@ -62,13 +69,240 @@ export class OllamaEmbeddingProvider implements EmbeddingProvider {
   }
 }
 
+/**
+ * In-process embedding provider backed by node-llama-cpp + a GGUF model.
+ *
+ * Spike #178 (PR #182, docs/native-llm-spike.md) validated this as a
+ * drop-in replacement for the external Ollama daemon. Same `embed()`
+ * contract, same 768d output for `nomic-embed-text-v1.5`, ~1.27× slower
+ * but no second daemon required — the centerpiece of the native
+ * standalone-app track (#176, Welle 1).
+ *
+ * Selected by setting `MYCELIUM_LLM_PROVIDER=llama-cpp`. Ollama remains
+ * the default until cross-path embedding parity is verified end-to-end
+ * (see "Tokenizer warning" in the spike doc — switching the default on
+ * an existing install would invalidate stored vectors).
+ *
+ * `node-llama-cpp` is dynamically imported on first `embed()` call so
+ * the native binding is not loaded for installs that stay on Ollama.
+ *
+ * Concurrency: PGlite-style serializer. The embedding context processes
+ * one request at a time; queueing avoids contention and keeps a failed
+ * embed from poisoning subsequent calls.
+ */
+export interface LlamaCppEmbeddingProviderOptions {
+  modelsDir?: string;
+  modelUri?: string;
+  dimensions?: number;
+  charBudget?: number;
+  /**
+   * Override / supply the expected SHA-256 of the model GGUF.
+   * If absent, falls back to the built-in `KNOWN_GGUF_CHECKSUMS` manifest.
+   * If neither resolves a hash, integrity check is skipped with a warning
+   * (or refused entirely when `requireChecksum` is true).
+   */
+  expectedSha256?: string | null;
+  /**
+   * Fail closed when no SHA-256 can be resolved (no manifest entry AND no
+   * override). Off by default — power users running custom GGUFs are not
+   * locked out. Security-conscious deployments flip this on via
+   * `MYCELIUM_LLAMA_REQUIRE_CHECKSUM=1` so an unknown URI is refused
+   * outright instead of warned-and-skipped.
+   */
+  requireChecksum?: boolean;
+}
+
+const DEFAULT_LLAMA_EMBEDDING_MODEL_URI =
+  "hf:nomic-ai/nomic-embed-text-v1.5-GGUF/nomic-embed-text-v1.5.Q5_K_M.gguf";
+
+export function defaultLlamaModelsDir(): string {
+  if (process.platform === "darwin") {
+    return path.join(
+      os.homedir(),
+      "Library",
+      "Application Support",
+      "mycelium",
+      "models"
+    );
+  }
+  if (process.platform === "win32") {
+    const appData =
+      process.env.APPDATA ?? path.join(os.homedir(), "AppData", "Roaming");
+    return path.join(appData, "mycelium", "models");
+  }
+  const xdg =
+    process.env.XDG_DATA_HOME ?? path.join(os.homedir(), ".local", "share");
+  return path.join(xdg, "mycelium", "models");
+}
+
+export class LlamaCppEmbeddingProvider implements EmbeddingProvider {
+  readonly dimensions: number;
+  private readonly modelsDir: string;
+  private readonly modelUri: string;
+  private readonly charBudget: number;
+  private readonly expectedSha256: string | null;
+  private readonly requireChecksum: boolean;
+  private ready: Promise<{
+    ctx: { getEmbeddingFor: (text: string) => Promise<{ vector: number[] }> };
+    dispose: () => Promise<void>;
+  }> | null = null;
+  private queue: Promise<unknown> = Promise.resolve();
+
+  constructor(opts: LlamaCppEmbeddingProviderOptions = {}) {
+    this.modelsDir = opts.modelsDir ?? defaultLlamaModelsDir();
+    this.modelUri = opts.modelUri ?? DEFAULT_LLAMA_EMBEDDING_MODEL_URI;
+    this.dimensions = opts.dimensions ?? 768;
+    this.charBudget = opts.charBudget ?? 6000;
+    this.expectedSha256 = opts.expectedSha256 ?? null;
+    this.requireChecksum = opts.requireChecksum ?? false;
+  }
+
+  private async init() {
+    if (this.ready) return this.ready;
+    this.ready = (async () => {
+      // Dynamic import keeps the native binding off the cold-start path
+      // for installs that stay on Ollama. Use a runtime-computed specifier
+      // so TypeScript does not require node-llama-cpp's type defs to be
+      // resolvable in every consumer build.
+      const specifier = "node-llama-cpp";
+      let llamaCpp: any;
+      try {
+        llamaCpp = await import(specifier);
+      } catch (err) {
+        throw new Error(
+          `LlamaCppEmbeddingProvider: failed to load 'node-llama-cpp'. ` +
+            `Install it (npm i node-llama-cpp) or switch back to ` +
+            `MYCELIUM_LLM_PROVIDER=ollama. Underlying: ${
+              (err as Error).message ?? err
+            }`
+        );
+      }
+      const { getLlama, LlamaLogLevel, resolveModelFile } = llamaCpp;
+
+      // Pillar 6 — resolve the manifest BEFORE downloading. Strict mode
+      // refuses unknown URIs outright instead of pulling a 100 MB GGUF
+      // that we'd then reject anyway.
+      const expected = lookupExpectedChecksum(this.modelUri, this.expectedSha256);
+      if (expected === null && this.requireChecksum) {
+        throw new Error(
+          `LlamaCppEmbeddingProvider: MYCELIUM_LLAMA_REQUIRE_CHECKSUM is ` +
+            `set but no SHA-256 is known for '${this.modelUri}'. Add the ` +
+            `URI to KNOWN_GGUF_CHECKSUMS or supply ` +
+            `MYCELIUM_LLAMA_EMBEDDING_MODEL_SHA256 with the expected hash.`
+        );
+      }
+
+      await mkdir(this.modelsDir, { recursive: true });
+      const llama = await getLlama({ logLevel: LlamaLogLevel.warn });
+      const modelPath = await resolveModelFile(this.modelUri, this.modelsDir);
+
+      // Verify the (now-resolved) GGUF before loadModel touches it.
+      // Mismatch deletes the file and throws; the next run re-downloads.
+      if (expected !== null) {
+        await verifyGgufChecksum(modelPath, expected);
+      } else {
+        console.error(
+          `LlamaCppEmbeddingProvider: no SHA-256 manifest entry for ` +
+            `'${this.modelUri}' and no override supplied — skipping ` +
+            `integrity check (Pillar 6). Set ` +
+            `MYCELIUM_LLAMA_EMBEDDING_MODEL_SHA256 to enable verification ` +
+            `for custom models, or MYCELIUM_LLAMA_REQUIRE_CHECKSUM=1 to ` +
+            `refuse unverified GGUFs outright.`
+        );
+      }
+
+      const model = await llama.loadModel({ modelPath });
+      if (model.embeddingVectorSize !== this.dimensions) {
+        await model.dispose();
+        await llama.dispose();
+        throw new Error(
+          `LlamaCppEmbeddingProvider: model embedding dim ` +
+            `${model.embeddingVectorSize} != configured ${this.dimensions}. ` +
+            `Adjust EMBEDDING_DIMENSIONS or pick a different GGUF.`
+        );
+      }
+      const ctx = await model.createEmbeddingContext();
+      return {
+        ctx,
+        dispose: async () => {
+          await ctx.dispose();
+          await model.dispose();
+          await llama.dispose();
+        },
+      };
+    })();
+    return this.ready;
+  }
+
+  private enqueue<T>(fn: () => Promise<T>): Promise<T> {
+    const next = this.queue.then(fn, fn);
+    this.queue = next.catch(() => undefined);
+    return next;
+  }
+
+  async embed(text: string): Promise<number[]> {
+    const sampled = sampleForEmbedding(text, this.charBudget);
+    if (sampled.length < text.length) {
+      console.error(
+        `Embedding input sampled: ${text.length} → ${sampled.length} chars (head+middle+tail)`
+      );
+    }
+    const { ctx } = await this.init();
+    return this.enqueue(async () => {
+      const result = await ctx.getEmbeddingFor(sampled);
+      return Array.from(result.vector);
+    });
+  }
+
+  async dispose(): Promise<void> {
+    if (!this.ready) return;
+    const handle = await this.ready.catch(() => null);
+    this.ready = null;
+    if (handle) await handle.dispose();
+  }
+}
+
+/**
+ * Parse a boolean env var. Truthy: 1, true, yes, on (case-insensitive).
+ * Anything else (including undefined / empty) is false.
+ */
+export function parseBoolEnv(raw: string | undefined): boolean {
+  if (!raw) return false;
+  const v = raw.trim().toLowerCase();
+  return v === "1" || v === "true" || v === "yes" || v === "on";
+}
+
 export function createEmbeddingProvider(): EmbeddingProvider {
-  const url = process.env.OLLAMA_URL ?? "http://localhost:11434";
-  const model = process.env.EMBEDDING_MODEL ?? "nomic-embed-text";
+  const provider = (process.env.MYCELIUM_LLM_PROVIDER ?? "ollama")
+    .toLowerCase()
+    .trim();
   const dimensions = parseInt(
     process.env.EMBEDDING_DIMENSIONS ?? "768",
     10
   );
   const charBudget = parseInt(process.env.EMBEDDING_CHAR_BUDGET ?? "6000", 10);
+
+  if (provider === "llama-cpp" || provider === "llamacpp") {
+    return new LlamaCppEmbeddingProvider({
+      modelsDir: process.env.MYCELIUM_LLAMA_MODELS_DIR,
+      modelUri: process.env.MYCELIUM_LLAMA_EMBEDDING_MODEL_URI,
+      dimensions,
+      charBudget,
+      expectedSha256: process.env.MYCELIUM_LLAMA_EMBEDDING_MODEL_SHA256,
+      requireChecksum: parseBoolEnv(
+        process.env.MYCELIUM_LLAMA_REQUIRE_CHECKSUM
+      ),
+    });
+  }
+
+  if (provider !== "ollama") {
+    throw new Error(
+      `Unknown MYCELIUM_LLM_PROVIDER='${provider}'. ` +
+        `Expected 'ollama' or 'llama-cpp'.`
+    );
+  }
+
+  const url = process.env.OLLAMA_URL ?? "http://localhost:11434";
+  const model = process.env.EMBEDDING_MODEL ?? "nomic-embed-text";
   return new OllamaEmbeddingProvider(url, model, dimensions, charBudget);
 }

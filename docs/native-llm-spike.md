@@ -160,3 +160,45 @@ gpu=metal · build=prebuilt · MTL EMBED_LIBRARY · NEON · ACCELERATE · LLAMAF
 
 - **Pillar 1 (decentralised AI)** — strengthened. Removing the daemon dependency moves the entire LLM stack into the user's own process; no separate service to misconfigure or compromise.
 - **Pillar 6 (cyber security)** — neutral with required follow-up. Model files come from Hugging Face; we must add SHA-256 verification before flipping the default. The `node-llama-cpp` package itself is npm-distributed and audit-trackable like any other dep.
+
+---
+
+## Implementation 1 — `LlamaCppEmbeddingProvider` shipped
+
+Follow-up issue #178 part 1 (PR pending). Lands the embedding side of the spike's recommendation as a real provider in `mcp-server/src/services/embeddings.ts`. Chat provider + REM-digest re-route stays a separate sub-task.
+
+**Selection.** Set `MYCELIUM_LLM_PROVIDER=llama-cpp` (or alias `llamacpp`). Default remains `ollama` so no existing install changes behaviour. Unknown values throw at startup rather than silently falling back.
+
+**Knobs.**
+- `MYCELIUM_LLAMA_MODELS_DIR` — absolute path; defaults to OS app-data (`~/Library/Application Support/mycelium/models` on macOS, `%APPDATA%\mycelium\models` on Windows, `$XDG_DATA_HOME/mycelium/models` on Linux). Same convention as the PGlite data dir from #185 — both consumed by the future Tauri shell.
+- `MYCELIUM_LLAMA_EMBEDDING_MODEL_URI` — Hugging Face URI for the GGUF; defaults to `hf:nomic-ai/nomic-embed-text-v1.5-GGUF/nomic-embed-text-v1.5.Q5_K_M.gguf` (the dim-768 variant the schema expects).
+- `EMBEDDING_DIMENSIONS` — checked against the loaded model's `embeddingVectorSize`; mismatch throws with a clear message instead of silently producing the wrong-shaped vector.
+
+**Lifecycle.** Lazy init: the first `embed()` call triggers model download (cached) and embedding-context creation. Subsequent calls reuse the same context. `dispose()` releases the runtime — long-lived MCP processes simply let the process exit drop it.
+
+**Concurrency.** PGlite-style Promise-chain serializer (matches PR #185's adapter). The embedding context handles one call at a time; the queue keeps a failed embed from poisoning subsequent ops, so a single malformed input does not take down the provider.
+
+**Packaging.** `node-llama-cpp` is added as an `optionalDependencies` entry, not a hard dep. Reasoning: it pulls per-platform native binaries on `npm install`, so `optionalDependencies` lets niche or unsupported platforms (e.g., a future linux-musl runner) still install the rest of mycelium. The dynamic import inside the provider throws a clear "install node-llama-cpp or switch to ollama" error if the runtime tries to use llama-cpp without the binding present.
+
+**Default not flipped.** Per the tokenizer-divergence warning above, switching the default would invalidate stored vectors on existing installs. The default stays `ollama`; native installs (#176 sub-task 4, Tauri shell) will set the env explicitly when they ship a fresh data dir.
+
+**Out of this PR.** Cosine-similarity cross-validation against Ollama (deferred to a CI gate before any default flip), automatic model SHA-256 verification (Pillar 6 follow-up #4 above), chat provider, and the REM-digest re-route.
+
+---
+
+## Implementation 2 — GGUF SHA-256 verification (Pillar 6)
+
+Closes the SHA-256 gap from Implementation 1. Lives in `mcp-server/src/services/llama-gguf-checksum.ts`; `LlamaCppEmbeddingProvider.init()` calls it after `resolveModelFile` and before `loadModel`.
+
+**Manifest.** `KNOWN_GGUF_CHECKSUMS` maps the exact `hf:` URI to `{ sha256, size }`. Entries are sourced from each repo's HF Hub LFS metadata (`/api/models/<repo>/tree/main` — the `lfs.oid` field IS the file's SHA-256). Adding a new default model is a 3-line PR. Captured 2026-05-02 for the default `nomic-embed-text-v1.5.Q5_K_M.gguf`.
+
+**Override.** `MYCELIUM_LLAMA_EMBEDDING_MODEL_SHA256` overrides the manifest. Reason: power users running custom GGUFs via `MYCELIUM_LLAMA_EMBEDDING_MODEL_URI` should still be able to opt into verification with their own known-good hash.
+
+**Unknown URI policy.** Custom URI without override: WARN to stderr and skip the check. Fail-closed would lock out anyone running a non-bundled GGUF — the manifest can never enumerate every Hugging Face repo. Default URIs always resolve via the manifest, so the happy-path install gets verification for free.
+
+**Mismatch behaviour.** Stream-hash the file, compare against expected, on mismatch `fs.rm(file, { force: true })` and throw `GgufChecksumMismatch` with both expected/actual hex (and sizes if pre-check caught it). The next process start re-downloads cleanly. Streamed chunk-by-chunk — a 100 MB GGUF never lives in RAM.
+
+**Knobs.** Same as Implementation 1, plus:
+- `MYCELIUM_LLAMA_EMBEDDING_MODEL_SHA256` — opt-in hash for custom URIs (lower-cased, stripped).
+
+**Tests.** `mcp-server/src/__tests__/llama-gguf-checksum.test.ts` — 11 unit tests covering: hash match, size pre-check + delete, hash mismatch + delete, idempotent rm on race, lookup precedence (override > manifest > null), case folding, and a structural assertion that the default URI is always in the manifest (so a future URI bump can't silently lose its check).
