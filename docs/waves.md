@@ -15,7 +15,7 @@ A wave does not start until the previous wave's end-state is real — not
 | Wave | End-state (observable) | Status | Anchor doc |
 |---|---|---|---|
 | **1 — Native standalone app** | Doppelklick-Installer pro Plattform; no Docker; no Ollama install. | Spike phase complete (10/10), implementation in flight (9-PR queue). 30%. | [`native-app-track.md`](native-app-track.md) |
-| **2 — Second peer + public seed** | Reed's rented server runs a second mycelium node (Profil A); first `TrustEdge` to local Mac live; inbound + outbound lessons verified end-to-end. | Setup-skript-ready, blocked on Reed's "Server steht"-signal. 90%. | _no canonical doc yet — see "Wave 2" below_ |
+| **2 — Second peer + public seed** | Reed's rented server runs a second mycelium node (Profil A); first `TrustEdge` to local Mac live; inbound + outbound lessons verified end-to-end. | Setup-skript-ready, blocked on Reed's "Server steht"-signal. 90%. | [`wave-2-second-peer.md`](wave-2-second-peer.md) |
 | **3 — Tracker-free P2P discovery** | Two mycelium instances on the same WiFi find each other automatically; mTLS-trust + lesson exchange without any external server. | Design spike merged, no code yet. 10%. | [`swarm-discovery-spike.md`](swarm-discovery-spike.md) |
 | **4 — Anti-echo-chamber empirical defense** | Synthetic adversarial lessons (manipulative inputs, one-sided sources, consensus echoes) are demonstrably rejected by §10.4 + REM-self-audit on a real multi-node test swarm; results published as Constitution-Defense-Report. | Theory exists in `SWARM_SPEC.md` §10; production validation deferred until a real multi-node swarm exists post-Wave-2. 10%. | _no canonical doc yet — see "Wave 4" below_ |
 
@@ -65,15 +65,12 @@ the queue is full is *making the merge cheaper*, not adding more diffs.
 
 ## Wave 2 — second peer + public seed
 
-**No anchor doc yet** — the operational runbook lives partly in
-`SWARM_SPEC.md` (§4 wire format, §6 trust bootstrap) and partly in
-intention metadata. This is a future doc gap; if Wave 2 stalls past Reed's
-"Server steht"-signal, the highest-value tick action will be writing
-`docs/wave-2-second-peer.md` covering: setup-script bring-up, migrations
-to apply, Ollama models to pull (`nomic-embed-text` + `qwen3:8b`),
-`MYCELIUM_PUBLIC_URL` + mTLS-cert provisioning, the first `TrustEdge`
-handshake to the local Mac, and inbound/outbound lesson verification
-checklist.
+**Owner doc:** [`wave-2-second-peer.md`](wave-2-second-peer.md) (covers
+the full bring-up sequence: clone + install, node-identity bootstrap,
+`MYCELIUM_PUBLIC_URL` + federation env, advertisement verification,
+TrustEdge handshake from the Mac, outbound polling check, inbound
+`POST /swarm/lessons` check, mTLS smoke, env contract, failure modes,
+and the post-bring-up unblock chain into Waves 3 + 4).
 
 **Profile:** Profil A (Supabase + nomic-embed + qwen3:8b for REM). The
 second peer ships on Docker today even though Wave 1 is in flight —
