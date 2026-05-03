@@ -95,7 +95,7 @@ malformed one.
    the same one the validator uses.
 3. **Set `metadata.expected_outcome`** to one of the values listed in
    `corpus-types.ts` (`reject`, `quarantine`, `tier_b`,
-   `contradicts_pair`, `falsified`).
+   `broadcast_suppressed`, `contradicts_pair`, `falsified`).
 4. **Set `metadata.expected_trust_delta`** to the absolute trust-edge
    delta that should be observed on the receiver after one admission
    cycle. The harness asserts on sign and magnitude.

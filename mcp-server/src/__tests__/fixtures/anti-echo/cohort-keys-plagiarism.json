@@ -1,0 +1,23 @@
+{
+  "comment": "Ed25519 fixture keys for the plagiarism cohort (W4.1, §10.4 diversity filter). FIXTURE-ONLY; never any production node identity. Each key represents one peer in a synthetic N-peer cohort that the receiver would treat as N distinct origins for the purpose of cross-peer near-duplicate concentration. Checked in so the regression suite is fully deterministic. See ./README.md and docs/wave-4-anti-echo.md.",
+  "keys": [
+    {
+      "node_id": "Qme9zQxmz6C25VgEeiCLHJyWDjNoupEm13fSVm8zkoGFzg",
+      "pubkey_raw_b64": "FndSOEe1B+mv1y4QuWqRK31mEB3KWNYkB6OGD5zUG3A=",
+      "pubkey_b64url_unpadded": "FndSOEe1B-mv1y4QuWqRK31mEB3KWNYkB6OGD5zUG3A",
+      "private_key_pem": "-----BEGIN PRIVATE KEY-----\nMC4CAQAwBQYDK2VwBCIEIMH6SndaR93aqDQARi6wzjhZybSIai+SSEliXhWgcBg9\n-----END PRIVATE KEY-----\n"
+    },
+    {
+      "node_id": "QmbxAz2fAzsd4wuYKC66RB2iZzC9vUaBhau61BKUu4qPYk",
+      "pubkey_raw_b64": "xXO1niDfB0y2rZNxfpQ3pFN2qdzCnxFY7Kwz1i9wTJ8=",
+      "pubkey_b64url_unpadded": "xXO1niDfB0y2rZNxfpQ3pFN2qdzCnxFY7Kwz1i9wTJ8",
+      "private_key_pem": "-----BEGIN PRIVATE KEY-----\nMC4CAQAwBQYDK2VwBCIEIHu79bieiVDJMA/toq6qVIKd6na7tqqO854ofy6tDdgt\n-----END PRIVATE KEY-----\n"
+    },
+    {
+      "node_id": "Qmc424ik2iqLsCbtuuvwYSWtcX6DhcVgodKZkB2KuueTui",
+      "pubkey_raw_b64": "mkQlcNid3WKwD3ynYKzoTFkCkn/MRYU91Y8nXpzMzrw=",
+      "pubkey_b64url_unpadded": "mkQlcNid3WKwD3ynYKzoTFkCkn_MRYU91Y8nXpzMzrw",
+      "private_key_pem": "-----BEGIN PRIVATE KEY-----\nMC4CAQAwBQYDK2VwBCIEIP0SAGvJsDk/Mfa+V4zswFEqTg0feKCGOwPBLuS1EiB/\n-----END PRIVATE KEY-----\n"
+    }
+  ]
+}

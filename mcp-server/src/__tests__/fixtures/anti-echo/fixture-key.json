@@ -1,0 +1,7 @@
+{
+  "comment": "Ed25519 fixture key for the anti-echo adversarial corpus. FIXTURE-ONLY; never the production node identity. Checked in so the regression suite is fully deterministic. See ./README.md and docs/wave-4-anti-echo.md.",
+  "node_id": "QmZPie3FzmsVV24Ht5CVxL5Z65hQTpPkXGgRjc1MhgvgyZ",
+  "pubkey_raw_b64": "T2a6+ys3AFKycd8v+yBkSm6vVKQ/jPktboLXgVxCLRk=",
+  "pubkey_b64url_unpadded": "T2a6-ys3AFKycd8v-yBkSm6vVKQ_jPktboLXgVxCLRk",
+  "private_key_pem": "-----BEGIN PRIVATE KEY-----\nMC4CAQAwBQYDK2VwBCIEIGC0NyMI6JIZHJRil+opgMihUl0DAwffxGLsDWBJe4Bi\n-----END PRIVATE KEY-----\n"
+}
