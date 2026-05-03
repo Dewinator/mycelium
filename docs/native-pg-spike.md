@@ -106,6 +106,33 @@ These are issue-shaped work items, ordered by dependency. Each is its own PR. Es
 5. **Tauri shell wraps Node + PGlite + llama.cpp** — single binary, tray icon, OS data dir. Multi-tick.
 6. **Cross-platform CI** — even with WASM, we still need to build and sign per-platform Tauri installers. Multi-tick.
 
+## Spike 1.5 — adapter shipped
+
+> Status: **adapter foundation landed**
+> Issue: [#184](https://github.com/Dewinator/mycelium/issues/184) (sub-task of [#176](https://github.com/Dewinator/mycelium/issues/176))
+> Code: [`mcp-server/src/native/`](../mcp-server/src/native/), tests under [`mcp-server/src/__tests__/native/`](../mcp-server/src/__tests__/native/)
+
+### What landed
+
+- **`mcp-server/src/native/pglite.ts`** — `PGliteAdapter` class with a `QueryBuilder` that mirrors the slice of `@supabase/postgrest-js`'s surface our services in `mcp-server/src/services/` actually use:
+  - `from(t).select|insert|update|delete().eq|neq|gt|gte|lt|lte|in|or|order|limit().single|maybeSingle()`
+  - `rpc(name, args)` with named-arg call shape and PostgREST-equivalent scalar-vs-set unwrapping.
+  - Returns the same `{ data, error }` envelope as `PostgrestClient`, including `PGRST116` for `single()` misses.
+- **`mcp-server/src/native/factory.ts`** — `createNativeDb({ dataDir, migrationsDir, skipMigrations })` wires the eight contrib extensions (`vector`, `pg_trgm`, `pgcrypto`, `uuid_ossp`, `btree_gin`, `btree_gist`, `citext`, `hstore`, `tablefunc`) and runs migrations on first start. Default data dir per platform: `~/Library/Application Support/mycelium/data` (macOS), `$XDG_DATA_HOME/mycelium/data` (Linux), `%APPDATA%/mycelium/data` (Windows). Override via `MYCELIUM_PGLITE_DATA_DIR`.
+- **`mcp-server/src/native/migration-runner.ts`** — idempotent migration runner. Walks `supabase/migrations/*.sql` lexicographically, tracks applied files in a small `mycelium_pglite_migrations` bookkeeping table, throws on first failure so server bootstrap bails before MCP tools start serving.
+- **`mcp-server/src/__tests__/native/pglite-adapter.test.ts`** — 16 contract tests against a real in-memory PGlite instance. Cover insert/select/update/delete, single/maybeSingle, in() with empty array, neq+gte combinations, or() filter, jsonb round-trip, vector column, rpc scalar + setof, queue serialization, and queue-survives-error. All green.
+
+### Design choices worth flagging
+
+- **Single Promise-chain queue.** PGlite is single-connection by design; concurrent service calls would race on the shared cursor. The adapter serializes every op through one queue and keeps the chain alive past failures (the catch-and-swallow in `run()` is intentional: a SQL error must not poison subsequent ops).
+- **Explicit Postgres casts on serialized parameters.** PGlite is stricter than PostgREST about parameter typing. The `serializeValue` helper emits `$N::vector` for numeric arrays (pgvector textual `[a,b,c]` form), `$N::text[]` for string arrays (Postgres array literal `{"a","b"}`), and `$N::jsonb` for objects / mixed arrays. Without the casts, parametrized inserts into VECTOR / JSONB columns fail with "could not determine data type of parameter $N".
+- **`or()` parser is deliberately narrow.** Accepts the PostgREST `col.op.val,col.op.val` shape with `eq/neq/lt/lte/gt/gte`, throws on anything else. Matches what `services/identity.ts` actually emits today; failing loudly beats silently dropping clauses.
+- **Surface intentionally narrow.** Adding a verb is a few lines; aiming for full PostgREST parity would be expensive scaffolding for behavior nothing exercises. Grep `\.from\(|\.rpc\(` under `mcp-server/src/` to enumerate the live surface.
+
+### Out of scope for this PR (deliberate split)
+
+The full #184 acceptance asks for the `MYCELIUM_DB_BACKEND=pglite` env switch wired through `MemoryService` *and* the other 23 services that construct their own `PostgrestClient`, plus a CI gate running the entire test suite under `MYCELIUM_DB_BACKEND=pglite`. That is a cross-cutting refactor of every service constructor — kept out of this PR so the foundation lands cleanly first. Tracked as the immediate next sub-task; this PR ships the adapter, factory, migration runner, and contract tests so the wire-up has something stable to plug into.
+
 ## Reproducing the measurements
 
 ```bash

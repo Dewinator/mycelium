@@ -12,6 +12,7 @@
     "test": "npm run clean && tsc && node --test \"dist/__tests__/**/*.test.js\""
   },
   "dependencies": {
+    "@electric-sql/pglite": "^0.4.5",
     "@modelcontextprotocol/sdk": "^1.12.1",
     "@supabase/supabase-js": "^2.49.4",
     "ollama": "^0.5.16",
