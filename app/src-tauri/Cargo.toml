@@ -1,0 +1,30 @@
+[package]
+name = "mycelium-app"
+version = "0.1.0"
+description = "Native standalone shell for the mycelium cognitive layer"
+authors = ["Enrico Becker <90171652+Dewinator@users.noreply.github.com>"]
+license = "MIT"
+repository = "https://github.com/Dewinator/mycelium"
+edition = "2021"
+rust-version = "1.77"
+
+# See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
+
+[lib]
+name = "mycelium_app_lib"
+crate-type = ["staticlib", "cdylib", "rlib"]
+
+[build-dependencies]
+tauri-build = { version = "2", features = [] }
+
+[dependencies]
+tauri = { version = "2", features = ["tray-icon"] }
+tauri-plugin-shell = "2"
+serde = { version = "1", features = ["derive"] }
+serde_json = "1"
+
+[features]
+# this feature is used for production builds or when `devUrl` points to the
+# filesystem and the build command runs without devUrl is set
+# DO NOT REMOVE!!
+custom-protocol = ["tauri/custom-protocol"]
