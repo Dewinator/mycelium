@@ -1,6 +1,6 @@
 # DbClient Migration Tracker — Native-App Sub-Story
 
-**Stand 2026-05-04 (183. Tick).** Sub-story of Issue #176 (native standalone
+**Stand 2026-05-04 (195. Tick — empirical recount).** Sub-story of Issue #176 (native standalone
 app, sub-task 3). Once `MYCELIUM_USE_PGLITE=1` is honoured by every service,
 the MCP server boots in-process against PGlite without ever spinning up
 Docker/Supabase. The factory landed on PR #209; the per-service migration
@@ -33,7 +33,7 @@ template.
 
 | # | Service | LOC | `.from(` | `.rpc(` | Notes |
 |---|---|---:|---:|---:|---|
-| 1 | `MemoryService` (in `services/supabase.ts`) | 632* | 20 total | – | Co-located with `supabase.ts` helpers; ctor also takes `embeddings` |
+| 1 | `MemoryService` (in `services/supabase.ts`) | 632* | 6 | 14 | Co-located with `supabase.ts` helpers; ctor also takes `embeddings` |
 | 2 | `ExperienceService` (in `services/experiences.ts`) | 632 | 0 | 29 | RPC-heavy; ctor also takes `embeddings` |
 | 3 | `AffectService` | 144 | 0 | 2 | Tiny |
 | 4 | `CausalService` | 151 | 0 | 3 | Tiny — flagged in PR #211 body as a likely next target |
@@ -70,6 +70,19 @@ the rest.
 | 17 | `RemPromotionService` | 242 | 2 | 1 | Lesson tier promotion in REM |
 | 18 | `RemDiversityService` | 295 | 3 | 1 | §10.4 diversity filter |
 | 19 | `LessonContradictionRunner` | 322 | 2 | 1 | Inline-version of LessonContradictionGate, runs in REM |
+
+### Group B-adjacent — helper modules wired through Group B services
+
+These aren't services constructed in `index.ts`, but they import
+`SupabaseClient` and expose `default…Deps(db)` factories that producer-
+side services (currently `swarm-publish`) call to wire DB access.
+Migrating the consuming Group B service to `DbClient` requires flipping
+the helper's signature in lockstep — the consumer can't pass `DbClient`
+to a helper that still types `SupabaseClient`.
+
+| # | Module | LOC | `.from(` | `.rpc(` | Consumer | Notes |
+|---|---|---:|---:|---:|---|---|
+| 20 | `lesson-chain.ts` | 501 | 4 | 2 | `swarm-publish` (#14 above) | Exports `defaultLessonChainDeps(db: SupabaseClient)`. Migrating swarm-publish requires this helper to accept `DbClient` so the producer chain works under PGlite too. Land as part of the swarm-publish PR (or as its immediate predecessor) — not a separate service migration |
 
 ### Not in scope — no Supabase access
 
@@ -111,7 +124,9 @@ already exercised by the time we touch the agent layer.
    4. `rem-diversity` (295 LOC, 4 callsites)
    5. `lesson-contradiction-runner` (322 LOC, 3 callsites)
    6. `swarm-admit` (352 LOC, 7 callsites) — care: hot admission path
-   7. `swarm-publish` (603 LOC, 5 callsites) — biggest in this group
+   7. `swarm-publish` (603 LOC, 5 callsites) — biggest in this group; **must
+     also flip `lesson-chain.ts`'s `defaultLessonChainDeps(db)` signature
+     in the same PR** (see Group B-adjacent table above)
 3. **Agent layer** (`AgentEventBus`, `CoactivationAgent`, `ConscienceAgent`)
    — last; needs its own design doc because of the polling loop.
 4. **Async boot flip.** Once every consumer takes `DbClient`, replace the
