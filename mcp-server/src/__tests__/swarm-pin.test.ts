@@ -6,10 +6,15 @@ import {
   type LessonTier,
   type SwarmPinDeps,
 } from "../services/swarm-pin.js";
+import type { DbClient } from "../services/db-client.js";
 import {
   swarmPinLesson,
   swarmPinLessonSchema,
 } from "../tools/swarm-pin.js";
+
+// Orchestration tests inject SwarmPinDeps so the underlying DbClient is
+// never touched — a typed-but-unused stub keeps the constructor happy.
+const STUB_DB = {} as unknown as DbClient;
 
 // ---------------------------------------------------------------------------
 // swarm_pin_lesson — first write-side slice of issue #143
@@ -120,7 +125,7 @@ function makeDeps(
 const FAKE_ID = "11111111-2222-3333-4444-555555555555";
 
 test("pinLesson promotes B → A and writes the audit row first", async () => {
-  const svc = new SwarmPinService("http://stub", "stub");
+  const svc = new SwarmPinService(STUB_DB);
   const { deps, calls } = makeDeps("B");
   const out = await svc.pinLesson(FAKE_ID, "A", undefined, deps);
 
@@ -139,7 +144,7 @@ test("pinLesson promotes B → A and writes the audit row first", async () => {
 });
 
 test("pinLesson demotes A → B and threads the caller note into the audit reason", async () => {
-  const svc = new SwarmPinService("http://stub", "stub");
+  const svc = new SwarmPinService(STUB_DB);
   const { deps, calls } = makeDeps("A");
   const out = await svc.pinLesson(FAKE_ID, "B", "contested by local logs", deps);
 
@@ -150,7 +155,7 @@ test("pinLesson demotes A → B and threads the caller note into the audit reaso
 });
 
 test("pinLesson rejects a no-op (current tier already equals target)", async () => {
-  const svc = new SwarmPinService("http://stub", "stub");
+  const svc = new SwarmPinService(STUB_DB);
   const { deps, calls } = makeDeps("A");
   await assert.rejects(
     svc.pinLesson(FAKE_ID, "A", undefined, deps),
@@ -163,7 +168,7 @@ test("pinLesson rejects a no-op (current tier already equals target)", async () 
 });
 
 test("pinLesson rejects when the lesson does not exist", async () => {
-  const svc = new SwarmPinService("http://stub", "stub");
+  const svc = new SwarmPinService(STUB_DB);
   const { deps, calls } = makeDeps(null);
   await assert.rejects(
     svc.pinLesson(FAKE_ID, "A", undefined, deps),
@@ -177,7 +182,7 @@ test("pinLesson skips the tier UPDATE when the audit-log INSERT fails", async ()
   // §10.6 traceability: losing the audit is worse than a stuck tier.
   // If the audit-log INSERT fails, the UPDATE must NOT run (otherwise we'd
   // have a silent transition that the operator cannot retrace).
-  const svc = new SwarmPinService("http://stub", "stub");
+  const svc = new SwarmPinService(STUB_DB);
   const { deps, calls } = makeDeps("B", { recordFails: true });
   await assert.rejects(
     svc.pinLesson(FAKE_ID, "A", undefined, deps),
@@ -191,7 +196,7 @@ test("pinLesson surfaces a failed UPDATE after the audit row is durable", async 
   // Symmetric: audit row IS in the log (durable transition record), but
   // the tier flip itself failed. Caller must see the error so they can
   // retry; the log entry now serves as the trail of the attempt.
-  const svc = new SwarmPinService("http://stub", "stub");
+  const svc = new SwarmPinService(STUB_DB);
   const { deps, calls } = makeDeps("B", { updateFails: true });
   await assert.rejects(
     svc.pinLesson(FAKE_ID, "A", undefined, deps),

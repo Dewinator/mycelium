@@ -158,6 +158,7 @@ import { NodeIdentityService } from "./services/node-identity.js";
 import {
   nodeIdentityGetSchema, nodeIdentityGet,
 } from "./tools/node-identity.js";
+import { PostgrestClient } from "@supabase/postgrest-js";
 import { SwarmPinService } from "./services/swarm-pin.js";
 import {
   swarmPinLessonSchema, swarmPinLessonHandler,
@@ -247,7 +248,16 @@ const guardService = new GuardService(
 const neurochemistryService = new NeurochemistryService(SUPABASE_URL, SUPABASE_KEY);
 const relationsService      = new RelationsService(SUPABASE_URL, SUPABASE_KEY);
 const nodeIdentityService   = new NodeIdentityService(SUPABASE_URL, SUPABASE_KEY);
-const swarmPinService       = new SwarmPinService(SUPABASE_URL, SUPABASE_KEY);
+// First service migrated onto the DbClient surface (#176 native-app track,
+// follow-up to PR #209). Constructed inline as a PostgrestClient until the
+// rest of index.ts is moved to async boot via createDbClient() — the
+// mode-switch (MYCELIUM_USE_PGLITE=1) lights up once that refactor lands.
+const swarmPinDbClient = new PostgrestClient(SUPABASE_URL, {
+  headers: SUPABASE_KEY
+    ? { Authorization: `Bearer ${SUPABASE_KEY}`, apikey: SUPABASE_KEY }
+    : {},
+});
+const swarmPinService       = new SwarmPinService(swarmPinDbClient);
 const swarmPeersService     = new SwarmPeersService(SUPABASE_URL, SUPABASE_KEY);
 const swarmAdmitService     = new SwarmAdmitService(SUPABASE_URL, SUPABASE_KEY);
 const swarmPublishService   = new SwarmPublishService(SUPABASE_URL, SUPABASE_KEY);
