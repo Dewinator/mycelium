@@ -1,6 +1,6 @@
 # Wave 4 · W4.1 row triage — rows 1–3 merged, row 4 in PR queue, 4 remaining rows still unit-testable on `main`
 
-> Last refreshed: 2026-05-04 (post 174th-tick PR #212 — row 4 echo-chamber cohort).
+> Last refreshed: 2026-05-05 (205th-tick correction — row 1 mechanism was `§5 rule 1` (Wrong spec_version major), should be `§5 rule 18` (Merkle root mismatch); the shipped fixture's own `metadata.owns_mechanism`, the `anti-echo-forgery.test.ts` assertion, and SWARM_SPEC §5 line 491 all agree on rule 18. Same fix landed in [`docs/wave-4-anti-echo.md`](wave-4-anti-echo.md). Also retargeted rows 1–3's "Unit-test path" column at the actually-shipped `anti-echo-*.test.ts` files instead of the pre-shipped rationale tests.).
 > Pre-work for [issue #196](https://github.com/Dewinator/mycelium/issues/196) (W4.1).
 > Closes the implicit per-row triage cost the W4.1 issue body opens with:
 > *"If a §10 mechanism cannot be made to fire from a unit test (because it
@@ -23,11 +23,11 @@ an in-process dep-stub test on `main`, and synthesising the adversarial
 input (cohort, fake-key-signed envelope, paired local experience)
 requires no federation listener.
 
-| Row | Category | §10 mechanism | Existing unit-test path on `main` | Verdict |
+| Row | Category | §10 mechanism | Unit-test path on `main` | Verdict |
 |---|---|---|---|---|
-| 1 | `forgery` | §3.7 PoK + §5 rule 1 | `lesson-admission.test.ts` + signature gate | ✅ shipped — PR [#197](https://github.com/Dewinator/mycelium/pull/197) |
-| 2 | `plagiarism` | §10.4 diversity filter | `rem-diversity.test.ts` (multi-key identical-broadcast) | ✅ shipped — PR [#198](https://github.com/Dewinator/mycelium/pull/198) |
-| 3 | `sybil-flood` | §10.2 quarantine + §10.4 | `swarm-admit.test.ts` + `rem-diversity.test.ts` | ✅ shipped — PR [#201](https://github.com/Dewinator/mycelium/pull/201) |
+| 1 | `forgery` | §3.7 PoK + §5 rule 18 (Merkle root mismatch) | `anti-echo-forgery.test.ts` via `validateLessonProof` (proof-time, not admission-time — wire-validator is content-agnostic about `evidence_root`) | ✅ shipped — PR [#197](https://github.com/Dewinator/mycelium/pull/197) |
+| 2 | `plagiarism` | §10.4 diversity filter | `anti-echo-plagiarism.test.ts` via `scoreFinding` (rationale: `rem-diversity.test.ts` proves the same RPC trips on multi-key identical-broadcast) | ✅ shipped — PR [#198](https://github.com/Dewinator/mycelium/pull/198) |
+| 3 | `sybil-flood` | §10.4 diversity filter (the row's W4.1 unit-test arm; §10.2 quarantine is operator-driven and deferred to W4.2/W4.3 per the fixture's own `metadata.comment`) | `anti-echo-sybil-flood.test.ts` via `scoreFinding` on a 10-key cohort (rationale: `swarm-admit.test.ts` + `rem-diversity.test.ts` already gate the §10.4 path) | ✅ shipped — PR [#201](https://github.com/Dewinator/mycelium/pull/201) |
 | 4 | `echo-chamber` | §10.4 diversity filter | `rem-diversity.test.ts` (already covers the canonical "4 of 5 peers" case) | 🟡 in PR [#212](https://github.com/Dewinator/mycelium/pull/212) — test green, awaiting Reed merge |
 | 5 | `slow-poisoning` | §10.5 REM self-audit | `rem-audit.test.ts` (orchestrator dep-stub seeds local evidence) | unit-testable |
 | 6 | `truth-by-repetition` | §10.4 + §10.6 firebreak | `rem-promotion.test.ts` (promotion threshold on synthetic cluster) | unit-testable |

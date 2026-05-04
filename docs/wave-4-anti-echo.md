@@ -80,7 +80,7 @@ quarantine, contradicts edge, tier flip).
 
 | Category                | §10 mechanism that should catch it | Fixture shape                                                                                  |
 |-------------------------|------------------------------------|-------------------------------------------------------------------------------------------------|
-| Forgery                 | §3.7 PoK + §5 rule 1               | Lesson with valid envelope but `evidence_root` that does not hash the cited evidence.           |
+| Forgery                 | §3.7 PoK + §5 rule 18              | Lesson with valid envelope but `evidence_root` that does not hash the cited evidence. (Rule 18 = Merkle root mismatch, fired at `/swarm/lessons/{id}/proof` time per SWARM_SPEC §5; the v1.1 wire validator is content-agnostic about `evidence_root` because the leaves are not on the wire.) |
 | Plagiarism              | §10.4 diversity filter             | N≥3 fixtures from N different fixture-keys, all carrying `cosine_similarity > 0.95`, identical `signed_at` window, near-identical text. |
 | Sybil flood             | §10.2 quarantine + §10.4           | M≥10 fixture-keys all signing the same lesson within 7 days; cohort threshold should trip.      |
 | Echo-chamber            | §10.4                              | Same lesson re-broadcast by ≥80% of a synthetic cohort with **different** envelopes (legitimate-looking) but no independent `evidence_root`. |
