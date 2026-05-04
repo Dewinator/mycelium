@@ -245,31 +245,39 @@ Spike auf `main`:
 - `docs/native-docs-refresh-spike.md` — Docker und Native koexistieren in
   README+setup.md; Flip auf signierte v1.0-Native-Releases gegated.
 
-**Aktiver Code-Bestand auf `main`** (Stand 2026-05-03 nach Reed-Massendrain):
+**Aktiver Code-Bestand auf `main`** (Stand 2026-05-04):
 `mcp-server/src/native/` PGlite Adapter (#185), `services/embeddings.ts` mit
 `LlamaCppEmbeddingProvider` hinter `MYCELIUM_LLM_PROVIDER` (#187), GGUF
 SHA-256-Verify (#188), `MYCELIUM_LLAMA_REQUIRE_CHECKSUM=1` fail-closed
 (#189), `middleware/proxy.ts` `EmbeddingProvider`-Injection (#190),
 `services/chat.ts` `ChatProvider`-Abstraction (#192). Cosine-cross-validation
 spike + Regen-Migration-Spec (#191/#193) und PGlite-Revalidate (#194)
-ebenfalls auf `main`. Alle 9 Native-App-Sub-Tasks 1, 2, 4, 5 sind damit
-implementiert (Adapter, Embedding-Provider, Chat-Provider, Update-Banner,
-PG-Validation).
+ebenfalls auf `main`. Sub-task 3 (Tauri 2 Shell scaffold) ist via #203
+gelandet, Sub-task 3 prep `MYCELIUM_DATA_DIR` Layout via #202, der 79-
+Migration-Walk als CI-Gate via #204, und Sub-task 7 (Docker→PGlite
+Migration-Helpers, pure-TS core) via #205. Sub-Tasks 1, 2, 3 (scaffold),
+4, 5 und 7 (core) sind damit implementiert (Adapter, Embedding-Provider,
+Chat-Provider, Update-Banner, PG-Validation, Tauri-Shell, Migration-Core).
 
-**Queue-Stand 2026-05-03 (post-totaldrain)**: **0 PRs offen**. Reed hat
-während dieser Tick-Sequenz alle 14 PRs aus dem gestrigen Queue-Stand
-gemerged — komplette Native-App #178-Stack (#185, #187–#194), alle 3
-W4.1 anti-echo (#197/#198/#201), beide W2 federation (#199/#200). Die
-drei Cohorts existieren nicht mehr als Queue-Blocker. Order-Independence-
-Proofs (143rd/148th tick) und 4-PR-Restmenge (vorheriger Doc-Stand)
-beide obsolet.
+**Queue-Stand 2026-05-04**: **4 PRs offen, alle vom Agent in den letzten
+4 Ticks geöffnet**. Standalone: #208 (sidecar bundling pipeline — first
+.app builds clean, sub-task 3 closer). Stack: #209 (DbClient factory —
+foundational atomic) → #210 (SwarmPinService onto DbClient, stacked) →
+#211 (SkillsService onto DbClient, stacked). Reed mergt manuell, der
+Stack ist linear (#209 muss zuerst fallen). Der `dbClient`-Pfad ist die
+neue Native-App-Sub-Story: ~21 Service-Files in `mcp-server/src/services/`
+referenzieren noch Supabase direkt (Stand grep 2026-05-04), 2 davon (Skills,
+SwarmPin) sind im offenen Stack migriert. Pattern bleibt: ein Service pro
+PR, jeder PR atomar reviewbar.
 
-**Was noch fehlt — JETZT IMPLEMENTIERUNGS-FENSTER**: Mit leerer Queue ist
-der "warten auf Drain"-Block weg. Verbleibende Native-App Sub-Tasks 3
-(Tauri Shell), 6 (Update Channels), 7 (Migration Wizard), 8 (CI Matrix),
-9 (Banner Refit), 10 (Docs Flip) können jetzt direkt angegriffen werden.
-Spikes liegen alle in `docs/native-*-spike.md`. Reed mergt nach wie vor
-manuell — Tempo bleibt: kleine, atomare PRs.
+**Was noch fehlt — Implementierungs-Fenster mit voller Queue**: Sub-Task
+3 (Tauri Shell) ist via #203 + #208 abgeschlossen sobald sidecar-bundling
+landet. Verbleibend: Sub-Tasks 6 (Update Channels), 8 (CI Matrix), 9
+(Banner Refit), 10 (Docs Flip) — Spikes liegen in `docs/native-*-spike.md`.
+DbClient-Migration der restlichen ~19 Services läuft parallel als
+Mini-Atom-PRs (siehe Stack #209/#210/#211). **Regel bei voller Queue**:
+KEINE neuen PRs öffnen; lokal validieren, Issues mit empirischen
+Beobachtungen updaten, Merge-Order surfacen — Reed entscheidet das Tempo.
 
 ### Deferred (geparkter Code)
 
