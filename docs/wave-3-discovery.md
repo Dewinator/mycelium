@@ -1,6 +1,6 @@
 # Wave 3 — tracker-free P2P discovery
 
-> Last refreshed: 2026-05-03
+> Last refreshed: 2026-05-04
 > Anchor doc for Wave 3 of [`docs/waves.md`](waves.md). Closes the doc
 > shape gap that left Wave 3 as the only row in the waves table whose
 > anchor pointed at a *spike* doc instead of a wave-state-and-sequencing
@@ -217,8 +217,13 @@ The spike chain deliberately did **not** decide these — they are
 implementation-shape choices that depend on the live code, not on the
 spike substrate:
 
-1. **Service name.** Spike uses `_mycelium._tcp.local`. Confirm against
-   IANA hygiene (lowercase, ≤15 chars) before locking it.
+1. ~~**Service name.** Spike uses `_mycelium._tcp.local`. Confirm against
+   IANA hygiene (lowercase, ≤15 chars) before locking it.~~ **Settled
+   2026-05-04** ([#195 comment](https://github.com/Dewinator/mycelium/issues/195#issuecomment-4374621457)):
+   `mycelium` passes all five RFC 6335 §5.1 rules (8 chars, all letters,
+   no hyphens) and has no IANA service-name registry collision. Lock
+   `_mycelium._tcp.local`. Formal IANA registration is a Wave-3-follow-up
+   (only matters once L2/WAN ships post-Wave-2), not a W3.1 blocker.
 2. **TXT field set.** Spike publishes `node_id`, `path`, `spec_version`.
    Decide whether to also publish `display_name` for the dashboard
    "candidate peers" view, or to wait for the fetched advertisement to
