@@ -259,16 +259,19 @@ Migration-Helpers, pure-TS core) via #205. Sub-Tasks 1, 2, 3 (scaffold),
 4, 5 und 7 (core) sind damit implementiert (Adapter, Embedding-Provider,
 Chat-Provider, Update-Banner, PG-Validation, Tauri-Shell, Migration-Core).
 
-**Queue-Stand 2026-05-04**: **4 PRs offen, alle vom Agent in den letzten
-4 Ticks geöffnet**. Standalone: #208 (sidecar bundling pipeline — first
-.app builds clean, sub-task 3 closer). Stack: #209 (DbClient factory —
+**Queue-Stand 2026-05-04 (182. Tick)**: **5 PRs offen, alle CLEAN+MERGEABLE,
+Reed-lag ≈26 h** seit letzter Merge-Welle (#202–#207 am 2026-05-03 10:24 UTC).
+Native-App-Cluster (4 PRs): Standalone #208 (sidecar bundling pipeline — first
+.app builds clean, sub-task 3 closer). Stack #209 (DbClient factory —
 foundational atomic) → #210 (SwarmPinService onto DbClient, stacked) →
-#211 (SkillsService onto DbClient, stacked). Reed mergt manuell, der
-Stack ist linear (#209 muss zuerst fallen). Der `dbClient`-Pfad ist die
-neue Native-App-Sub-Story: ~21 Service-Files in `mcp-server/src/services/`
-referenzieren noch Supabase direkt (Stand grep 2026-05-04), 2 davon (Skills,
-SwarmPin) sind im offenen Stack migriert. Pattern bleibt: ein Service pro
-PR, jeder PR atomar reviewbar.
+#211 (SkillsService onto DbClient, stacked). Off-Track-Fixture (1 PR):
+#212 (W4.1 row 4, echo-chamber cohort — issue #196). Reed mergt manuell,
+der DbClient-Stack ist linear (#209 muss zuerst fallen); #208 und #212
+sind unabhängig. Der `dbClient`-Pfad ist die neue Native-App-Sub-Story:
+22 Service-Files in `mcp-server/src/services/` referenzieren noch Supabase
+direkt (Stand grep 2026-05-04, main), 2 davon (Skills, SwarmPin) sind im
+offenen Stack migriert — verbleibend nach Merge: 20. Pattern bleibt: ein
+Service pro PR, jeder PR atomar reviewbar.
 
 **Was noch fehlt — Implementierungs-Fenster mit voller Queue**: Sub-Task
 3 (Tauri Shell) ist via #203 + #208 abgeschlossen sobald sidecar-bundling
