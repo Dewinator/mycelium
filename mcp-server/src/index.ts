@@ -232,7 +232,6 @@ const beliefService = new BeliefService(
   parseInt(process.env.BELIEF_TIMEOUT_MS ?? "4000", 10)
 );
 const causalService = new CausalService(SUPABASE_URL, SUPABASE_KEY);
-const skillsService = new SkillsService(SUPABASE_URL, SUPABASE_KEY);
 const projectService = new ProjectService(SUPABASE_URL, SUPABASE_KEY);
 const motivationService = new MotivationService(
   SUPABASE_URL,
@@ -248,16 +247,19 @@ const guardService = new GuardService(
 const neurochemistryService = new NeurochemistryService(SUPABASE_URL, SUPABASE_KEY);
 const relationsService      = new RelationsService(SUPABASE_URL, SUPABASE_KEY);
 const nodeIdentityService   = new NodeIdentityService(SUPABASE_URL, SUPABASE_KEY);
-// First service migrated onto the DbClient surface (#176 native-app track,
-// follow-up to PR #209). Constructed inline as a PostgrestClient until the
-// rest of index.ts is moved to async boot via createDbClient() — the
-// mode-switch (MYCELIUM_USE_PGLITE=1) lights up once that refactor lands.
-const swarmPinDbClient = new PostgrestClient(SUPABASE_URL, {
+// Shared DbClient instance for services migrated onto the DbClient surface
+// (#176 native-app track, started in PR #209/#210). Constructed inline as a
+// PostgrestClient until the rest of index.ts is moved to async boot via
+// createDbClient() — the mode-switch (MYCELIUM_USE_PGLITE=1) lights up once
+// that refactor lands. New services migrating off `(supabaseUrl, supabaseKey)`
+// reuse this instance instead of allocating their own.
+const dbClient = new PostgrestClient(SUPABASE_URL, {
   headers: SUPABASE_KEY
     ? { Authorization: `Bearer ${SUPABASE_KEY}`, apikey: SUPABASE_KEY }
     : {},
 });
-const swarmPinService       = new SwarmPinService(swarmPinDbClient);
+const skillsService         = new SkillsService(dbClient);
+const swarmPinService       = new SwarmPinService(dbClient);
 const swarmPeersService     = new SwarmPeersService(SUPABASE_URL, SUPABASE_KEY);
 const swarmAdmitService     = new SwarmAdmitService(SUPABASE_URL, SUPABASE_KEY);
 const swarmPublishService   = new SwarmPublishService(SUPABASE_URL, SUPABASE_KEY);

@@ -1,4 +1,4 @@
-import { PostgrestClient } from "@supabase/postgrest-js";
+import type { DbClient } from "./db-client.js";
 
 /**
  * Skill-performance tracking: which skill worked for which task type?
@@ -77,14 +77,20 @@ export function buildSkillRecordPayload(
 }
 
 export class SkillsService {
-  private db: PostgrestClient;
+  // Accepts a DbClient (PostgrestClient | PGliteAdapter) so this service
+  // works against both the Docker/Supabase backend and the in-process PGlite
+  // adapter shipped with the native app. RPC-only — `.rpc(name, args)` is
+  // shape-identical across both backends and gated by the adapter contract
+  // tests (pglite-adapter.test.ts).
+  //
+  // Local widening: TypeScript can't unify the PostgrestClient and
+  // PGliteAdapter `.rpc()` signatures even though both return
+  // `{ data, error }` at runtime. We widen at each call site so the
+  // type-leak stays scoped to the method body.
+  private db: DbClient;
 
-  constructor(supabaseUrl: string, supabaseKey: string) {
-    this.db = new PostgrestClient(supabaseUrl, {
-      headers: supabaseKey
-        ? { Authorization: `Bearer ${supabaseKey}`, apikey: supabaseKey }
-        : {},
-    });
+  constructor(db: DbClient) {
+    this.db = db;
   }
 
   /** Record an outcome for one or more skills that were used on a task. */
@@ -96,7 +102,8 @@ export class SkillsService {
   ): Promise<number> {
     if (!skills || skills.length === 0) return 0;
     try {
-      const { data, error } = await this.db.rpc(
+      const db = this.db as { rpc(name: string, args: Record<string, unknown>): Promise<{ data: unknown; error: unknown }> };
+      const { data, error } = await db.rpc(
         "skill_record",
         buildSkillRecordPayload(skills, taskType, outcome, difficulty),
       );
@@ -113,7 +120,8 @@ export class SkillsService {
 
   async stats(): Promise<SkillStats | null> {
     try {
-      const { data, error } = await this.db.rpc("skill_stats");
+      const db = this.db as { rpc(name: string, args?: Record<string, unknown>): Promise<{ data: unknown; error: unknown }> };
+      const { data, error } = await db.rpc("skill_stats");
       if (error) {
         console.error("skill_stats failed:", fmtErr(error));
         return null;
@@ -131,7 +139,8 @@ export class SkillsService {
     limit = 5
   ): Promise<SkillRecommendation[]> {
     try {
-      const { data, error } = await this.db.rpc("skill_recommend", {
+      const db = this.db as { rpc(name: string, args: Record<string, unknown>): Promise<{ data: unknown; error: unknown }> };
+      const { data, error } = await db.rpc("skill_recommend", {
         p_task_type: taskType,
         p_min_evidence: minEvidence,
         p_limit: limit,
