@@ -76,6 +76,8 @@ PR. **Stand 2026-05-04 (`main` commit `a1fb5de`):** 22 services in
 (`SwarmPinService`, `SkillsService`) are migrated in the open stack
 [#210](https://github.com/Dewinator/mycelium/pull/210) → [#211](https://github.com/Dewinator/mycelium/pull/211). After this stack lands,
 **20 services remain** — pattern stays "one service per PR, atomic, reviewable".
+Per-service breakdown (LOC, `.from`/`.rpc` callsite counts, Group A vs B
+shape, recommended PR order): [`native-dbclient-migration-tracker.md`](native-dbclient-migration-tracker.md).
 
 ## Open PR queue (5 deep, all `CLEAN`+`MERGEABLE`)
 
