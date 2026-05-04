@@ -29,7 +29,7 @@
  * after a `:` separator.
  */
 
-import { createClient, SupabaseClient } from "@supabase/supabase-js";
+import type { DbClient } from "./db-client.js";
 
 export type LessonTier = "A" | "B";
 
@@ -93,10 +93,15 @@ function truncateToOctets(text: string, maxOctets: number): string {
 }
 
 export class SwarmPinService {
-  private db: SupabaseClient;
+  private db: DbClient;
 
-  constructor(supabaseUrl: string, supabaseKey: string) {
-    this.db = createClient(supabaseUrl, supabaseKey);
+  // Accepts a DbClient (PostgrestClient | PGliteAdapter) so this service
+  // works against both the Docker/Supabase backend and the in-process PGlite
+  // adapter shipped with the native app. The two share the `.from(t)
+  // .select|insert|update().eq().maybeSingle()` chain used in defaultDeps —
+  // the adapter contract tests gate that surface.
+  constructor(db: DbClient) {
+    this.db = db;
   }
 
   /**
@@ -136,11 +141,16 @@ export class SwarmPinService {
   }
 
   /**
-   * Default deps wired against the service's own SupabaseClient. The MCP
-   * tool uses this when running in-process; tests inject mocks instead.
+   * Default deps wired against the service's own DbClient. The MCP tool uses
+   * this when running in-process; tests inject mocks instead.
+   *
+   * `db` is widened from `DbClient` because TypeScript can't unify the
+   * PostgrestClient and PGliteAdapter `.from()` generic signatures even
+   * though both speak the same chain shape at runtime — pglite-adapter
+   * contract tests gate that runtime equivalence.
    */
   defaultDeps(): SwarmPinDeps {
-    const db = this.db;
+    const db = this.db as { from(table: string): any };
     return {
       async fetchCurrentTier(lessonId) {
         const { data, error } = await db
