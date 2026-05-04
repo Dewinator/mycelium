@@ -1,6 +1,6 @@
 # Waves — Reed's 2026-05-02 vision, in shipping order
 
-> Last refreshed: 2026-05-02
+> Last refreshed: 2026-05-04
 > This is the bird's-eye view that ties Wave 1 → Wave 4 together. Per-wave
 > design docs live next to this file; this page exists so a fresh reader
 > (next-tick agent or new collaborator) does not have to reconstruct the
@@ -14,9 +14,9 @@ A wave does not start until the previous wave's end-state is real — not
 
 | Wave | End-state (observable) | Status | Anchor doc |
 |---|---|---|---|
-| **1 — Native standalone app** | Doppelklick-Installer pro Plattform; no Docker; no Ollama install. | Spike phase complete (10/10), implementation in flight (9-PR queue). 30%. | [`native-app-track.md`](native-app-track.md) |
+| **1 — Native standalone app** | Doppelklick-Installer pro Plattform; no Docker; no Ollama install. | Spike phase complete (10/10); implementation in flight — sub-tasks 1, 2, 3 (scaffold), 4, 5, 7 (core) merged on `main`. 5-PR queue (#208 sidecar bundling closing sub-task 3; stack #209→#210→#211 migrating Services onto `DbClient`; #212 unrelated W4.1 fixture). 30%. | [`native-app-track.md`](native-app-track.md) |
 | **2 — Second peer + public seed** | Reed's rented server runs a second mycelium node (Profil A); first `TrustEdge` to local Mac live; inbound + outbound lessons verified end-to-end. | Setup-skript-ready, blocked on Reed's "Server steht"-signal. 90%. | [`wave-2-second-peer.md`](wave-2-second-peer.md) |
-| **3 — Tracker-free P2P discovery** | Two mycelium instances on the same WiFi find each other automatically; mTLS-trust + lesson exchange without any external server. | Design spike merged, no code yet. 10%. | [`wave-3-discovery.md`](wave-3-discovery.md) |
+| **3 — Tracker-free P2P discovery** | Two mycelium instances on the same WiFi find each other automatically; mTLS-trust + lesson exchange without any external server. | Anchor doc + 11-spike chain on `main` (mDNS pointer + heartbeat eviction + cold-rebrowse-on-eviction + wake/network-change re-publish + blocked-network detector all empirically settled on macOS-arm64); no production code yet. Cross-platform re-validation (Linux/Avahi, Windows) still open. 10%. | [`wave-3-discovery.md`](wave-3-discovery.md) |
 | **4 — Anti-echo-chamber empirical defense** | Synthetic adversarial lessons (manipulative inputs, one-sided sources, consensus echoes) are demonstrably rejected by §10.4 + REM-self-audit on a real multi-node test swarm; results published as Constitution-Defense-Report. | Theory exists in `SWARM_SPEC.md` §10; production validation deferred until a real multi-node swarm exists post-Wave-2. 10%. | [`wave-4-anti-echo.md`](wave-4-anti-echo.md) |
 
 ## Why this order, not parallel
@@ -54,14 +54,26 @@ in parallel") is real. The reason the order is sequential:
 ## Wave 1 — native standalone app
 
 **Owner doc:** [`native-app-track.md`](native-app-track.md) (covers all 10
-sub-tasks, the spike → impl mapping, and the recommended 9-PR merge order).
+sub-tasks, the spike → impl mapping, and the recommended merge order).
 
-**Current state (2026-05-02):** all 10 sub-task spikes shipped; 9 PRs
-open and `MERGEABLE`; 998/999 tests green when applied in the recommended
-order. Implementation of sub-tasks 3 (Tauri shell), 6 (update channels),
-7 (migration wizard), 8 (CI matrix), 9 (banner refit), 10 (docs flip) is
-explicitly gated on queue drain — the highest-value tick action while
-the queue is full is *making the merge cheaper*, not adding more diffs.
+**Current state (2026-05-04):** all 10 sub-task spikes shipped; the
+2026-05-03 merge wave landed PRs #202–#207 (sub-tasks 1, 2, 3 scaffold, 4,
+5, 7 core). Five PRs remain open and CLEAN+MERGEABLE: #208 (sidecar
+bundling pipeline — closes the implementation half of sub-task 3),
+#209→#210→#211 (linear stack migrating Services onto a `DbClient` factory
+under `MYCELIUM_USE_PGLITE` — #209 is the foundational atomic, #210
+SwarmPinService, #211 SkillsService), and the unrelated W4.1 fixture
+PR #212. Implementation of sub-tasks 6 (update channels), 8 (CI matrix),
+9 (banner refit), 10 (docs flip) is explicitly gated on queue drain —
+the highest-value tick action while the queue is full is *making the
+merge cheaper* (local validation, empirical observation in issues,
+merge-order surfacing), not adding more diffs.
+
+**Sub-story still in flight on the DbClient axis:** 22 service files in
+`mcp-server/src/services/` referenced Supabase directly as of 2026-05-04;
+two of them (Skills, SwarmPin) are inside the open #209/#210/#211 stack.
+Verbleibend nach Merge: 20 services. Pattern: ein Service pro PR,
+atomar reviewbar.
 
 ## Wave 2 — second peer + public seed
 
@@ -92,12 +104,21 @@ owns, and what can land before Waves 1+2 ship).
 remains the *what / why* — three discovery layers, library picks,
 threat model, Constitution check.
 
-**Current state (2026-05-02):** design spike on `main`, no code yet. The
-spike answers four questions: smallest v1-wire-protocol extension, library
-choice for LAN-mDNS + WAN-DHT inside the Tauri sidecar, how discovery
-hands off to existing `node_identity` / `TrustEdge` / signed
-`NodeAdvertisement` machinery, and which discovery-enabled attacks the
-v1.1 self-healing layer (§10) already neutralizes.
+**Current state (2026-05-04):** design substrate + 11-spike chain on
+`main`, no production code yet. The spike chain (`spike-mdns.mjs` →
+`spike-mdns-fetch.mjs` → `spike-fetch-hostile.mjs` → `spike-mdns-fanout.mjs`
+→ `spike-mdns-churn.mjs` → `spike-mdns-heartbeat.mjs` →
+`spike-mdns-rejoin.mjs` → `spike-mdns-cold-rebrowse.mjs` →
+`spike-mdns-wake.mjs` → `spike-mdns-self-echo-timing.mjs` plus the original
+`bonjour-service` library smoke) settled the empirical budgets that the
+W3.1 implementation PR can lift verbatim: 64 KiB body cap + 2 000 ms
+fetch timeout (hostile-OK), 5-s/3-fail heartbeat → 15 s eviction
+(`±3 ms`), cold-rebrowse-on-eviction full-replacement at ~1.3 s settle
+(`re-admit ≤23 s end-to-end`), 260 ms in-process destroy+republish on
+wake, `4 × p95 = 4 000 ms` blocked-network threshold (median 898 ms,
+p95 983 ms across K=10 trials). All measured on macOS-arm64 / Node 25.9
+— cross-platform re-validation (Linux/Avahi, Windows) is the named
+open item before locking the library pick.
 
 **Wave 1 forward-compat:** the Tauri shell spike has been retrofitted with
 a Wave-3-forward-compat section (`docs/native-tauri-shell-spike.md`)
