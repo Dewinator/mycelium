@@ -14,6 +14,11 @@ dist/
 __pycache__/
 *.pyc
 
+# Tauri / native-app build artifacts (sidecar bundle ~136 MB, Rust target cache, auto-gen)
+app/src-tauri/sidecar-payload/
+app/src-tauri/target/
+app/src-tauri/gen/
+
 # Astro landing-site build (lives in its own repo / build target — never tracked here)
 site/
 
