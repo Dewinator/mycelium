@@ -110,6 +110,20 @@ default — only the deferred mTLS step 8 needs OpenSSL ≥ 3, so the HTTP
 swarm path can ship without it. Set `STRICT_OPENSSL=1` to flip that to a
 hard fail. `SKIP_NET=1` disables outbound probes for offline runs.
 
+> **Local-Mac sanity run.** The script prints `⚠ macOS — fine for the
+> local Mac` and continues, so Reed can dry-run it on the laptop before
+> the rented server is provisioned. One caveat: the default
+> `TARGET_DIR=/opt/mycelium` hard-fails section 4 because `/opt` is not
+> writable on macOS without `sudo install -d -o $(id -un) /opt/mycelium`
+> first. The script's hint line says exactly that, but the simpler path
+> for a sanity run is `TARGET_DIR="$HOME/mycelium-test" bash
+> scripts/preflight-server.sh` — that exits 0 with two warnings (macOS,
+> no `PEER_HOST`) and validates the disk / RAM / outbound / OpenSSL
+> checks against the local environment. Empirically validated 2026-05-05
+> on macOS-arm64 + OpenSSL 3.6.1: 4/4 invocation modes (default,
+> `TARGET_DIR=$HOME/...`, `SKIP_NET=1` + bad `PEER_HOST`,
+> `PEER_HOST=github.com`) behaved as documented.
+
 ## Bring-up sequence
 
 All steps run on the **second peer** (the rented server) unless explicitly
