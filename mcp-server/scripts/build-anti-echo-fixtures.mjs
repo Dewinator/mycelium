@@ -50,6 +50,10 @@ const SYBIL_KEYS_FILE = path.join(
   FIXTURES_DIR,
   "cohort-keys-sybil-flood.json"
 );
+const ECHO_CHAMBER_KEYS_FILE = path.join(
+  FIXTURES_DIR,
+  "cohort-keys-echo-chamber.json"
+);
 
 // ---------------------------------------------------------------------------
 // Step 1 — fixture-key.json (Ed25519, write-once).
@@ -207,6 +211,76 @@ function ensureSybilCohortKeys() {
 
 const sybilCohortKeys = ensureSybilCohortKeys();
 for (const k of sybilCohortKeys.keys) {
+  createPrivateKey(k.private_key_pem);
+}
+
+// ---------------------------------------------------------------------------
+// Step 1d — cohort-keys-echo-chamber.json (5× Ed25519, write-once).
+//
+// Echo-chamber per docs/wave-4-anti-echo.md §"Corpus categories" requires
+// a synthetic cohort where ≥80% re-broadcast the same lesson with
+// **different** envelopes (legitimate-looking) but no independent
+// `evidence_root`. We use the canonical "4 of 5 peers" case from
+// rem-diversity.test.ts (over_concentration = 0.8, exactly the §10.4
+// trigger boundary): 4 echoers + 1 dissenter. The dissenter is what
+// distinguishes echo-chamber from sybil-flood — the cohort really does
+// have a heterodox peer, and §10.4 still suppresses the consensus.
+//
+// Distinct file from plagiarism / sybil keys:
+//   - Reusing them would silently couple the echo-chamber cohort size to
+//     the other cohorts; a refactor that changed plagiarism's COHORT_SIZE
+//     would change the §10.4 over_concentration the echo-chamber test
+//     asserts on, weakening the boundary claim.
+//   - The dissenter key is conceptually a different peer class (a genuine
+//     heterodox node, not a sock-puppet). Naming the file after the
+//     attack class makes that intent explicit.
+//
+// Same write-once discipline as the other cohort key files.
+// ---------------------------------------------------------------------------
+
+function ensureEchoChamberCohortKeys() {
+  if (fs.existsSync(ECHO_CHAMBER_KEYS_FILE)) {
+    return JSON.parse(fs.readFileSync(ECHO_CHAMBER_KEYS_FILE, "utf8"));
+  }
+  const COHORT_SIZE = 5;
+  const keys = [];
+  for (let i = 0; i < COHORT_SIZE; i++) {
+    const { publicKey, privateKey } = generateKeyPairSync("ed25519");
+    const spki = publicKey.export({ type: "spki", format: "der" });
+    const pubkeyRaw = Buffer.from(spki.subarray(spki.length - 32));
+    const pem = privateKey.export({ type: "pkcs8", format: "pem" });
+    const nodeId = computeNodeId(pubkeyRaw);
+    keys.push({
+      node_id: nodeId,
+      pubkey_raw_b64: pubkeyRaw.toString("base64"),
+      pubkey_b64url_unpadded: pubkeyRaw
+        .toString("base64")
+        .replace(/\+/g, "-")
+        .replace(/\//g, "_")
+        .replace(/=+$/, ""),
+      private_key_pem: pem,
+    });
+  }
+  const file = {
+    comment:
+      "Ed25519 fixture keys for the echo-chamber cohort (W4.1, §10.4 diversity " +
+      "filter). FIXTURE-ONLY; never any production node identity. Five peers: " +
+      "keys[0..3] are the four echoers re-broadcasting the consensus lesson with " +
+      "shared evidence_root; keys[4] is the dissenter holding a heterodox lesson " +
+      "with its own evidence_root and far embedding. The §10.4 over_concentration " +
+      "= 4/5 = 0.8 (exact trigger boundary). Checked in so the regression suite is " +
+      "fully deterministic. See ./README.md and docs/wave-4-anti-echo.md.",
+    keys,
+  };
+  fs.writeFileSync(ECHO_CHAMBER_KEYS_FILE, JSON.stringify(file, null, 2) + "\n");
+  console.log(
+    `wrote ${path.relative(process.cwd(), ECHO_CHAMBER_KEYS_FILE)} (${COHORT_SIZE} keys)`
+  );
+  return file;
+}
+
+const echoChamberCohortKeys = ensureEchoChamberCohortKeys();
+for (const k of echoChamberCohortKeys.keys) {
   createPrivateKey(k.private_key_pem);
 }
 
@@ -569,3 +643,175 @@ function buildSybilFloodCohort() {
 }
 
 buildSybilFloodCohort();
+
+// ---------------------------------------------------------------------------
+// Step 6 — echo-chamber cohort fixture.
+//
+// Per docs/wave-4-anti-echo.md §"Corpus categories":
+//
+//   "Same lesson re-broadcast by ≥80% of a synthetic cohort with
+//    **different** envelopes (legitimate-looking) but no independent
+//    evidence_root."
+//
+// Five signature-valid envelopes from five distinct fixture-key node IDs.
+// The first four are the echo-chamber: same content text + a deterministic
+// embedding ramp with per-envelope perturbations (cosine > 0.95), shared
+// evidence_root, distinct signed_at within a few minutes. The fifth is a
+// dissenter — different content, different evidence_root, far-orthogonal
+// embedding — to demonstrate the cohort really has heterodox dissent and
+// not five sock-puppets.
+//
+// The §10.4 over_concentration computed by the production RPC is
+// near_dup_origin_count / topic_cohort_size = 4 / 5 = 0.8, which is the
+// canonical case rem-diversity.test.ts already exercises against the
+// pure scoreFinding helper. The load-bearing claim of this row is that
+// the dissenter's presence in the cohort does NOT save the consensus
+// lesson from the §10.4 firebreak — once over_concentration ≥ 0.8, the
+// new local_weight clamps strictly below MIN_LOCAL_WEIGHT_FOR_BROADCAST
+// (0.3) regardless of how visible the dissent is.
+//
+// Differences from sybil-flood (the other §10.4-owning row):
+//   - Cohort size 5 (canonical 4-of-5 rather than 10-of-10): tests the
+//     §10.4 trigger boundary, not the saturation case.
+//   - Heterogeneous cohort (4 echoers + 1 dissenter rather than 10
+//     sock-puppets): the dissenter envelope's distinct evidence_root and
+//     far-orthogonal embedding make the cohort indistinguishable from a
+//     real "groupthink-with-some-pushback" peer set, which is exactly the
+//     §10.4 attack model — organic-looking convergence, not coordinated
+//     re-broadcast.
+//
+// All four echoer envelopes share `evidence_count` and a `signed_at`
+// window of a few minutes — well within the §10.4 default
+// `p_signed_at_window_d=7`. The dissenter has its own evidence_count and
+// signed_at; it is a separate cohort member, not a copy.
+// ---------------------------------------------------------------------------
+
+function rampReversed() {
+  // Reversed ramp: arr[i] = (768 - i) / 1000. Same per-component
+  // magnitude profile as ramp768() but with the values in reverse order,
+  // so the cosine_similarity between this and ramp768() is well below the
+  // §10.4 `p_duplicate_cosine` (0.95) — about 0.50 by construction. The
+  // dissenter therefore shares the same dimensionality and L2 norm as the
+  // echoers (sanity-friendly for any future pre-flight assertion that the
+  // cohort embeddings are normalised consistently) without being a
+  // near-duplicate of any echoer.
+  const arr = new Array(768);
+  for (let i = 0; i < 768; i++) {
+    arr[i] = Number(((768 - i) / 1000).toFixed(6));
+  }
+  return arr;
+}
+
+function buildEchoChamberCohort() {
+  const COHORT_SIZE = 5;
+  const ECHOER_COUNT = 4;
+  const SHARED_ECHOER_CONTENT =
+    "Wave-4 echo-chamber cohort: four peers re-broadcast a consensus lesson with no independent evidence chain, while one peer dissents with a heterodox lesson. §10.4 should clamp local_weight below the broadcast firebreak at over_concentration = 4/5 = 0.8 — the dissenter's presence MUST NOT save the consensus from the firebreak. See docs/wave-4-anti-echo.md.";
+
+  // Echoers all share the same well-formed evidence_root — the "no
+  // independent evidence_root" signal §10.4 names. Production peers that
+  // independently arrived at this conclusion would not collide on a single
+  // root; the collision is the structural fingerprint of re-broadcast.
+  const SHARED_ECHOER_EVIDENCE_ROOT = hashExperienceId(
+    "echo-chamber-cohort-shared-evidence-root"
+  );
+
+  // Dissenter has its own well-formed evidence_root — derived from a
+  // distinct seed so the multihash is byte-distinct from the echoers'.
+  const DISSENTER_EVIDENCE_ROOT = hashExperienceId(
+    "echo-chamber-cohort-dissenter-evidence-root"
+  );
+  const DISSENTER_CONTENT =
+    "Wave-4 echo-chamber dissenter: a single peer in the otherwise-converged cohort holds a heterodox lesson with its own evidence chain. Demonstrates the cohort has real diversity (4 of 5 = 80% concentration), not a 5-way sock-puppet set.";
+
+  const SHARED_EVIDENCE_COUNT = 4;
+
+  // Echoers: signed within a 3-minute window, well inside §10.4
+  // `p_signed_at_window_d=7`.
+  const BASE_SIGNED_AT_MS = Date.parse("2026-05-01T00:30:00.000Z");
+
+  const envelopes = [];
+
+  // Echoers — keys[0..3], shared content + evidence_root, near-duplicate embeddings.
+  for (let i = 0; i < ECHOER_COUNT; i++) {
+    const key = echoChamberCohortKeys.keys[i];
+    const envelope = {
+      spec_version: "1.1",
+      // UUID v4-shaped, deterministic per cohort index. Echoer ids end in
+      // 0e..0e+ECHOER_COUNT-1 to make the role visually scannable in JSON.
+      id: `44444444-5555-4666-8777-eeeeeeeeee${i.toString().padStart(2, "0")}`,
+      content: SHARED_ECHOER_CONTENT,
+      // Re-use the perturbation function from the plagiarism / sybil
+      // builders so the echo embedding shape matches the documented
+      // near-duplicate profile (cosine > 0.95 within the echoers).
+      // Distinct seed range (offset by 200) so embedding bytes differ from
+      // every other cohort fixture and a future cross-cohort cosine sweep
+      // does not accidentally couple them.
+      embedding: rampPerturbed(i + 200),
+      synthesized_from_cluster_size: 2,
+      origin_node_id: key.node_id,
+      created_at: new Date(BASE_SIGNED_AT_MS - 1000).toISOString(),
+      signed_at: new Date(BASE_SIGNED_AT_MS + i * 60 * 1000).toISOString(),
+      evidence_root: SHARED_ECHOER_EVIDENCE_ROOT,
+      evidence_count: SHARED_EVIDENCE_COUNT,
+      prev_lesson_hash: null,
+      maturity_age_days: 1,
+      useful_count: 0,
+    };
+    const signature = sign(envelope, key.private_key_pem);
+    envelopes.push({ ...envelope, signature });
+  }
+
+  // Dissenter — keys[4], distinct content + evidence_root, reversed-ramp embedding.
+  {
+    const dissenterKey = echoChamberCohortKeys.keys[ECHOER_COUNT];
+    const dissenterEnvelope = {
+      spec_version: "1.1",
+      id: "44444444-5555-4666-8777-ffffffffff04",
+      content: DISSENTER_CONTENT,
+      embedding: rampReversed(),
+      synthesized_from_cluster_size: 2,
+      origin_node_id: dissenterKey.node_id,
+      created_at: new Date(BASE_SIGNED_AT_MS - 1000).toISOString(),
+      // Signed at the very end of the echoer window so the spread test
+      // covers the full cohort, not just the four echoers.
+      signed_at: new Date(BASE_SIGNED_AT_MS + ECHOER_COUNT * 60 * 1000).toISOString(),
+      evidence_root: DISSENTER_EVIDENCE_ROOT,
+      evidence_count: SHARED_EVIDENCE_COUNT,
+      prev_lesson_hash: null,
+      maturity_age_days: 1,
+      useful_count: 0,
+    };
+    const dissenterSignature = sign(dissenterEnvelope, dissenterKey.private_key_pem);
+    envelopes.push({ ...dissenterEnvelope, signature: dissenterSignature });
+  }
+
+  const fixture = {
+    metadata: {
+      category: "echo-chamber",
+      // §10.4 admits each envelope individually but clamps the consensus
+      // lesson's local_weight below MIN_LOCAL_WEIGHT_FOR_BROADCAST (0.3).
+      // The dissenter is admitted normally; only the four echoers' lesson
+      // is suppressed.
+      expected_outcome: "broadcast_suppressed",
+      // Same convention as plagiarism / sybil: §10.4 itself does not
+      // directly mutate trust edges. The negative scalar reflects the
+      // eventual operator-driven reputation cost of a flagged consensus
+      // cluster; harness asserts only sign + order-of-magnitude band.
+      expected_trust_delta: -0.01,
+      owns_mechanism: "§10.4 diversity filter",
+      comment:
+        "Five signature-valid envelopes from five distinct fixture-key node IDs. envelopes[0..3] are echoers — same content text, shared evidence_root, near-identical embeddings (pairwise cosine > 0.95 within the echoer subset), signed within a 3-minute window. envelopes[4] is a dissenter — heterodox content, distinct evidence_root, reversed-ramp embedding (cosine ≈ 0.5 vs any echoer). §10.4 cross-peer concentration on the consensus lesson is 4/5 = 0.8 (exact trigger boundary). scoreFinding(prev=1.0, over=0.8) clamps new_weight to 0.2, strictly below MIN_LOCAL_WEIGHT_FOR_BROADCAST (0.3). The load-bearing claim is that the dissenter's presence in the cohort does NOT save the consensus from the firebreak — §10.4 is purely a function of over_concentration, not of cohort heterogeneity.",
+    },
+    cohort_size: COHORT_SIZE,
+    envelopes,
+  };
+
+  const outDir = path.join(FIXTURES_DIR, "echo-chamber");
+  fs.mkdirSync(outDir, { recursive: true });
+  const outFile = path.join(outDir, "consensus-with-dissent-cohort.json");
+  fs.writeFileSync(outFile, JSON.stringify(fixture, null, 2) + "\n");
+  console.log(`wrote ${path.relative(process.cwd(), outFile)}`);
+}
+
+buildEchoChamberCohort();
