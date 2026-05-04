@@ -1,6 +1,6 @@
 # DbClient Migration Tracker — Native-App Sub-Story
 
-**Stand 2026-05-04 (195. Tick — empirical recount).** Sub-story of Issue #176 (native standalone
+**Stand 2026-05-04 (202. Tick — empirical recount, fixed MemoryService LOC swap with experiences.ts).** Sub-story of Issue #176 (native standalone
 app, sub-task 3). Once `MYCELIUM_USE_PGLITE=1` is honoured by every service,
 the MCP server boots in-process against PGlite without ever spinning up
 Docker/Supabase. The factory landed on PR #209; the per-service migration
@@ -33,7 +33,7 @@ template.
 
 | # | Service | LOC | `.from(` | `.rpc(` | Notes |
 |---|---|---:|---:|---:|---|
-| 1 | `MemoryService` (in `services/supabase.ts`) | 632* | 6 | 14 | Co-located with `supabase.ts` helpers; ctor also takes `embeddings` |
+| 1 | `MemoryService` (in `services/supabase.ts`) | 535* | 6 | 14 | Co-located with `supabase.ts` helpers; ctor also takes `embeddings` |
 | 2 | `ExperienceService` (in `services/experiences.ts`) | 632 | 0 | 29 | RPC-heavy; ctor also takes `embeddings` |
 | 3 | `AffectService` | 144 | 0 | 2 | Tiny |
 | 4 | `CausalService` | 151 | 0 | 3 | Tiny — flagged in PR #211 body as a likely next target |
@@ -46,9 +46,12 @@ template.
 | 11 | `SwarmPeersService` | 166 | 3 | 0 | `.from()`-only |
 | 12 | `RegistryService` (constructed conditionally) | 125 | 0 | 3 | Two construction sites (eager + lazy); both need updating |
 
-*The 632 LOC for `supabase.ts` is the file containing `MemoryService` plus
+*The 535 LOC for `supabase.ts` is the file containing `MemoryService` plus
 the shared `MARK_USEFUL_EVENT_TYPE` constant + helpers. Migrating only the
-class is fine; the helpers stay.
+class is fine; the helpers stay. (Earlier revisions of this tracker
+reported 632 LOC — that was the size of `experiences.ts`, the next
+service down in the table; the empirical recount on the 202nd tick
+caught and corrected the swap.)
 
 ### Group B — still on `SupabaseClient` (full swap like SwarmPin #210)
 
