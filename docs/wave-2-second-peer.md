@@ -181,28 +181,82 @@ Ed25519 over the canonical bytes (§2.2).
 
 ### 5) [Mac] Add the peer as a TrustEdge
 
-On the local Mac (this is the first cross-node trust write):
+On the local Mac (this is the first cross-node trust write).
+
+**Important — no MCP tool exists for this step yet.** The five swarm MCP
+tools (`swarm_list_peers`, `swarm_admit_lesson`, `swarm_publish_tier_a_lesson`,
+`swarm_pin_lesson`, `swarm_resolve_contradict`) all assume the peer's
+row already lives in `nodes`. `swarm_admit_lesson` is for admitting a
+**lesson envelope** through the receiver pipeline, not a node
+advertisement — its `unknown_peer` failure path literally tells the
+caller to "register the peer first (insert into nodes with
+`pubkey_b64url`) before admission" (`mcp-server/src/tools/swarm-admit.ts:105`).
+Until a dedicated `swarm_admit_peer` tool ships, peer admission is a
+manual SQL step against the Mac's local Supabase.
 
 ```bash
-# Fetch the peer's signed advertisement and admit it.
+# 1. Fetch the peer's signed advertisement.
 curl -fsS "https://${PEER_HOST}/.well-known/mycelium-node" \
   > /tmp/peer-advert.json
 
-# Hand it to the local mycelium MCP via the dashboard.
-# `swarm_admit_lesson` is the tool an operator uses to import a peer's
-# self-advertisement; it verifies the signature against the embedded
-# pubkey, cross-checks the node_id derivation (rule 6 of §5), and
-# writes the trust-edge row with reason='admitted' (+0.05 per §10.1).
+# Body shape (§3.3): node_id, pubkey (base64url, unpadded, 32-byte Ed25519),
+# endpoint_url, spec_version, signed_at, signature, optional display_name.
+
+# 2. Verify the signature client-side BEFORE inserting.
+# (No MCP helper today; the receiver-side wire-validator only runs as part
+# of POST /swarm/lessons. For step 5 use either ed25519-verify against
+# JCS(record − signature) by hand, or trust the signature implicitly and
+# rely on the first inbound lesson from this peer to fail-closed via the
+# admission pipeline if the pubkey is wrong.)
 ```
 
-The MCP tool surface is `mcp__vector-memory__swarm_admit_lesson`. Reed
-calls it from his client; the Mac's `trust_edge_log` should gain a row
-within one second.
+```sql
+-- 3. Insert the peer row. Run via your Supabase SQL editor or:
+--    docker compose exec db psql -U postgres -d postgres
+--
+-- node_id, endpoint_url, pubkey_b64url come straight from the advertisement.
+-- pubkey (BYTEA) is the base64url-decoded raw 32 bytes — Postgres has no
+-- base64url decoder, so feed standard-base64 (swap -_ → +/ and re-pad with =).
+INSERT INTO nodes (
+  node_id,
+  pubkey,
+  pubkey_b64url,
+  endpoint_url,
+  display_name,
+  is_self,
+  trust_weight,        -- default 0.5; the +0.05 admit bump is applied below
+  trust_reason
+) VALUES (
+  '<peer.node_id>',
+  decode('<peer.pubkey_standard_base64>', 'base64'),
+  '<peer.pubkey_base64url>',
+  '<peer.endpoint_url>',
+  '<peer.display_name>',
+  false,
+  0.5,
+  'admitted'
+);
+
+-- 4. Apply the §10.1 +0.05 admit bump and write the audit row in one call.
+SELECT record_trust_edge_change('<peer.node_id>', 0.55, 'admitted');
+```
+
+The Mac's `trust_edge_log` now has a row with
+`reason = 'admitted', weight_before = 0.5, weight_after = 0.55`. From
+this point on, lessons signed by this peer's key will pass the
+`unknown_peer` gate at `swarm_admit_lesson` / `POST /swarm/lessons`.
 
 Optional: if the Mac is also exposing `:8788`, the peer can reciprocate
 the same step against the Mac's `/.well-known/mycelium-node` so trust
 becomes bidirectional. Asymmetric trust is fine for v1.x — only the
 direction with an edge admits inbound lessons.
+
+> **Follow-up worth filing:** a `swarm_admit_peer` MCP tool that takes a
+> `NodeAdvertisement` JSON, verifies its signature against the embedded
+> pubkey, checks `node_id == multihash(pubkey)` (§5 rule 6), inserts the
+> `nodes` row, and calls `record_trust_edge_change(node_id, 0.55, 'admitted')`
+> in one transaction. That removes the manual SQL step here and the
+> "trust the signature implicitly" caveat above.
 
 ### 6) Verify outbound (Mac → peer)
 
