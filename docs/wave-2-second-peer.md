@@ -96,6 +96,20 @@ gated on unparking the deferred build.
       model pulls). Inbound 443 / 8787 / 8788 from the Mac's egress IP.
 - [ ] Reed has SSH and a writable `${TARGET_DIR}` (e.g. `/opt/mycelium`).
 
+The repo ships a read-only check that operationalises this list:
+
+```bash
+PEER_HOST=mycelium.example.org TARGET_DIR=/opt/mycelium \
+  bash scripts/preflight-server.sh
+```
+
+`scripts/preflight-server.sh` exits non-zero on any hard failure (disk,
+RAM, target-dir not writable, outbound HTTPS unreachable, DNS for
+`PEER_HOST` does not resolve). LibreSSL / OpenSSL < 3 is a warning by
+default — only the deferred mTLS step 8 needs OpenSSL ≥ 3, so the HTTP
+swarm path can ship without it. Set `STRICT_OPENSSL=1` to flip that to a
+hard fail. `SKIP_NET=1` disables outbound probes for offline runs.
+
 ## Bring-up sequence
 
 All steps run on the **second peer** (the rented server) unless explicitly
