@@ -28,18 +28,19 @@ PAYLOAD="$REPO_ROOT/app/src-tauri/sidecar-payload"
 echo "[bundle-sidecar] repo=$REPO_ROOT"
 echo "[bundle-sidecar] payload=$PAYLOAD"
 
-# 1. Ensure mcp-server is built.
+# 1. Ensure node_modules are present (needed for runtime resolve AND for
+#    `tsc` in step 2 — must run before the build, not after).
+if [ ! -d "$MCP_SERVER/node_modules" ]; then
+  echo "[bundle-sidecar] node_modules missing — running npm ci"
+  (cd "$MCP_SERVER" && npm ci)
+fi
+
+# 2. Ensure mcp-server is built.
 if [ ! -f "$MCP_SERVER/dist/index.js" ] || [ "$MCP_SERVER/src/index.ts" -nt "$MCP_SERVER/dist/index.js" ]; then
   echo "[bundle-sidecar] mcp-server build needed — running npm run build"
   (cd "$MCP_SERVER" && npm run build)
 else
   echo "[bundle-sidecar] mcp-server build is fresh"
-fi
-
-# 2. Ensure node_modules are present for runtime resolve.
-if [ ! -d "$MCP_SERVER/node_modules" ]; then
-  echo "[bundle-sidecar] node_modules missing — running npm ci"
-  (cd "$MCP_SERVER" && npm ci)
 fi
 
 # 3. Wipe and re-create payload (cheaper than rsync diff for ~150 MB tree).
