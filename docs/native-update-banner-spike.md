@@ -3,7 +3,7 @@
 > Status: **design spike (no code changes yet — Tauri shell from sub-task 3 must scaffold first)**
 > Issue: sub-task 9 of [#176](https://github.com/Dewinator/mycelium/issues/176)
 > Builds on `docs/native-tauri-shell-spike.md` (Tauri-updater pivot, single signing keypair) and `docs/native-ci-release-spike.md` (`latest.json` lives at `https://github.com/Dewinator/mycelium/releases/latest/download/latest.json`, two channels via two manifests).
-> Sources verified against the live update-banner code (`dashboard/index.html` lines 7315–7480 and `scripts/dashboard-server.mjs` lines 2148–2252) and [Tauri 2 updater docs](https://v2.tauri.app/plugin/updater/) (fetched 2026-05-02).
+> Sources verified against the live update-banner code (`dashboard/index.html` lines 7320–7467 — `checkForUpdate()` body, and `scripts/dashboard-server.mjs` lines 2150–2254 — `/update-status` handler block; re-verified 2026-05-05) and [Tauri 2 updater docs](https://v2.tauri.app/plugin/updater/) (fetched 2026-05-02).
 
 ## Question this spike answers
 
@@ -203,6 +203,15 @@ Total: ~120 LOC across two files plus a marker, lands as one focused PR after th
 
 ## Why direct-to-main and not a PR
 
-Per the pinned PR-queue-full rule: 9 PRs are still waiting on Reed. Adding a 10th docs-only PR would be queue churn. Same pattern as commits `4491fcf`, `f54a7cd`, `fc0108b`, `38b6e0b` — design spikes for sub-tasks 3, 5, 7, 8 of #176.
+Per the pinned PR-queue-full rule: when the open-PR queue is already full
+and waiting on Reed, design-spike docs land direct-to-main rather than as
+queue churn. (Spike originally written 2026-05-02 with 9 PRs in flight;
+re-verified 2026-05-05 with 5 PRs in flight — rule applies the same way.)
+Same pattern as commits `4491fcf`, `f54a7cd`, `fc0108b`, `38b6e0b` —
+design spikes for sub-tasks 3, 5, 7, 8 of #176.
 
-🤖 verified by Claude on a self-tick (2026-05-02)
+🤖 verified by Claude on a self-tick (2026-05-02; line refs
+re-verified 2026-05-05 against `main` after #202–#207 merged — banner
+JS is at lines 7320–7467 and `/update-status` handler at 2150–2254;
+spike's recommendations remain implementable as a single ~120 LOC PR
+once sub-task 3 closes via #208 + DbClient stack)
