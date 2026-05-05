@@ -138,6 +138,40 @@ already exercised by the time we touch the agent layer.
    actually lights up. **This step gates Issue #176 sub-task 3
    completion.**
 
+## Post-migration follow-up — drop `@supabase/supabase-js`
+
+Empirical finding from the 188th tick (2026-05-04), re-verified on `main`
+2026-05-05 (229th tick): once Group B's 9 services migrate to `DbClient`,
+`@supabase/supabase-js` becomes a removable dependency.
+
+**Verification (re-run any time):**
+
+```bash
+# Real importers of the heavy meta-package
+grep -lE 'from "@supabase/supabase-js"' mcp-server/src
+# → exactly the 9 Group B services. prime-fetcher, the 3 agent classes
+#   (event-bus, coactivation-agent, conscience-agent) and every Group A
+#   service already speak PostgrestClient directly.
+
+# API surface those 9 services actually call
+for f in $(grep -lE 'from "@supabase/supabase-js"' mcp-server/src); do
+  grep -oE '\.(auth|storage|functions|realtime|rest)\(' "$f"
+done
+# → empty. Only .from( and .rpc( appear; both are PostgrestClient surface.
+```
+
+**Implication:** after the last Group B PR merges, `@supabase/supabase-js`
+in `mcp-server/package.json` is dead weight. Removal is one line + lockfile
+regen + `dist/` rebuild — no source change required (the offending imports
+are gone by then). It drops the transitive `@supabase/auth-js`,
+`@supabase/storage-js`, `@supabase/functions-js`, and `@supabase/realtime-js`
+sub-packages from the Tauri sidecar bundle.
+
+**Sequencing:** lands as a tiny PR right after `swarm-publish` (the last
+Group B item) merges. Not a blocker for sub-task 3 completion (the boot-flag
+flip in §"Recommended PR order" step 4 is what closes the sub-task), just an
+independent bundle-hygiene follow-up surface to keep on the trail.
+
 ## Methodology
 
 ```bash
