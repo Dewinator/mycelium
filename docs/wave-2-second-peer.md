@@ -324,6 +324,23 @@ mismatch, or chain-tip violation does NOT just reject — it sets the
 offender's `nodes.quarantined_until = now() + 1h`. Verify by deliberately
 sending one bad envelope and confirming the row appears.
 
+> **Caveat — chain-tip (rule 19) does NOT fire via `dashboard-server.mjs`
+> today.** The receiver-side rule-19 callback (`getExpectedPrevLessonHash`)
+> is intentionally undefined at [`scripts/dashboard-server.mjs:2090`][dsh-r19]
+> with the rationale documented at [lines 1934–1942][dsh-r19-why]:
+> `swarm_lessons` (migration 071) does not persist `prev_lesson_hash` or
+> `lesson_hash`, so per-origin chain reconstruction has no substrate. A
+> bad-chain-tip envelope therefore admits cleanly in production today (it
+> would 401 + quarantine only against a host that injects the dep — the
+> contract tests in `lesson-admission.test.ts` exercise that path). For the
+> Wave-2 verify step that means: test signature-mismatch and malformed-
+> envelope (rules 5 / 16 / 20 — wired) to confirm the quarantine path; do
+> NOT use a bad-chain-tip envelope as the smoke-test until the
+> `received_lesson_chain` substrate follow-up lands.
+
+[dsh-r19]: https://github.com/Dewinator/mycelium/blob/main/scripts/dashboard-server.mjs#L2090
+[dsh-r19-why]: https://github.com/Dewinator/mycelium/blob/main/scripts/dashboard-server.mjs#L1934-L1942
+
 ### 8) Optional: end-to-end mTLS smoke — gated on deferred-build unpark
 
 ```bash
