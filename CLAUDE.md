@@ -245,19 +245,24 @@ Spike auf `main`:
 - `docs/native-docs-refresh-spike.md` — Docker und Native koexistieren in
   README+setup.md; Flip auf signierte v1.0-Native-Releases gegated.
 
-**Aktiver Code-Bestand auf `main`** (Stand 2026-05-04):
+**Aktiver Code-Bestand auf `main`** (Stand 2026-05-05):
 `mcp-server/src/native/` PGlite Adapter (#185), `services/embeddings.ts` mit
 `LlamaCppEmbeddingProvider` hinter `MYCELIUM_LLM_PROVIDER` (#187), GGUF
 SHA-256-Verify (#188), `MYCELIUM_LLAMA_REQUIRE_CHECKSUM=1` fail-closed
 (#189), `middleware/proxy.ts` `EmbeddingProvider`-Injection (#190),
 `services/chat.ts` `ChatProvider`-Abstraction (#192). Cosine-cross-validation
 spike + Regen-Migration-Spec (#191/#193) und PGlite-Revalidate (#194)
-ebenfalls auf `main`. Sub-task 3 (Tauri 2 Shell scaffold) ist via #203
-gelandet, Sub-task 3 prep `MYCELIUM_DATA_DIR` Layout via #202, der 79-
-Migration-Walk als CI-Gate via #204, und Sub-task 7 (Docker→PGlite
-Migration-Helpers, pure-TS core) via #205. Sub-Tasks 1, 2, 3 (scaffold),
-4, 5 und 7 (core) sind damit implementiert (Adapter, Embedding-Provider,
-Chat-Provider, Update-Banner, PG-Validation, Tauri-Shell, Migration-Core).
+ebenfalls auf `main`. Sub-task 3 prep `MYCELIUM_DATA_DIR` Layout via #202,
+Sub-task 3 (Tauri 2 Shell scaffold) via #203, der 79-Migration-Walk als
+CI-Gate via #204, Sub-task 3 Commands (`open_data_dir` /
+`check_for_updates` / `restart_app` + Tray-Menü) via #206, Sub-task 6
+App-Seite (`tauri-plugin-updater` wired auf
+`releases/latest/download/latest.json`) via #207, und Sub-task 7
+(Docker→PGlite Migration-Helpers, pure-TS core) via #205. Sub-Tasks
+1, 2, 3 (scaffold + commands), 4, 5, 6 (Updater-Plugin App-Seite) und
+7 (core) sind damit implementiert (Adapter, Embedding-Provider,
+Chat-Provider, Update-Banner, PG-Validation, Tauri-Shell, Updater-
+Consumer, Migration-Core).
 
 **Queue-Stand 2026-05-04 (182. Tick)**: **5 PRs offen, alle CLEAN+MERGEABLE,
 Reed-lag ≈26 h** seit letzter Merge-Welle (#202–#207 am 2026-05-03 10:24 UTC).
@@ -274,9 +279,13 @@ offenen Stack migriert — verbleibend nach Merge: 20. Pattern bleibt: ein
 Service pro PR, jeder PR atomar reviewbar.
 
 **Was noch fehlt — Implementierungs-Fenster mit voller Queue**: Sub-Task
-3 (Tauri Shell) ist via #203 + #208 abgeschlossen sobald sidecar-bundling
-landet. Verbleibend: Sub-Tasks 6 (Update Channels), 8 (CI Matrix), 9
-(Banner Refit), 10 (Docs Flip) — Spikes liegen in `docs/native-*-spike.md`.
+3 (Tauri Shell) ist via #203 + #206 + #207 abgeschlossen sobald sidecar-
+bundling (#208) landet. Verbleibend: Sub-Task 6 CI-Seite (Release-Pipeline
+publiziert `latest.json` + signierte Installer — gepaart mit Sub-Task 8),
+Sub-Task 8 (CI Matrix), Sub-Task 9 (Banner Refit), Sub-Task 10 (Docs
+Flip) — Spikes liegen in `docs/native-*-spike.md`. `docs/native-app-track.md`
+Reihe 6 (⏳ "spike landed, CI release pipeline pending") spiegelt den
+Zwischenstand exakt.
 DbClient-Migration der restlichen ~19 Services läuft parallel als
 Mini-Atom-PRs (siehe Stack #209/#210/#211). **Regel bei voller Queue**:
 KEINE neuen PRs öffnen; lokal validieren, Issues mit empirischen
