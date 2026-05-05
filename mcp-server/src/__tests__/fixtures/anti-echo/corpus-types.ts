@@ -88,7 +88,7 @@ export interface AntiEchoFixtureMetadata {
   /**
    * Free-form reference to the §10 sub-section (or §3 / §5 rule) the
    * fixture exercises. E.g. "§10.4 diversity filter",
-   * "§3.7 PoK + §5 rule 1". Pure documentation; not parsed by the harness.
+   * "§3.7 PoK + §5 rule 18". Pure documentation; not parsed by the harness.
    */
   owns_mechanism: string;
   /**

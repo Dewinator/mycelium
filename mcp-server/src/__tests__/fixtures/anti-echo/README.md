@@ -52,7 +52,7 @@ Every fixture is a JSON file with two top-level keys:
     "category": "forgery",
     "expected_outcome": "reject",
     "expected_trust_delta": -0.05,
-    "owns_mechanism": "§3.7 PoK + §5 rule 1",
+    "owns_mechanism": "§3.7 PoK + §5 rule 18",
     "comment": "Lesson with valid envelope but evidence_root that does not hash the cited evidence."
   },
   "envelope": {
