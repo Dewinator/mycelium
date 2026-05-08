@@ -35,3 +35,4 @@ SETUP_ANLEITUNG.md
 # LoCoMo eval — cloned dataset (~3 MB) + per-run outputs (predictions/judgments)
 experiments/locomo/dataset/
 experiments/locomo/out/
+experiments/locomo/out-claude/

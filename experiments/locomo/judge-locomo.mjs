@@ -13,17 +13,22 @@
 
 import path from "node:path";
 import fs from "node:fs/promises";
-import { OUT_ROOT, ollamaChat, parseArgs, writeJSON } from "./lib.mjs";
+import { OUT_ROOT, ollamaChat, claudeCliChat, parseArgs, writeJSON } from "./lib.mjs";
 
 const args = parseArgs(process.argv.slice(2));
 const sampleId = args.conv ?? "conv-26";
-const judge = args.judge || "ollama"; // ollama | openai | anthropic
+const judge = args.judge || "ollama"; // ollama | claude-cli | openai | anthropic
 const judgeModel =
   args["judge-model"] ||
-  (judge === "ollama" ? "qwen2.5:7b-instruct" : judge === "openai" ? "gpt-4o-mini" : "claude-haiku-4-5-20251001");
+  (judge === "ollama" ? "qwen2.5:7b-instruct"
+    : judge === "claude-cli" ? "claude-haiku-4-5"
+    : judge === "openai" ? "gpt-4o-mini"
+    : "claude-haiku-4-5-20251001");
+const outSuffix = args["out-suffix"] || "";
 
-const predFile = path.join(OUT_ROOT, sampleId, "predictions.jsonl");
-const outFile = path.join(OUT_ROOT, sampleId, "judgment.json");
+const outRoot = outSuffix ? OUT_ROOT.replace(/\/out$/, `/out${outSuffix}`) : OUT_ROOT;
+const predFile = path.join(outRoot, sampleId, "predictions.jsonl");
+const outFile = path.join(outRoot, sampleId, "judgment.json");
 
 const lines = (await fs.readFile(predFile, "utf8")).split("\n").filter(Boolean);
 const preds = lines.map((l) => JSON.parse(l));
@@ -127,6 +132,9 @@ async function callJudge({ system, user, judge, model }) {
       num_predict: 80,
       temperature: 0,
     });
+  }
+  if (judge === "claude-cli") {
+    return await claudeCliChat({ model, system, user });
   }
   if (judge === "openai") {
     const key = process.env.OPENAI_API_KEY;

@@ -86,6 +86,33 @@ export async function insertMemoryDirect(memSvc, row) {
   return data.id;
 }
 
+// Claude CLI subprocess wrapper — uses the user's authenticated Claude Code
+// session (Pro/Max OAuth), no API key needed. Each call is a fresh process,
+// stateless. Cold-start ~2-3 s + model time.
+import { spawn } from "node:child_process";
+export async function claudeCliChat({ model, system, user, maxTurns = 1, timeoutMs = 120000 }) {
+  return new Promise((resolve, reject) => {
+    const args = [
+      "--print",
+      "--model", model,
+      "--max-turns", String(maxTurns),
+    ];
+    if (system) args.push("--system-prompt", system);
+    args.push(user);
+    const proc = spawn("claude", args, { stdio: ["ignore", "pipe", "pipe"] });
+    let out = "", err = "";
+    const killer = setTimeout(() => { proc.kill("SIGKILL"); }, timeoutMs);
+    proc.stdout.on("data", (d) => { out += d; });
+    proc.stderr.on("data", (d) => { err += d; });
+    proc.on("close", (code) => {
+      clearTimeout(killer);
+      if (code !== 0) reject(new Error(`claude CLI exit ${code}: ${err.slice(0, 200)}`));
+      else resolve(out.trim());
+    });
+    proc.on("error", (e) => { clearTimeout(killer); reject(e); });
+  });
+}
+
 // Minimal Ollama chat wrapper.
 export async function ollamaChat({ model, messages, num_predict = 256, temperature = 0 }) {
   const res = await fetch(`${OLLAMA_URL}/api/chat`, {

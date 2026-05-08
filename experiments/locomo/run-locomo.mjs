@@ -12,7 +12,7 @@
 import path from "node:path";
 import fs from "node:fs/promises";
 import {
-  loadDataset, findSample, projectSlugFor, parseArgs, ollamaChat,
+  loadDataset, findSample, projectSlugFor, parseArgs, ollamaChat, claudeCliChat,
   appendJSONL, OUT_ROOT, MemoryService, ProjectService, createEmbeddingProvider,
   SUPABASE_URL, SUPABASE_KEY,
 } from "./lib.mjs";
@@ -21,8 +21,10 @@ const args = parseArgs(process.argv.slice(2));
 const sampleId = args.conv ?? "conv-26";
 const maxQa = args["max-qa"] ? Number(args["max-qa"]) : Infinity;
 const topK = args["top-k"] ? Number(args["top-k"]) : 25;
-const model = args.model || "qwen2.5:7b-instruct";
+const provider = args.provider || "ollama"; // ollama | claude
+const model = args.model || (provider === "claude" ? "claude-sonnet-4-6" : "qwen2.5:7b-instruct");
 const numPredict = args["num-predict"] ? Number(args["num-predict"]) : 128;
+const outSuffix = args["out-suffix"] || ""; // e.g. "-claude" -> out-claude/
 
 const dataset = await loadDataset();
 const sample = findSample(dataset, sampleId);
@@ -35,7 +37,8 @@ const projects = new ProjectService(SUPABASE_URL, SUPABASE_KEY);
 const project = await projects.getBySlug(slug);
 if (!project) throw new Error(`project ${slug} not found — run ingest first`);
 
-const outFile = path.join(OUT_ROOT, sampleId, "predictions.jsonl");
+const outRoot = outSuffix ? OUT_ROOT.replace(/\/out$/, `/out${outSuffix}`) : OUT_ROOT;
+const outFile = path.join(outRoot, sampleId, "predictions.jsonl");
 await fs.mkdir(path.dirname(outFile), { recursive: true });
 await fs.writeFile(outFile, ""); // truncate
 
@@ -79,17 +82,21 @@ for (const qa of sample.qa) {
   let prediction = "";
   let err = null;
   try {
-    prediction = (await ollamaChat({
-      model,
-      messages: [
-        { role: "system", content: SYSTEM },
-        { role: "user", content: userMsg },
-      ],
-      num_predict: numPredict,
-      temperature: 0,
-    })).trim();
-    // qwen3 sometimes prepends <think>…</think> — strip it.
-    prediction = prediction.replace(/<think>[\s\S]*?<\/think>\s*/g, "").trim();
+    if (provider === "claude") {
+      prediction = (await claudeCliChat({ model, system: SYSTEM, user: userMsg })).trim();
+    } else {
+      prediction = (await ollamaChat({
+        model,
+        messages: [
+          { role: "system", content: SYSTEM },
+          { role: "user", content: userMsg },
+        ],
+        num_predict: numPredict,
+        temperature: 0,
+      })).trim();
+      // qwen3 sometimes prepends <think>…</think> — strip it.
+      prediction = prediction.replace(/<think>[\s\S]*?<\/think>\s*/g, "").trim();
+    }
   } catch (e) {
     err = String(e);
   }
@@ -110,8 +117,9 @@ for (const qa of sample.qa) {
     error: err,
   });
 
-  if (n % 10 === 0 || err) {
-    console.log(`[${sampleId}] ${n}/${sample.qa.length} qa  · last ${elapsedMs}ms${err ? ` · ERR ${err}` : ""}`);
+  const stride = provider === "claude" ? 5 : 10;
+  if (n % stride === 0 || err) {
+    console.log(`[${sampleId}/${provider}] ${n}/${sample.qa.length} qa  · last ${elapsedMs}ms${err ? ` · ERR ${err}` : ""}`);
   }
 }
 
