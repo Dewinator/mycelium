@@ -1,0 +1,7 @@
+data/
+results/
+config.yaml
+__pycache__/
+*.pyc
+.venv/
+venv/

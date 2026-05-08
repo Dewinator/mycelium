@@ -1,0 +1,59 @@
+# LoCoMo benchmark configuration for Mycelium.
+#
+# Copy to config.yaml and edit. See README.md for the full guide
+# (German + English).
+
+mycelium:
+  # How to launch the Mycelium MCP server. The benchmark talks to it via
+  # the standard MCP stdio protocol — same way Claude Code / Cursor do.
+  command: node
+  args:
+    - "../../../mcp-server/dist/index.js"
+  # These are forwarded as env vars to the spawned MCP server. Mirror the
+  # ones from your normal .mcp.json config (Supabase URL/key, Ollama URL).
+  env:
+    SUPABASE_URL: "http://127.0.0.1:54321"
+    SUPABASE_KEY: "REPLACE_WITH_YOUR_SERVICE_ROLE_KEY"
+    OLLAMA_URL: "http://127.0.0.1:11434"
+    EMBEDDING_PROVIDER: "ollama"
+    EMBEDDING_MODEL: "nomic-embed-text"
+
+  # Which Mycelium tool to use for ingestion.
+  #   "remember" — raw turn-by-turn storage (what the user said, verbatim).
+  #   "absorb"   — Mycelium's fact-extraction path (closer to Mem0/Zep).
+  ingest_tool: remember
+
+dataset:
+  # Path to the LoCoMo JSON file (download from
+  # https://huggingface.co/datasets/snap-research/locomo and place it here).
+  path: "./data/locomo10.json"
+  # Set to a small int while smoke-testing; null to run the full benchmark.
+  max_conversations: 1
+  max_questions_per_conversation: 5
+
+# The LLM that produces the answer given the retrieved Mycelium memories.
+answer_provider:
+  kind: openai            # openai | anthropic | claude_oauth | ollama
+  model: gpt-4o-mini
+  api_key_env: OPENAI_API_KEY
+  temperature: 0.0
+  max_tokens: 256
+
+# The LLM that grades each answer against the gold reference (LLM-as-judge).
+# For results comparable to Mem0 / Zep papers, use gpt-4o or gpt-4-turbo.
+judge_provider:
+  kind: openai
+  model: gpt-4o
+  api_key_env: OPENAI_API_KEY
+  temperature: 0.0
+  max_tokens: 256
+
+retrieval:
+  top_k: 10
+  vector_weight: 0.6
+  spread: false
+  ignore_affect: true       # disable affect-biased recall during eval
+  with_experiences: false   # don't surface lived-experience overlay
+
+output:
+  dir: "./results"
