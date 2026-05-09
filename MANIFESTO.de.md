@@ -36,6 +36,31 @@ Das ist keine Aussage über kognitive Kapazität. Ein 7B-Modell ist nach wie vor
 
 ---
 
+## Was wir aus der Biologie übernommen haben — und was die Industrie liegen gelassen hat
+
+Die moderne KI hat einen einzigen Mechanismus aus den Neurowissenschaften übernommen: ein Neuron feuert, wenn seine gewichteten Eingaben einen Schwellenwert überschreiten. Diese eine Idee, kodiert als Matrixmultiplikationen und Gradientenabstieg, hat alles erzeugt — vom Bildklassifikator bis GPT-4. **Ein einziger geliehener Trick aus der Biologie hat das Computing umgeschrieben.**
+
+Aber ein Gehirn ist kein Stapel aus Schwellenwert-Einheiten. Es vergisst. Es schläft. Es reflektiert über sich selbst. Es wichtet Erfahrungen nach Emotion. Es stärkt, was benutzt wurde, und lässt den Rest verblassen. Es konsolidiert, während du träumst. Nichts davon steckt in einem Transformer.
+
+Die aktuelle LLM-Linie ist bei einer biologischen Idee stehengeblieben und hat immer größere Wahrscheinlichkeitsmaschinen darauf gebaut. Das Ergebnis ist beeindruckend, aber flach: jede Session beginnt bei Null, jedes Gewicht ist zwischen Trainingsläufen eingefroren, jedes „Gedächtnis" ist ein Kontext-Fenster, das mit dem Gespräch verschwindet.
+
+Mycelium nimmt den Faden auf, den die Industrie hat fallen lassen. Der Rest der Hirnfunktion wird zum Engineering-Ziel, nicht zur Metapher:
+
+| Hirnmechanismus | Was Mycelium implementiert | Wo es lebt |
+|---|---|---|
+| **Vergessen** | Weicher Verfall über `strength` mit Audit-Trail; Hard-Delete nur auf Wunsch | `memories.strength`, `forget`-Tool |
+| **Schlaf** | Nächtlicher 03:00-Zyklus: synaptisches Downscaling, REM-artige Cluster-Reflektion, SWS-artige Konsolidierung | `sleep-cycle.mjs`, `synthesize-cluster.mjs` |
+| **Selbstreflektion** | REM-Self-Audit, Drift-Erkennung, Widerspruchs-Surfacing | `runRem()`, `drift_scan`, `find_conflicts` |
+| **Gewichtung durch Nutzung** | Hebb'sche Verbindungen: Gedächtnisse, die gemeinsam aktiviert werden, verstärken ihre Verbindung | `memory_links`, `CoactivationAgent`, `used_in_response`-Events |
+| **Affektive Gewichtung** | Drei-Kanal-Neurochemie aus Observablen, biast den Recall | `compute_affect()`, `agent_affect`, Valenz/Arousal in `match_memories_cognitive` |
+| **Mustererkennung** | Episoden clustern zu Lektionen; bewährte Lektionen härten zu Identitäts-Traits | `record_lesson`, `promote_lesson_to_trait` |
+
+Nichts davon ist biologische Simulation. Jede Zeile ist eine Postgres-Tabelle, eine SQL-Funktion oder ein Node.js-Agent — messbar, debugbar, austauschbar. Die Biologie liefert die *Form*; das Engineering liefert den Rest.
+
+Die Wette: wenn ein geliehener Mechanismus aus der Neurowissenschaft die aktuelle KI-Revolution erzeugt hat, hat der Rest des Gehirns mehr zu geben. Ein Agent, der vergisst, schläft, reflektiert und seine Erfahrung emotional gewichtet, ist strukturell anders als einer, der das nicht tut — und wird sich über Monate hinweg anders gegenüber seinem Nutzer verhalten.
+
+---
+
 ## Warum das wichtig ist
 
 ### 1. Lokal zuerst, weil gemietetes Gedächtnis kein Gedächtnis ist

@@ -36,6 +36,31 @@ That is not a claim about cognitive capacity. A 7B model is still worse at abstr
 
 ---
 
+## What we kept from biology — and what the industry left behind
+
+Modern AI took one mechanism from neuroscience: a neuron fires when its weighted inputs cross a threshold. That single idea, encoded as matrix multiplications and gradient descent, produced everything from image classifiers to GPT-4. **One borrowed insight from biology rewrote computing.**
+
+But a brain is not a stack of threshold units. It forgets. It sleeps. It reflects on itself. It weighs experiences by emotion. It strengthens what got used and lets the rest fade. It consolidates while you dream. None of that is in a Transformer.
+
+The current LLM lineage stopped at one biological idea and scaled probability machines on top of it. The result is impressive but flat: every session starts from zero, every weight is frozen between training runs, every "memory" is a context window that vanishes when the conversation ends.
+
+Mycelium picks up the thread the industry dropped. The rest of brain function becomes engineering targets, not metaphor:
+
+| Brain mechanism | What Mycelium implements | Where it lives |
+|---|---|---|
+| **Forgetting** | Soft decay over `strength` with full audit trail; hard-delete only by user request | `memories.strength`, `forget` tool |
+| **Sleep** | Nightly 03:00 cycle: synaptic downscaling, REM-like cluster reflection, SWS-like consolidation | `sleep-cycle.mjs`, `synthesize-cluster.mjs` |
+| **Self-reflection** | REM self-audit, drift detection, contradiction surfacing | `runRem()`, `drift_scan`, `find_conflicts` |
+| **Weighting through use** | Hebbian links: memories that activate together strengthen their connection | `memory_links`, `CoactivationAgent`, `used_in_response` events |
+| **Affective weighting** | Three-channel neurochemistry derived from observables, biasing recall | `compute_affect()`, `agent_affect`, valence/arousal in `match_memories_cognitive` |
+| **Pattern extraction** | Episodes cluster into lessons; proven lessons harden into identity traits | `record_lesson`, `promote_lesson_to_trait` |
+
+None of this is biological simulation. Each line is a Postgres table, an SQL function, or a Node.js agent — measurable, debuggable, swappable. Biology supplies the *shape*; engineering supplies the rest.
+
+The bet: if one borrowed mechanism from neuroscience produced the current AI revolution, the rest of the brain has more to give. An agent that forgets, sleeps, reflects, and emotionally weights its experience is structurally different from one that doesn't — and will behave differently with its user over months.
+
+---
+
 ## Why this matters
 
 ### 1. Local first, because rented memory is not memory
