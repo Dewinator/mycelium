@@ -20,7 +20,7 @@
   <sub><i>↑ click to watch the 90-second tour (MP4, 14 MB)</i></sub>
 </p>
 
-A persistent memory and identity layer for LLM agents, served over MCP. Runs locally on a Mac mini or a modest Linux box. No cloud dependency.
+A persistent memory and identity layer for LLM agents, served over MCP. Runs locally on a Mac mini, a modest Linux box, or a Windows 10/11 machine. No cloud dependency.
 
 📜 [MANIFESTO.md](MANIFESTO.md) — why memory belongs to the user, not the model.
 
@@ -184,12 +184,14 @@ Every night at 03:00: synaptic downscaling, deduplication, pattern-based relatio
 
 ## Prerequisites
 
-- macOS (Apple Silicon recommended, M1+) or Linux
+- macOS (Apple Silicon recommended, M1+), Linux, or Windows 10/11
 - [Docker Desktop](https://www.docker.com/products/docker-desktop/)
 - [Node.js >= 20](https://nodejs.org/)
-- Ollama — `brew install ollama && ollama pull nomic-embed-text`
+- Ollama — `brew install ollama && ollama pull nomic-embed-text` (Windows: [ollama.com/download](https://ollama.com/download))
 - Any MCP-capable client — Claude Code, Cursor, Cline, Codex, openClaw, etc.
-- `psql` — `brew install postgresql` (for migrations)
+- `psql` — `brew install postgresql` (for migrations; Windows: install via the Postgres installer or use WSL)
+
+> **Windows note:** the runtime stack (Node MCP server + Docker Supabase + Ollama) runs natively on Windows; the bash `install.sh` / `update.sh` helpers and the `launchd` / `systemd-user` autostart units are macOS/Linux only today. On Windows, run the manual setup below (or use WSL2). A Tauri-based double-click installer for all three platforms is in flight on the Native-App track.
 
 **Resource footprint** (without a local chat LLM): ~1 GB RAM (Supabase ~500 MB, Ollama embedding ~270 MB, sidecars ~100 MB each). With a local 7–8B chat model, add 6–9 GB.
 
