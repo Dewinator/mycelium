@@ -442,6 +442,170 @@ async function runRegistryGc() {
 }
 
 // ---------------------------------------------------------------------------
+// Phase MC — Memory Consolidation (REM over raw memories → atomic facts)
+//
+// Biological analogy: during REM, the hippocampus replays episodic traces to
+// the neocortex which extracts semantic, generalised representations. Here we
+// process clusters of unconsolidated episodic memories per project, call a
+// local LLM (qwen3:8b) to extract atomic facts, and store them as
+// subtype='fact' memories. Source episodes are then marked consolidated_at.
+//
+// Config env vars:
+//   SLEEP_MC_ENABLED          (default 1)
+//   SLEEP_MC_MODEL            (default qwen3:8b)
+//   SLEEP_MC_WINDOW_DAYS      (default 7)
+//   SLEEP_MC_MAX_EPISODES     (default 30)  — max episodes per LLM call
+//   SLEEP_MC_MAX_FACTS        (default 15)  — max facts extracted per call
+// ---------------------------------------------------------------------------
+const MC_ENABLED      = process.env.SLEEP_MC_ENABLED    !== "0";
+const MC_MODEL        = process.env.SLEEP_MC_MODEL      || "qwen3:8b";
+const MC_WINDOW_DAYS  = parseInt(process.env.SLEEP_MC_WINDOW_DAYS ?? "7",   10);
+const MC_MAX_EPISODES = parseInt(process.env.SLEEP_MC_MAX_EPISODES ?? "30", 10);
+const MC_MAX_FACTS    = parseInt(process.env.SLEEP_MC_MAX_FACTS    ?? "15", 10);
+const OLLAMA_CHAT_URL = `${process.env.OLLAMA_URL || "http://localhost:11434"}/api/chat`;
+
+async function ollamaChat(model, system, user) {
+  const r = await fetch(OLLAMA_CHAT_URL, {
+    method: "POST",
+    headers: { "content-type": "application/json" },
+    body: JSON.stringify({
+      model,
+      stream: false,
+      options: { temperature: 0, num_predict: 1024 },
+      messages: [
+        { role: "system", content: system },
+        { role: "user",   content: user },
+      ],
+    }),
+  });
+  if (!r.ok) throw new Error(`Ollama ${model} HTTP ${r.status}: ${(await r.text()).slice(0, 200)}`);
+  const j = await r.json();
+  const text = j.message?.content ?? "";
+  // strip <think>…</think> reasoning blocks from qwen3
+  return text.replace(/<think>[\s\S]*?<\/think>\s*/g, "").trim();
+}
+
+async function runMemoryConsolidation() {
+  const out = {
+    enabled: MC_ENABLED,
+    projects_processed: 0,
+    groups_processed: 0,
+    facts_created: 0,
+    episodes_marked: 0,
+    errors: [],
+  };
+  if (!MC_ENABLED) { out.skipped_reason = "SLEEP_MC_ENABLED=0"; return out; }
+
+  const cutoff = new Date(Date.now() - MC_WINDOW_DAYS * 86400_000).toISOString();
+
+  // Fetch unconsolidated episodes within the window.
+  const { data: episodes, error } = await memSvc.db
+    .from("memories")
+    .select("id, content, category, tags, metadata, source, project_id, created_at, embedding")
+    .eq("subtype", "episode")
+    .is("consolidated_at", null)
+    .gte("created_at", cutoff)
+    .limit(500);  // safety cap per cycle
+  if (error) { out.errors.push({ step: "fetch_episodes", msg: error.message }); return out; }
+  if (!episodes || episodes.length === 0) { out.skipped_reason = "no unconsolidated episodes in window"; return out; }
+
+  // Group by project_id (null = global) and metadata.session (for structured
+  // ingests like LoCoMo), or fall back to calendar-day buckets.
+  const groups = new Map(); // key → { project_id, episodes[] }
+  for (const ep of episodes) {
+    const proj   = ep.project_id ?? "__global__";
+    const session = ep.metadata?.session ?? ep.metadata?.dia_id?.split(":")?.[0] ?? null;
+    const day    = ep.created_at.slice(0, 10); // YYYY-MM-DD
+    const key    = `${proj}::${session ?? day}`;
+    if (!groups.has(key)) groups.set(key, { project_id: ep.project_id, episodes: [] });
+    groups.get(key).episodes.push(ep);
+  }
+  out.groups_found = groups.size;
+
+  for (const [key, { project_id, episodes: grp }] of groups) {
+    if (out.errors.length >= 5) break; // stop after repeated failures
+    // Limit batch size to avoid overlong prompts
+    const batch = grp.slice(0, MC_MAX_EPISODES);
+
+    const turnBlock = batch.map((ep) => `• ${ep.content}`).join("\n");
+    const system = "You extract concise, atomic facts from a set of memory entries. Output ONLY the requested format.";
+    const user = [
+      "MEMORY ENTRIES:",
+      turnBlock,
+      "",
+      `Extract up to ${MC_MAX_FACTS} atomic facts. Each fact must be self-contained and specific.`,
+      "Format — one per line: FACT: <subject> | <predicate> | <value>",
+      "Skip vague or content-free entries. Include dates and names when present.",
+      "Do NOT include a SUMMARY. Only FACT lines.",
+    ].join("\n");
+
+    let raw;
+    try {
+      raw = await ollamaChat(MC_MODEL, system, user);
+    } catch (e) {
+      out.errors.push({ step: "llm_call", group: key, msg: String(e?.message ?? e) });
+      continue;
+    }
+
+    // Parse FACT lines
+    const facts = raw.split("\n")
+      .map((l) => l.trim())
+      .filter((l) => l.startsWith("FACT:"))
+      .map((l) => {
+        const body  = l.slice("FACT:".length).trim();
+        const parts = body.split("|").map((p) => p.trim());
+        if (parts.length < 2) return null;
+        const [subject, predicate, ...rest] = parts;
+        const value = rest.join(" | ");
+        return value ? `${subject} ${predicate}: ${value}` : `${subject} ${predicate}`;
+      })
+      .filter(Boolean)
+      .slice(0, MC_MAX_FACTS);
+
+    if (facts.length === 0) { out.groups_processed++; continue; }
+
+    // Store facts as new memories in the same project
+    for (const factText of facts) {
+      try {
+        const embedding = await embeddings.embed(factText);
+        const { error: insErr } = await memSvc.db.from("memories").insert({
+          content:    factText,
+          category:   "general",
+          subtype:    "fact",
+          tags:       ["mc-synthesized", "memory-rem"],
+          embedding,
+          metadata:   { source_group: key, synthesized_by: MC_MODEL, window_days: MC_WINDOW_DAYS },
+          source:     `memory-rem:${key}`,
+          project_id: project_id ?? null,
+          pinned:     false,
+        });
+        if (insErr) out.errors.push({ step: "insert_fact", group: key, msg: insErr.message });
+        else out.facts_created++;
+      } catch (e) {
+        out.errors.push({ step: "embed_fact", group: key, msg: String(e?.message ?? e) });
+      }
+    }
+
+    // Mark source episodes as consolidated
+    const ids = batch.map((ep) => ep.id);
+    const { error: updErr } = await memSvc.db
+      .from("memories")
+      .update({ consolidated_at: new Date().toISOString() })
+      .in("id", ids);
+    if (updErr) out.errors.push({ step: "mark_consolidated", group: key, msg: updErr.message });
+    else out.episodes_marked += ids.length;
+
+    out.groups_processed++;
+    if (project_id !== out._last_project) {
+      out.projects_processed++;
+      out._last_project = project_id;
+    }
+  }
+  delete out._last_project;
+  return out;
+}
+
+// ---------------------------------------------------------------------------
 // Main
 // ---------------------------------------------------------------------------
 const startedEpoch = Date.now();
@@ -459,6 +623,11 @@ try {
   const rem = await runRem();
   log("rem done", rem);
   await patchCycle(cycleId, { rem_result: rem });
+
+  log("phase Memory Consolidation (REM over memories) …");
+  const mc = await runMemoryConsolidation();
+  log("memory consolidation done", { facts: mc.facts_created, episodes: mc.episodes_marked, errors: mc.errors.length });
+  await patchCycle(cycleId, { memory_consolidation_result: mc });
 
   log("phase Emergence Scan …");
   const emerg = await runEmergenceScan();
@@ -483,6 +652,7 @@ try {
   const allErrors = [
     ...(sws.errors || []),
     ...(rem.errors || []),
+    ...(mc.errors || []),
     ...(emerg.errors || []),
     ...(meta.errors || []),
     ...(fit.errors || []),

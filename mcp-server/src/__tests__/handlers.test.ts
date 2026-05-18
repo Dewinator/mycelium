@@ -138,6 +138,7 @@ test("remember returns id and category in text", async () => {
     content: "the sky is blue",
     category: "topics",
     tags: [],
+    subtype: "episode",
   });
   assert.match(res.content[0].text, /Remembered \(topics/);
   assert.match(res.content[0].text, /the sky is blue/);
@@ -152,6 +153,7 @@ test("remember truncates long content in output", async () => {
     content: long,
     category: "general",
     tags: [],
+    subtype: "episode",
   });
   assert.match(res.content[0].text, /\.\.\./);
 });
@@ -163,7 +165,7 @@ test("recall returns 'no matching' when empty", async () => {
     limit: 10,
     vector_weight: 0.7,
     spread: false, with_experiences: false,
-    ignore_affect: true,
+    ignore_affect: true, compact: false,
     cite: false,
   });
   assert.match(res.content[0].text, /No matching memories/);
@@ -179,6 +181,7 @@ test("recall formats results with rank, score and id", async () => {
         tags: ["alice"],
         metadata: {},
         stage: "episodic",
+        subtype: "episode" as const,
         strength: 1.0,
         importance: 0.5,
         access_count: 0,
@@ -196,7 +199,7 @@ test("recall formats results with rank, score and id", async () => {
     limit: 10,
     vector_weight: 0.7,
     spread: false, with_experiences: false,
-    ignore_affect: true,
+    ignore_affect: true, compact: false,
     cite: false,
   });
   assert.match(res.content[0].text, /Found 1 memories/);
@@ -212,7 +215,7 @@ test("recall emits recalled memory_event with hits=0 on empty result", async () 
     limit: 10,
     vector_weight: 0.7,
     spread: false, with_experiences: false,
-    ignore_affect: true,
+    ignore_affect: true, compact: false,
     cite: false,
   });
   assert.equal(svc.recalledEvents.length, 1);
@@ -233,6 +236,7 @@ test("recall emits recalled memory_event with hit count and top score", async ()
         tags: [],
         metadata: {},
         stage: "episodic",
+        subtype: "episode" as const,
         strength: 1.0,
         importance: 0.5,
         access_count: 0,
@@ -250,6 +254,7 @@ test("recall emits recalled memory_event with hit count and top score", async ()
         tags: [],
         metadata: {},
         stage: "episodic",
+        subtype: "episode" as const,
         strength: 1.0,
         importance: 0.5,
         access_count: 0,
@@ -267,7 +272,7 @@ test("recall emits recalled memory_event with hit count and top score", async ()
     limit: 10,
     vector_weight: 0.7,
     spread: false, with_experiences: false,
-    ignore_affect: true,
+    ignore_affect: true, compact: false,
     cite: false,
   });
   assert.equal(svc.recalledEvents.length, 1);
@@ -294,6 +299,7 @@ function makeHit(id: string, score: number) {
     tags: [] as string[],
     metadata: {},
     stage: "episodic" as const,
+    subtype: "episode" as const,
     strength: 1.0,
     importance: 0.5,
     access_count: 0,
@@ -316,7 +322,7 @@ test("recall(cite=true) with ≥2 hits emits used_in_response with shared trace_
     limit: 10,
     vector_weight: 0.7,
     spread: false, with_experiences: false,
-    ignore_affect: true,
+    ignore_affect: true, compact: false,
     cite: true,
   });
   assert.equal(svc.usedInResponseCalls.length, 1);
@@ -334,7 +340,7 @@ test("recall(cite=true) with 1 hit does NOT emit used_in_response (gate: ≥2)",
     limit: 10,
     vector_weight: 0.7,
     spread: false, with_experiences: false,
-    ignore_affect: true,
+    ignore_affect: true, compact: false,
     cite: true,
   });
   assert.equal(svc.usedInResponseCalls.length, 0);
@@ -350,7 +356,7 @@ test("recall(cite=false) never emits used_in_response even with many hits", asyn
     limit: 10,
     vector_weight: 0.7,
     spread: false, with_experiences: false,
-    ignore_affect: true,
+    ignore_affect: true, compact: false,
     cite: false,
   });
   assert.equal(svc.usedInResponseCalls.length, 0);
@@ -366,7 +372,7 @@ test("recall(cite=true) caps used_in_response to first 5 hits", async () => {
     limit: 10,
     vector_weight: 0.7,
     spread: false, with_experiences: false,
-    ignore_affect: true,
+    ignore_affect: true, compact: false,
     cite: true,
   });
   assert.equal(svc.usedInResponseCalls.length, 1);

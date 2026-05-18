@@ -50,6 +50,13 @@ export const recallSchema = z.object({
     .describe(
       "Set true when the retrieved memories will actually inform the response. Emits one `used_in_response` event per top-5 hit with a shared trace_id — the CoactivationAgent then Hebbian-links them pairwise. Opt-in to keep signal quality: purely exploratory recalls should leave this off."
     ),
+  compact: z
+    .boolean()
+    .optional()
+    .default(false)
+    .describe(
+      "Return clean content only — no cognitive scores, no metadata. Designed for local/small models where score noise hurts reasoning. Fact-type memories (metadata.memory_subtype=fact or enriched_type=fact) are surfaced first as KEY FACTS."
+    ),
 });
 
 export async function recall(
@@ -149,10 +156,50 @@ export async function recall(
     });
   }
 
-  const formatted = results
-    .map((r, i) => {
+  // Detect fact-type memories: primary signal is the native subtype column
+  // (migration 089). Fallback to legacy metadata fields for memories ingested
+  // before the migration.
+  const isFact = (r: (typeof results)[number]) =>
+    r.subtype === "fact" ||
+    r.subtype === "summary" ||
+    r.metadata?.memory_subtype === "fact" ||
+    r.metadata?.enriched_type === "fact" ||
+    r.tags.includes("locomo-fact");
+
+  let text: string;
+
+  if (input.compact) {
+    // ── Compact output: clean content only, no cognitive noise ──────────────
+    // Optimised for local/small models. Facts surface first under KEY FACTS,
+    // then remaining memories under CONTEXT.
+    const facts = results.filter(isFact);
+    const rest  = results.filter((r) => !isFact(r));
+
+    const parts: string[] = [];
+    if (facts.length > 0) {
+      parts.push(
+        `KEY FACTS (${facts.length}):\n` +
+        facts.map((r) => `• ${r.content}`).join("\n")
+      );
+    }
+    if (rest.length > 0) {
+      parts.push(
+        `CONTEXT (${rest.length}):\n` +
+        rest.map((r) => `• ${r.content}`).join("\n")
+      );
+    }
+    text = `Found ${results.length} memories:\n\n` + parts.join("\n\n");
+  } else {
+    // ── Full output with cognitive metrics (default) ──────────────────────
+    // Facts are surfaced first so any model sees them prominently.
+    const facts   = results.filter(isFact);
+    const rest    = results.filter((r) => !isFact(r));
+    const ordered = [...facts, ...rest];
+
+    const formatOne = (r: (typeof results)[number], i: number) => {
       const stageMark = r.pinned ? "*" : r.stage === "semantic" ? "S" : "e";
-      const head = `${i + 1}. [${r.category}/${stageMark}] score=${r.effective_score.toFixed(3)} (rel=${r.relevance.toFixed(2)} str=${r.strength_now.toFixed(2)} sal=${r.salience.toFixed(2)} ax=${r.access_count})\n   ${r.content}\n   id: ${r.id}${r.tags.length ? " | tags: " + r.tags.join(", ") : ""}`;
+      const factLabel = isFact(r) ? " [FACT]" : "";
+      const head = `${i + 1}. [${r.category}/${stageMark}]${factLabel} score=${r.effective_score.toFixed(3)} (rel=${r.relevance.toFixed(2)} str=${r.strength_now.toFixed(2)} sal=${r.salience.toFixed(2)} ax=${r.access_count})\n   ${r.content}\n   id: ${r.id}${r.tags.length ? " | tags: " + r.tags.join(", ") : ""}`;
       const exps = experiencesByMemory.get(r.id);
       if (!exps || exps.length === 0) return head;
       const lived = exps
@@ -162,10 +209,16 @@ export async function recall(
         )
         .join("\n");
       return `${head}\n   lived experience:\n${lived}`;
-    })
-    .join("\n\n");
+    };
 
-  let text = `Found ${results.length} memories:\n\n${formatted}`;
+    const formatted = ordered.map(formatOne).join("\n\n");
+
+    const sectionNote =
+      facts.length > 0
+        ? `\n[${facts.length} fact-type memories surfaced first — marked [FACT]]`
+        : "";
+    text = `Found ${results.length} memories:${sectionNote}\n\n${formatted}`;
+  }
 
   if (crossNeighbors.length > 0) {
     const assoc = crossNeighbors

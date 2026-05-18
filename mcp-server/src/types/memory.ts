@@ -29,6 +29,7 @@ export interface MemorySearchResult {
   metadata: Record<string, unknown>;
   source?: string;
   stage: string;
+  subtype: "episode" | "fact" | "summary" | "lesson";
   strength: number;
   importance: number;
   access_count: number;
@@ -64,6 +65,7 @@ export interface CrossSpreadResult {
 export interface CreateMemoryInput {
   content: string;
   category?: string;
+  subtype?: "episode" | "fact" | "summary" | "lesson";
   tags?: string[];
   metadata?: Record<string, unknown>;
   source?: string;

@@ -207,6 +207,7 @@ export class MemoryService {
       .insert({
         content: input.content,
         category: input.category ?? "general",
+        subtype: input.subtype ?? "episode",
         tags: input.tags ?? [],
         embedding,
         metadata: input.metadata ?? {},

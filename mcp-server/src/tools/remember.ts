@@ -38,6 +38,15 @@ export const rememberSchema = z.object({
     .nullable()
     .optional()
     .describe("Project slug to scope this memory to. Omit to use the agent's active project (if any). Pass null to force global (no project)."),
+  subtype: z
+    .enum(["episode", "fact", "summary", "lesson"])
+    .optional()
+    .default("episode")
+    .describe(
+      "Memory subtype — 'episode' (default, raw/verbatim), 'fact' (atomic distilled assertion), " +
+      "'summary' (compressed narrative), 'lesson' (generalised principle). " +
+      "Facts and summaries receive a retrieval boost over raw episodes."
+    ),
 });
 
 export async function remember(

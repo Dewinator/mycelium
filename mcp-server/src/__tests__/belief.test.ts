@@ -63,6 +63,7 @@ function makeHit(id: string, score: number): MemorySearchResult {
     tags: [],
     metadata: {},
     stage: "episodic",
+    subtype: "episode",
     strength: 1.0,
     importance: 0.5,
     access_count: 0,
