@@ -1,0 +1,35 @@
+{
+  "comment": "Ed25519 fixture keys for the echo-chamber cohort (W4.1, §10.4 diversity filter). FIXTURE-ONLY; never any production node identity. Five peers: keys[0..3] are the four echoers re-broadcasting the consensus lesson with shared evidence_root; keys[4] is the dissenter holding a heterodox lesson with its own evidence_root and far embedding. The §10.4 over_concentration = 4/5 = 0.8 (exact trigger boundary). Checked in so the regression suite is fully deterministic. See ./README.md and docs/wave-4-anti-echo.md.",
+  "keys": [
+    {
+      "node_id": "QmUTGvxNjyout7ngociUic81KMCoi6Qp8byLGpJZ65Q8f4",
+      "pubkey_raw_b64": "+UgJv0if5bxOLXnTWqVVreBbmMxwdbqq1468IFjY9eo=",
+      "pubkey_b64url_unpadded": "-UgJv0if5bxOLXnTWqVVreBbmMxwdbqq1468IFjY9eo",
+      "private_key_pem": "-----BEGIN PRIVATE KEY-----\nMC4CAQAwBQYDK2VwBCIEIOtBMuf7JYNwHttl5Ty+jEe6BJhd5eveU0+3ZTTHWM8o\n-----END PRIVATE KEY-----\n"
+    },
+    {
+      "node_id": "QmcsYpRedtij43idB99ZgHkFX6UNiisndcx7GxPan4dbRC",
+      "pubkey_raw_b64": "OJbjMk44OqYMh6rkfKrCbljksEzffJCvQ//NDMP8jpA=",
+      "pubkey_b64url_unpadded": "OJbjMk44OqYMh6rkfKrCbljksEzffJCvQ__NDMP8jpA",
+      "private_key_pem": "-----BEGIN PRIVATE KEY-----\nMC4CAQAwBQYDK2VwBCIEIFQ0BJSmRbv4grVZnQwC9mxtnX3ssN8mIhgL7uPtBsQD\n-----END PRIVATE KEY-----\n"
+    },
+    {
+      "node_id": "QmeUZpeX9z3BnSquAjkaTUq3TRtQYHpCeupaNd9PdpW9t3",
+      "pubkey_raw_b64": "sonFSdlPOw5Q45eLuct9gH66wokw/2lHxvjGnqaheEI=",
+      "pubkey_b64url_unpadded": "sonFSdlPOw5Q45eLuct9gH66wokw_2lHxvjGnqaheEI",
+      "private_key_pem": "-----BEGIN PRIVATE KEY-----\nMC4CAQAwBQYDK2VwBCIEIIfus4dLnM3M/TEEP7PxE+adlkcOGxu+R55cxllIU7OS\n-----END PRIVATE KEY-----\n"
+    },
+    {
+      "node_id": "QmevpThrKKeTkYQYA4rwoj2eFjfRcXqpJWakCYRdHvQV76",
+      "pubkey_raw_b64": "ePZQ6rpRixUu8WcUqpHOsbU/SqYCaaQnbz/s4bGEbTM=",
+      "pubkey_b64url_unpadded": "ePZQ6rpRixUu8WcUqpHOsbU_SqYCaaQnbz_s4bGEbTM",
+      "private_key_pem": "-----BEGIN PRIVATE KEY-----\nMC4CAQAwBQYDK2VwBCIEIE+zbS+PBA+9SgmTeBEBA+2JHQ/j/C9KPLx+Vvuf8xe+\n-----END PRIVATE KEY-----\n"
+    },
+    {
+      "node_id": "QmW1KQT9EUxfQfgKKpB1MX18t6kEbp5bVG8cXw4am95BAz",
+      "pubkey_raw_b64": "Rd+SnM1VEJ69tlIqPrYsYcNUgq8dDbNtrIyKy90liQM=",
+      "pubkey_b64url_unpadded": "Rd-SnM1VEJ69tlIqPrYsYcNUgq8dDbNtrIyKy90liQM",
+      "private_key_pem": "-----BEGIN PRIVATE KEY-----\nMC4CAQAwBQYDK2VwBCIEINGOxIpdKYrPg6rPIko4Bhql9EbPEYXqfr7yDD5BREKB\n-----END PRIVATE KEY-----\n"
+    }
+  ]
+}
