@@ -28,22 +28,35 @@ app/
 
 ## Status
 
-This PR ships the scaffold only. `cargo check` is green. What works:
+`cargo check` and `cargo tauri build` are green. What works on a developer
+Mac (the iteration-A target):
 
 - Window opens at `http://127.0.0.1:8787` (existing dashboard).
-- Tray icon with Show/Hide + Quit.
+- Tray icon with **Show/Hide**, **Open data dir**, **Check for updates**,
+  **Quit**.
 - Closing the window minimises to tray (does NOT quit).
-- Sidecar spawn wired (`MYCELIUM_DATA_DIR`, `MYCELIUM_DASHBOARD_PORT`,
-  `MYCELIUM_WIRE_PORT` env vars passed through).
+- Sidecar bundled into the .app — `scripts/bundle-sidecar.sh` packs
+  `mcp-server/dist` + `node_modules` + migrations into `sidecar-payload/`,
+  Tauri ships it as a Resources sub-tree.
+- Sidecar inherits `SUPABASE_URL` / `SUPABASE_KEY` from the user's
+  launchd environment (`launchctl setenv …`) — works zero-config on the
+  developer machine; distribution to other users needs the
+  PGlite-as-primary refactor (separate ticket).
+- Auto-updater wired to GitHub Releases (placeholder pubkey, see below).
 - Wave-3 forward-compat: `wire-cert/` directory created at first launch;
   capability set already lists shell-execute so the sidecar can later bind
   UDP for mDNS without re-signing.
 
 What does NOT work yet (intentional, follow-up tickets):
 
-- The sidecar binary in `binaries/mycelium-mcp-aarch64-apple-darwin` is a
-  shell stub. Building the real bundled Node binary (Bun/pkg compile) is
-  sub-task 8 (CI matrix).
+- **Self-contained Node runtime.** The launcher invokes `node` from
+  PATH. Bundling a portable Node so the .dmg works without a system
+  Node install is sub-task 8 (CI matrix / cross-platform).
+- **PGlite as primary backend.** `mcp-server/src/index.ts` still
+  constructs every service against `SUPABASE_URL` / `SUPABASE_KEY`. A
+  refactor to honour `MYCELIUM_USE_PGLITE=1` and route all services
+  through the in-process adapter is the next big native-app PR
+  (separate ticket).
 - App icons are solid-purple placeholders.
 - The auto-updater is wired, but the `pubkey` in `tauri.conf.json` is a
   placeholder — see "Signing-key bootstrap" below.
@@ -80,14 +93,19 @@ each platform artefact with the private key and ships
 ```bash
 # Prereqs (one-time)
 brew install rustup-init && rustup-init -y --default-toolchain stable --profile minimal
+cargo install tauri-cli --version "^2"
 
-# Type-check the scaffold
+# Type-check
 cd app/src-tauri && cargo check
 
-# Run with mcp-server already up at :8787 (`cd mcp-server && npm run dev`):
-cd app/src-tauri && cargo tauri dev   # requires `cargo install tauri-cli`
-```
+# Bundle the sidecar payload into sidecar-payload/ (also runs as Tauri's
+# beforeBuildCommand, so usually you don't need to call it directly):
+bash scripts/bundle-sidecar.sh
 
-`cargo tauri dev` will spawn the stub sidecar and the dashboard will fail
-to load — until the bundling PR lands, run the mcp-server manually in a
-separate terminal.
+# Develop with hot-reload-ish (Tauri respawns sidecar on quit):
+cd app/src-tauri && cargo tauri dev
+
+# Build the production .dmg:
+cd app/src-tauri && cargo tauri build
+# → app/src-tauri/target/release/bundle/dmg/mycelium_*.dmg
+```

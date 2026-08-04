@@ -1,11 +1,48 @@
 #!/bin/sh
-# Stub sidecar — the real bundled Node binary is built by a follow-up
-# release-pipeline ticket (#176 sub-task 8 — CI matrix). For development
-# right now, run the mcp-server directly:
+# Launcher for the Tauri-bundled mcp-server sidecar.
 #
-#   cd mcp-server && npm run build && node dist/index.js
+# Locates the payload (compiled JS + node_modules) and runs it via the
+# system-installed `node`. Two layouts are supported:
 #
-# Tauri's `tauri dev` will spawn this stub instead and the dashboard will
-# fail to load — that is expected until the bundling PR lands.
-echo "[mycelium-mcp] stub sidecar — run mcp-server/dist/index.js manually for development" >&2
-exit 0
+#   1. dev mode: `cargo tauri dev`
+#      Layout: <repo>/app/src-tauri/binaries/mycelium-mcp-* (this file)
+#              <repo>/app/src-tauri/sidecar-payload/index.js
+#
+#   2. bundled .app:
+#      Layout: …/mycelium.app/Contents/MacOS/mycelium-mcp (this file)
+#              …/mycelium.app/Contents/Resources/sidecar-payload/index.js
+#      (Tauri copies bundle.resources into Contents/Resources/)
+#
+# IMPORTANT: requires `node` on PATH. Bundling a portable Node runtime so
+# the .dmg is self-contained is follow-up sub-task 8 (CI matrix).
+
+set -e
+
+DIR="$(cd "$(dirname "$0")" && pwd)"
+
+if [ -d "$DIR/../sidecar-payload" ]; then
+  PAYLOAD="$DIR/../sidecar-payload"
+elif [ -d "$DIR/../Resources/sidecar-payload" ]; then
+  PAYLOAD="$DIR/../Resources/sidecar-payload"
+else
+  echo "mycelium-mcp launcher: sidecar-payload not found near $DIR" >&2
+  echo "  Run scripts/bundle-sidecar.sh from the repo root, or rebuild the .app." >&2
+  exit 2
+fi
+
+if ! command -v node >/dev/null 2>&1; then
+  echo "mycelium-mcp launcher: 'node' not found on PATH." >&2
+  echo "  Install Node 20+ (brew install node) or run a self-contained build" >&2
+  echo "  (sub-task 8 — portable Node runtime bundling)." >&2
+  exit 3
+fi
+
+# Iteration A: mcp-server still boots against Supabase by default
+# (see #176 sub-task follow-up: PGlite-as-primary-backend refactor).
+# SUPABASE_URL / SUPABASE_KEY come from the user-launchd environment
+# (`launchctl setenv …`), which any GUI-launched app inherits — so the
+# Tauri-bundled .app gets them automatically on the developer's machine.
+# Distribution to other users will need PGlite-as-primary or an in-app
+# onboarding flow that asks for the keys (separate ticket).
+
+exec node "$PAYLOAD/index.js" "$@"
